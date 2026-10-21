@@ -58,7 +58,7 @@ Anti-ciljevi (ovo bi bio neuspeh)
 | Deo | Odluka | Zašto |
 |---|---|---|
 | Okvir | Electron 44 (isti kao Structure Studio), `electron/main.cjs` + `preload.cjs` + React 19 renderer (Vite 7) | Proveren sklop iz SS, isti alati, isti način pakovanja |
-| Baza | SQLite kroz `better-sqlite3` (sinhroni API, WAL), fajl `%APPDATA%\Gimnastika\gimnastika.sqlite` | Jedan fajl, transakcije, bez servera; prebuilt binarni fajlovi za Electron postoje, rebuild radi `electron-builder install-app-deps` |
+| Baza | SQLite kroz ugrađeni `node:sqlite` (`DatabaseSync`, sinhroni API, WAL), fajl `%APPDATA%\Gimnastika\gimnastika.sqlite` | Jedan fajl, transakcije, bez servera i bez native modula: ima ga i sistemski Node 22.23 i Node 24.22 u Electronu 44 (provereno 20.10.2026.), pa nema prevođenja ni dva ABI-ja; `better-sqlite3` je rezerva ako `node:sqlite` zakaže |
 | Pristup bazi | Samo iz main procesa, preko IPC (`ipcMain.handle`), renderer dobija `window.gim.<modul>.<radnja>(...)` iz preload-a sa `contextIsolation` | Renderer bez Node pristupa; jedan sloj modela kao i sad (Modeli/*) |
 | Sortiranje imena | U JS-u sa `Intl.Collator('sr-Latn')`; u SQL-u nema `croatian_ci` | SQLite ne zna č, ć, đ, š, ž |
 | Brojevi | Kolone ocena su `INTEGER` u hiljaditim delovima (nema DECIMAL) | Isto što radi `Racun\Broj` danas, bez pretvaranja |
