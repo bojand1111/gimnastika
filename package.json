@@ -1,5 +1,6 @@
 {
   "name": "gimnastika",
+  "type": "module",
   "version": "0.1.0",
   "main": "electron/main.cjs",
   "scripts": {
