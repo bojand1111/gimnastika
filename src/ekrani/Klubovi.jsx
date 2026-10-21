@@ -62,9 +62,11 @@ export default function Klubovi() {
     try {
       const { id } = await gim.klubovi.sacuvaj({ ...forma }, izabranId);
       await ucitaj();
+      const r = await gim.klubovi.nadji(id);
       postaviIzabran(id);
+      if (r) postaviFormu({ puno_ime: r.puno_ime, skracenica: r.skracenica, grad: r.grad });
       postaviGreske([]);
-      obavesti(`Klub „${forma.puno_ime}“ je sačuvan.`);
+      obavesti(`Klub „${r ? r.puno_ime : forma.puno_ime.trim()}“ je sačuvan.`);
     } catch (e) {
       postaviGreske([e.message]);
     }

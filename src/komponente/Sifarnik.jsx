@@ -19,6 +19,7 @@ export default function Sifarnik({ vrsta, meta, ikone, sprava, sirina }) {
   const dodajSkrRef = useRef(null);
   const fokusId = useRef(null); // stavka koja dobija fokus posle sledeceg crtanja
   const vuceId = useRef(null);
+  const zauzeto = useRef(false); // dodavanje u toku (dvostruki Enter)
   const stavkeRef = useRef([]);
   stavkeRef.current = stavke;
 
@@ -74,6 +75,8 @@ export default function Sifarnik({ vrsta, meta, ikone, sprava, sirina }) {
   async function dodaj() {
     const naziv = noviNaziv.trim();
     if (naziv === '') { if (dodajNazivRef.current) dodajNazivRef.current.focus(); return; }
+    if (zauzeto.current) return;
+    zauzeto.current = true;
     try {
       await gim.sifarnici.dodaj(vrsta, { naziv, skracenica: sprava ? novaSkr.trim().toUpperCase() : '', ikona: '' });
       obavesti('Dodato.');
@@ -84,6 +87,8 @@ export default function Sifarnik({ vrsta, meta, ikone, sprava, sirina }) {
       if (polje) polje.focus();
     } catch (e) {
       obavesti(e.message, 'greska');
+    } finally {
+      zauzeto.current = false;
     }
   }
 

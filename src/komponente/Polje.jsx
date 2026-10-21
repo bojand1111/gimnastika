@@ -1,7 +1,6 @@
 // Oznaka + unos (label.polje > span.oznaka + input.unos); opciona poruka greske ispod.
-export default function Polje({ oznaka, klasa = '', greska = '', stil, unosRef, ...unos }) {
-  const klasaPolja = ['polje', unos.poljeKlasa].filter(Boolean).join(' ');
-  delete unos.poljeKlasa;
+export default function Polje({ oznaka, klasa = '', greska = '', stil, unosRef, poljeKlasa, ...unos }) {
+  const klasaPolja = ['polje', poljeKlasa].filter(Boolean).join(' ');
   return (
     <label className={klasaPolja} style={stil}>
       <span className="oznaka">{oznaka}</span>
