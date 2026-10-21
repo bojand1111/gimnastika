@@ -3,6 +3,7 @@ const path = require('node:path');
 const { verzija } = require('./sistem.cjs');
 const { putanjaBaze } = require('./putanje.cjs');
 const { otvori } = require('./baza/baza.cjs');
+const { pocetniPodaci } = require('./baza/seme.cjs');
 const dnevnik = require('./dnevnik.cjs');
 const { registruj } = require('./ipc.cjs');
 const { createUpdater } = require('./updater.cjs');
@@ -70,6 +71,8 @@ function pokreni() {
     baza = otvori(putanjaBaze());
     const primenjene = baza.migriraj();
     log(`migracije: ${primenjene.length ? primenjene.join(', ') : 'nema novih'}`);
+    const seme = pocetniPodaci(baza);
+    if (seme.sprave || seme.podesavanja) log(`seme: sprave ${seme.sprave}, podesavanja ${seme.podesavanja}`);
   } catch (err) {
     dnevnik.greska('baza i migracije', err);
     dialog.showErrorBox('Gimnastika', `Baza se ne može otvoriti: ${err.message}`);
