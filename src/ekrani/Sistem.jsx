@@ -1,5 +1,7 @@
 import Ikona from '../komponente/Ikona.jsx';
 import { AzuriranjeKartica } from '../okvir/Azuriranje.jsx';
+import { konacnaE } from '../../electron/racun/ocena.mjs';
+import { prikaz } from '../../electron/racun/broj.mjs';
 
 // Interni ekran sa svim komponentama (sistem.php), za poredjenje sa dizajn/slike/00-vizuelni-sistem.png.
 const BOJE = ['primary', 'primary-dark', 'primary-soft', 'ink', 'ink-2', 'muted', 'line-2', 'line', 'ground', 'surface', 'sel', 'sub', 'link', 'info-soft', 'ok', 'ok-soft', 'warn', 'warn-soft', 'bad', 'bad-soft'];
@@ -21,6 +23,12 @@ export default function Sistem() {
   return (
     <>
       <AzuriranjeKartica />
+
+      <Kartica naslov="Računanje">
+        <div className="kartica-telo">
+          <div>E ocena iz 8,300 8,100 8,400 8,200 (odbaci krajnje): <span className="broj">{prikaz(konacnaE([8300, 8100, 8400, 8200], 'odbaci_krajnje'))}</span></div>
+        </div>
+      </Kartica>
 
       <Kartica naslov="Boje">
         <div className="kartica-telo">
