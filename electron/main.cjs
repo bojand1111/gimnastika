@@ -76,9 +76,6 @@ function pokreni() {
     app.exit(1);
     return;
   }
-  // Dokaz da require(esm) radi u Electronu: racunanje se ucitava iz main procesa.
-  const { konacnaE } = require('./racun/ocena.mjs');
-  log(`racun: konacnaE([8300,8100,8400,8200]) = ${konacnaE([8300, 8100, 8400, 8200], 'odbaci_krajnje')}`);
   azuriranje = createUpdater({
     app,
     send: (stanje) => { if (prozor && !prozor.isDestroyed()) prozor.webContents.send('gim:azuriranje:stanje', stanje); },

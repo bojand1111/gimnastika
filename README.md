@@ -3,6 +3,8 @@
 Desktop aplikacija za zapisničara na takmičenju u sportskoj gimnastici
 (Electron, React, SQLite). Radi bez interneta.
 
+Potreban je Node 22.12 ili noviji (require ESM modula).
+
 ## Komande
 
 - `npm install`: instalira zavisnosti.

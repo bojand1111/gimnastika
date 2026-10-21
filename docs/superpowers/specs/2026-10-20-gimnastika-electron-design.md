@@ -85,7 +85,7 @@ gimnastika/
     baza/
       baza.cjs            otvaranje fajla, WAL, migracije, transakcija(fn), sad()
       migracije/001_pocetna.sql ...  (prevod MariaDB migracija 001..004 u SQLite, isti nazivi)
-    racun/                broj.cjs, ocena.cjs, plasman.cjs, priprema.cjs  (čiste funkcije, port app/Racun)
+    racun/                broj.mjs, ocena.mjs, plasman.mjs, priprema.mjs  (čiste funkcije, port app/Racun)
     modeli/               klubovi.cjs, takmicari.cjs, sifarnici.cjs, takmicenja.cjs, prijave.cjs, grupe.cjs, ocene.cjs, rezultati.cjs, kopija.cjs, podesavanja.cjs
     uvoz/                 docx.cjs, xlsx.cjs, citac.cjs, tumac-prijave.cjs, uparivanje.cjs, uvoz.cjs (port app/Uvoz + Modeli/Uvoz)
     kopija.cjs            kopija_<datum>.sqlite u fascikli za kopije, vraćanje, uvoz PHP zip kopije (SQL -> SQLite)
