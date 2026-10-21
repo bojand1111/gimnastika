@@ -10,8 +10,8 @@ export const KORAK_SPREMNO = 'spremno';
 
 // Ucesce iz dva polja prijave. Van konkurencije ima prednost: takav se ne rangira i ne ulazi u ekipni zbir.
 export function ucesce(clanEkipe, vanKonkurencije) {
-  if (vanKonkurencije === 1) return VK;
-  return clanEkipe === 1 ? EKIPA : POJEDINAC;
+  if (Number(vanKonkurencije) === 1) return VK;
+  return Number(clanEkipe) === 1 ? EKIPA : POJEDINAC;
 }
 
 export function poljaUcesca(u) {

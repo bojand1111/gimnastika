@@ -4,6 +4,7 @@ import { ucesce, poljaUcesca, stanje } from '../electron/racun/priprema.mjs';
 
 test('priprema: ucesce', () => {
   assert.equal(ucesce(0, 0), 'pojedinac');
+  assert.equal(ucesce(true, false), 'ekipa');
   assert.equal(ucesce(1, 0), 'ekipa');
   assert.equal(ucesce(0, 1), 'vk');
   assert.equal(ucesce(1, 1), 'vk', 'stari red sa oba polja se prikazuje kao VK, kao sto ga racuna ekipni zbir');

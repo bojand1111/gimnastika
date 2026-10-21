@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { izBaze } from '../electron/racun/broj.mjs';
 import {
   PRAVILO_ODBACI, PRAVILO_PROSEK, PRAVILA, konacnaE, prosek, konacna, odbaceniIndeksi,
 } from '../electron/racun/ocena.mjs';
@@ -46,4 +48,17 @@ test('prosek i pravila', () => {
   assert.deepEqual(odbaceniIndeksi([1, 2, 3], PRAVILO_PROSEK), []);
   assert.equal(PRAVILA[PRAVILO_ODBACI], 'Odbaci najvišu i najnižu, prosek ostalih');
   assert.equal(PRAVILA[PRAVILO_PROSEK], 'Prosek svih E ocena');
+});
+
+test('E ocena: ulazi se normalizuju kao intval u PHP', () => {
+  assert.deepEqual(odbaceniIndeksi([8000, null, 8200, 8100], 'odbaci_krajnje'), [1, 2]);
+  assert.equal(konacnaE(['8300', '8100', '8400', '8200'], 'odbaci_krajnje'), 8250);
+});
+
+test('primer podaci: E sudije Petrovic', () => {
+  const podaci = JSON.parse(fs.readFileSync(new URL('../docs/proizvod/dizajn/primer-podaci.json', import.meta.url), 'utf8'));
+  const ocek = { PR: 8700, DR: 7850, GR: 8250, PA: 8100 };
+  for (const [sk, e] of Object.entries(podaci.e_sudije_primer.po_spravi)) {
+    assert.equal(konacnaE(e.map((x) => izBaze(x)), 'odbaci_krajnje'), ocek[sk], `E ${sk}`);
+  }
 });

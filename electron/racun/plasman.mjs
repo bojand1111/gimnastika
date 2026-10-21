@@ -9,8 +9,8 @@ export const ISTI_VISA_E_PA_D = 'visa_e_pa_d';
 const istiNiz = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 
 export function mesta(stavke, istiRezultat = ISTI_DELI) {
-  const sa = stavke.filter((s) => s.vrednost !== null);
-  const bez = stavke.filter((s) => s.vrednost === null);
+  const sa = stavke.filter((s) => s.vrednost != null);
+  const bez = stavke.filter((s) => s.vrednost == null);
   // stabilno sortiranje (kao usort u PHP 8): opadajuce po vrednosti, pa po tie
   sa.sort((a, b) => {
     const c = b.vrednost - a.vrednost;
@@ -18,8 +18,8 @@ export function mesta(stavke, istiRezultat = ISTI_DELI) {
     if (istiRezultat === ISTI_VISA_E_PA_D) {
       const ta = a.tie ?? [];
       const tb = b.tie ?? [];
-      for (let i = 0; i < ta.length; i++) {
-        const d = (tb[i] ?? 0) - ta[i];
+      for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
+        const d = (tb[i] ?? 0) - (ta[i] ?? 0);
         if (d !== 0) return d;
       }
     }
@@ -54,21 +54,29 @@ export function mesta(stavke, istiRezultat = ISTI_DELI) {
 }
 
 // Viseboj: zbir konacnih ocena po spravama. Odustajanje na bilo kojoj spravi = bez zbira.
-// takmicari: { prijava: { ocene: { sprava: konacna|null }, vk? } }; null = odustao, nedostajuca sprava = ne radi.
+// takmicari: Map (kljuc => t), niz { kljuc, ocene, vk?, tie? } ili obican objekat { kljuc: t }.
+// Redosled medju jednakima prati redosled ulaza: Map/niz ga cuvaju; kod obicnog objekta je to JS
+// redosled kljuceva (celobrojni kljucevi rastuce), pa kad redosled bitan prosledi Map ili niz.
+// t: { ocene: { sprava: konacna|null }, vk?, tie? }; null = odustao, nedostajuca sprava = ne radi.
 // nepotpun: 'ulazi' (zbir onoga sto je radio) ili 'ne_ulazi' (moraju sve sprave).
 export function viseboj(takmicari, sprave, nepotpun = 'ulazi', istiRezultat = ISTI_DELI) {
   const stavke = [];
-  for (const [kljuc, t] of Object.entries(takmicari)) {
+  let unosi;
+  if (takmicari instanceof Map) unosi = [...takmicari];
+  else if (Array.isArray(takmicari)) unosi = takmicari.map((t) => [t.kljuc, t]);
+  else unosi = Object.entries(takmicari);
+  for (const [kljuc, t] of unosi) {
+    const ocene = t.ocene ?? {};
     let zbir = 0;
     let odustao = false;
     let radio = 0;
     for (const sid of sprave) {
-      if (!Object.hasOwn(t.ocene, sid)) continue;
-      if (t.ocene[sid] === null) {
+      if (!Object.hasOwn(ocene, sid)) continue;
+      if (ocene[sid] === null) {
         odustao = true;
         break;
       }
-      zbir += t.ocene[sid];
+      zbir += ocene[sid];
       radio++;
     }
     let vrednost = zbir;
@@ -90,8 +98,9 @@ export function viseboj(takmicari, sprave, nepotpun = 'ulazi', istiRezultat = IS
 export function ekipno(clanovi, sprave, broji, istiRezultat = ISTI_DELI) {
   const ekipe = new Map();
   for (const c of clanovi) {
-    if (!ekipe.has(c.klub)) ekipe.set(c.klub, { klub: c.klub, clanovi: [], kandidati: {} });
-    const ek = ekipe.get(c.klub);
+    const kk = String(c.klub); // 1 i '1' su isti klub
+    if (!ekipe.has(kk)) ekipe.set(kk, { klub: c.klub, clanovi: [], kandidati: {} });
+    const ek = ekipe.get(kk);
     ek.clanovi.push(c.prijava);
     for (const sid of sprave) {
       const v = c.ocene[sid] ?? null;

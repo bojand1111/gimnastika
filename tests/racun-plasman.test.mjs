@@ -90,3 +90,33 @@ test('primer podaci: ZSG kadet C', () => {
 test('primer podaci: MSG kadet C', () => {
   proveriGrupu(podaci.msg_kadet_c, { 1: 'PA', 2: 'KH', 3: 'KA', 4: 'PR', 5: 'RA', 6: 'VR' }, podaci.takmicenje.ekipno_broji);
 });
+
+test('viseboj: redosled jednakih prati redosled ulaza (Map i niz)', () => {
+  const t = () => ({ ocene: { 1: 9000 } });
+  const m = viseboj(new Map([[10, t()], [3, t()]]), [1]);
+  assert.equal(m[10].redosled, 1);
+  assert.equal(m[3].redosled, 2);
+  const n = viseboj([{ kljuc: 10, ...t() }, { kljuc: 3, ...t() }], [1]);
+  assert.equal(n[10].redosled, 1);
+  assert.equal(n[3].redosled, 2);
+});
+
+test('ekipno: klub 1 i "1" je jedna ekipa', () => {
+  const r = ekipno([
+    { klub: 1, prijava: 1, ocene: { 1: 9000 } },
+    { klub: '1', prijava: 2, ocene: { 1: 8000 } },
+  ], [1], 2);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].klub, 1);
+  assert.equal(r[0].ukupno, 17000);
+});
+
+test('mesta: tie koji fali na jednoj strani racuna se kao nule, deterministicno', () => {
+  const a = { kljuc: 'a', vrednost: 9000 };
+  const b = { kljuc: 'b', vrednost: 9000, tie: [500] };
+  for (const ulaz of [[a, b], [b, a]]) {
+    const r = mesta(ulaz, ISTI_VISA_E_PA_D);
+    assert.equal(r.b.redosled, 1);
+    assert.equal(r.a.redosled, 2);
+  }
+});

@@ -9,15 +9,16 @@ export const PRAVILA = {
 
 // Prosek celih brojeva: 'odseci' (podrazumevano) ili 'zaokruzi'; prazna lista daje 0.
 export function prosek(vrednosti, zaokruzivanje = 'odseci') {
-  const n = vrednosti.length;
+  const vals = vrednosti.map((v) => Math.trunc(Number(v)) || 0); // kao intval u PHP
+  const n = vals.length;
   if (n === 0) return 0;
-  const zbir = vrednosti.reduce((a, b) => a + b, 0);
+  const zbir = vals.reduce((a, b) => a + b, 0);
   return zaokruzivanje === 'zaokruzi' ? Math.floor(zbir / n + 0.5) : Math.floor(zbir / n);
 }
 
 // Konacna E ocena: odbaci_krajnje izbacuje jednu najvisu i jednu najnizu (od 3 sudije naviše).
 export function konacnaE(e, pravilo, zaokruzivanje = 'odseci') {
-  let vrednosti = [...e];
+  let vrednosti = e.map((v) => Math.trunc(Number(v)) || 0); // kao intval u PHP
   if (vrednosti.length === 0) return 0;
   if (pravilo === PRAVILO_ODBACI && vrednosti.length >= 3) {
     vrednosti.sort((a, b) => a - b);
@@ -33,11 +34,12 @@ export function konacna(d, e, odbitak) {
 
 // Indeksi odbacenih E ocena (za precrtavanje): jedna najvisa i jedna najniza, razlicite pozicije.
 export function odbaceniIndeksi(e, pravilo) {
-  if (pravilo !== PRAVILO_ODBACI || e.length < 3) return [];
-  const min = Math.min(...e);
-  const max = Math.max(...e);
-  const iMin = e.indexOf(min);
-  let iMax = e.findIndex((v, i) => v === max && i !== iMin);
-  if (iMax === -1) iMax = e.indexOf(max);
+  const vals = e.map((v) => Math.trunc(Number(v)) || 0); // kao intval u PHP
+  if (pravilo !== PRAVILO_ODBACI || vals.length < 3) return [];
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const iMin = vals.indexOf(min);
+  let iMax = vals.findIndex((v, i) => v === max && i !== iMin);
+  if (iMax === -1) iMax = vals.indexOf(max);
   return iMin === iMax ? [iMin] : [iMin, iMax];
 }
