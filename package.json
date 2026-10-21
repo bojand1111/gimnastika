@@ -8,10 +8,11 @@
     "dev": "node alati/dev.cjs",
     "build": "vite build",
     "test": "node --disable-warning=ExperimentalWarning --test tests/*.test.cjs tests/*.test.mjs",
-    "installer": "echo zadatak 5",
-    "publish-release": "echo zadatak 5"
+    "installer": "vite build && electron-builder --config installer/electron-builder.yml --win --publish never",
+    "publish-release": "node installer/publish-release.cjs"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

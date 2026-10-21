@@ -10,4 +10,11 @@ for (const [modul, radnje] of Object.entries(MODULI)) {
   }
 }
 
+// Jedini kanal main -> renderer: stanje azuriranja (vraca funkciju za odjavu).
+gim.azuriranje.naStanje = (cb) => {
+  const slusalac = (_ev, stanje) => cb(stanje);
+  ipcRenderer.on('gim:azuriranje:stanje', slusalac);
+  return () => ipcRenderer.removeListener('gim:azuriranje:stanje', slusalac);
+};
+
 contextBridge.exposeInMainWorld('gim', gim);

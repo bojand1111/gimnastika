@@ -1,0 +1,24 @@
+appId: com.sandblockstudios.gimnastika
+productName: Gimnastika
+directories:
+  output: release
+  buildResources: installer
+files:
+  - dist/**
+  - electron/**
+  - package.json
+win:
+  target:
+    - target: nsis
+      arch: x64
+  icon: installer/ikona.ico
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: Gimnastika-Setup-${version}.exe
+  shortcutName: Gimnastika
+publish:
+  - provider: github
+    owner: bojand1111
+    repo: gimnastika

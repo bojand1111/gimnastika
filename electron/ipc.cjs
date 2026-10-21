@@ -1,9 +1,24 @@
 // Registracija IPC kanala: gim:<modul>:<radnja>. Odgovor je uvek {ok, podaci} ili {ok:false, greska}.
 const { GreskaKorisnika } = require('./greska.cjs');
+const { MODULI } = require('./api.cjs');
 
 const OPSTA_GRESKA = 'Greška u programu. Pogledajte dnevnik.log.';
 
-function registruj(ipcMain, moduli, dnevnik) {
+// spisak: ocekivani kanali (MODULI); nepoklapanje baca odmah pri startu.
+function kanali(m) {
+  return Object.entries(m).flatMap(([modul, r]) => (Array.isArray(r) ? r : Object.keys(r)).map((x) => `gim:${modul}:${x}`));
+}
+
+function proveri(moduli, spisak) {
+  const ima = new Set(kanali(moduli)), treba = new Set(kanali(spisak));
+  const fali = [...treba].filter((k) => !ima.has(k)), visak = [...ima].filter((k) => !treba.has(k));
+  if (fali.length || visak.length) {
+    throw new Error(`IPC: nepoklapanje sa MODULI. Bez handlera: ${fali.join(', ') || '-'}. Nije u MODULI: ${visak.join(', ') || '-'}.`);
+  }
+}
+
+function registruj(ipcMain, moduli, dnevnik, spisak = MODULI) {
+  proveri(moduli, spisak);
   for (const [modul, radnje] of Object.entries(moduli)) {
     for (const [radnja, fn] of Object.entries(radnje)) {
       const kanal = `gim:${modul}:${radnja}`;

@@ -5,8 +5,10 @@ const { putanjaBaze } = require('./putanje.cjs');
 const { otvori } = require('./baza/baza.cjs');
 const dnevnik = require('./dnevnik.cjs');
 const { registruj } = require('./ipc.cjs');
+const { createUpdater } = require('./updater.cjs');
 
 let prozor = null;
+let azuriranje = null;
 let baza = null; // otvorena baza; modeli je dobijaju odavde
 
 function log(tekst) {
@@ -38,6 +40,8 @@ function napraviProzor() {
   prozor.webContents.once('did-finish-load', () => {
     log(`Gimnastika ${verzija()}: prozor otvoren`);
     if (process.env.GIM_DEBUG === '1') ispisiRenderer();
+    // Tiha provera 5 s posle ucitavanja, samo u instaliranom programu.
+    if (app.isPackaged) setTimeout(() => azuriranje.check().catch((err) => dnevnik.greska('tiha provera', err)), 5000);
   });
   // GIM_EKRAN=sistem otvara #/sistem (za proveru ekrana).
   const hash = process.env.GIM_EKRAN ? '/' + process.env.GIM_EKRAN : '';
@@ -66,7 +70,22 @@ if (!app.requestSingleInstanceLock()) {
       app.exit(1);
       return;
     }
-    registruj(ipcMain, { sistem: { verzija } }, dnevnik);
+    azuriranje = createUpdater({
+      app,
+      send: (stanje) => { if (prozor && !prozor.isDestroyed()) prozor.webContents.send('gim:azuriranje:stanje', stanje); },
+      dnevnik,
+      // Faza 7: ovde kopija baze vrste pre_azuriranja.
+      preInstalacije: () => dnevnik.info(`Azuriranje: instalacija verzije ${azuriranje.status().verzija}`),
+    });
+    registruj(ipcMain, {
+      sistem: { verzija },
+      azuriranje: {
+        stanje: () => azuriranje.status(),
+        proveri: () => azuriranje.check(),
+        preuzmi: () => azuriranje.download(),
+        instaliraj: () => azuriranje.install(),
+      },
+    }, dnevnik);
     napraviProzor();
   });
   app.on('window-all-closed', () => app.quit());

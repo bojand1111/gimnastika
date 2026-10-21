@@ -1,4 +1,5 @@
 import Ikona from '../komponente/Ikona.jsx';
+import { AzuriranjeKartica } from '../okvir/Azuriranje.jsx';
 
 // Interni ekran sa svim komponentama (sistem.php), za poredjenje sa dizajn/slike/00-vizuelni-sistem.png.
 const BOJE = ['primary', 'primary-dark', 'primary-soft', 'ink', 'ink-2', 'muted', 'line-2', 'line', 'ground', 'surface', 'sel', 'sub', 'link', 'info-soft', 'ok', 'ok-soft', 'warn', 'warn-soft', 'bad', 'bad-soft'];
@@ -19,6 +20,8 @@ function Kartica({ naslov, raste, children }) {
 export default function Sistem() {
   return (
     <>
+      <AzuriranjeKartica />
+
       <Kartica naslov="Boje">
         <div className="kartica-telo">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10,minmax(0,1fr))', gap: 12 }}>
