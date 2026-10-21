@@ -1,7 +1,8 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, session } = require('electron');
 const path = require('node:path');
 const { verzija } = require('./sistem.cjs');
-const { putanjaBaze } = require('./putanje.cjs');
+const { putanjaBaze, fasciklaPodataka } = require('./putanje.cjs');
+const { napraviModule } = require('./moduli.cjs');
 const { otvori } = require('./baza/baza.cjs');
 const { pocetniPodaci } = require('./baza/seme.cjs');
 const dnevnik = require('./dnevnik.cjs');
@@ -87,6 +88,7 @@ function pokreni() {
     preInstalacije: () => dnevnik.info(`Azuriranje: instalacija verzije ${azuriranje.status().verzija}`),
   });
   registruj(ipcMain, {
+    ...napraviModule(baza, { dialog, fasciklaPodataka }),
     sistem: { verzija },
     azuriranje: {
       stanje: () => azuriranje.status(),
