@@ -59,7 +59,7 @@ function createUpdater({ app, send, dnevnik, preInstalacije }) {
     install() {
       if (!updater || stanje.stanje !== 'ready') return false;
       preInstalacije();
-      setImmediate(() => updater.quitAndInstall(false, true));
+      setImmediate(() => updater.quitAndInstall(true, true));
       return true;
     },
   };

@@ -1,5 +1,6 @@
 appId: com.sandblockstudios.gimnastika
 productName: Gimnastika
+executableName: GimnastikaDesktop
 directories:
   output: release
   buildResources: installer
@@ -17,7 +18,7 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   artifactName: Gimnastika-Setup-${version}.exe
-  shortcutName: Gimnastika
+  shortcutName: Gimnastika desktop
 publish:
   - provider: github
     owner: bojand1111
