@@ -8,10 +8,11 @@ import Poruke from './okvir/Poruke.jsx';
 import Sistem from './ekrani/Sistem.jsx';
 import Prazno from './ekrani/Prazno.jsx';
 import Klubovi from './ekrani/Klubovi.jsx';
+import Takmicari from './ekrani/Takmicari.jsx';
 
-const EKRANI = { sistem: Sistem, klubovi: Klubovi };
+const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari };
 // Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
-const FIKSNO = new Set(['klubovi']);
+const FIKSNO = new Set(['klubovi', 'takmicari']);
 
 // Globalne precice: radnja(ev) -> hash ili dogadjaj na documentu.
 function izvrsi(ev) {

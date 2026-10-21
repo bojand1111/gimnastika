@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 // Tabela sa izborom reda. Strelice i Enter rade nad prikazanim redovima (redovi koje
-// filter krije se ne renderuju). kolone: [{naslov, sirina, klasa, celija(red)}].
+// filter krije se ne renderuju). Props: redovi, izabranId, naIzbor(red), naOtvori(red) (opciono),
+// kolone [{naslov, sirina, klasa, celija(red)}], prazno (tekst praznog stanja), id.
 export default function Tabela({ redovi, izabranId, naIzbor, naOtvori, kolone, prazno, id }) {
   const telo = useRef(null);
 
@@ -15,7 +16,7 @@ export default function Tabela({ redovi, izabranId, naIzbor, naOtvori, kolone, p
     const tr = ev.target.closest('tr[data-id]');
     if (!tr) return;
     const red = redovi.find((r) => String(r.id) === tr.dataset.id);
-    if (red) { naIzbor(red); naOtvori(red); }
+    if (red) { naIzbor(red); naOtvori?.(red); }
   }
 
   function naTaster(ev) {
@@ -29,7 +30,7 @@ export default function Tabela({ redovi, izabranId, naIzbor, naOtvori, kolone, p
       naIzbor(redovi[sledeci]);
     } else if (ev.key === 'Enter' && trenutni >= 0) {
       ev.preventDefault();
-      naOtvori(redovi[trenutni]);
+      naOtvori?.(redovi[trenutni]);
     }
   }
 
