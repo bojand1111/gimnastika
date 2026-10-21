@@ -26,3 +26,11 @@ export default function Poruke() {
     </div>
   );
 }
+
+// Crveni blok sa jednom linijom po gresci (kao poruka-greska u formi).
+export function Greske({ greske }) {
+  if (!greske || !greske.length) return null;
+  return (
+    <div className="poruka poruka-greska"><div>{greske.map((g, i) => <div key={i}>{g}</div>)}</div></div>
+  );
+}

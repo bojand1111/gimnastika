@@ -7,8 +7,11 @@ import Traka from './okvir/Traka.jsx';
 import Poruke from './okvir/Poruke.jsx';
 import Sistem from './ekrani/Sistem.jsx';
 import Prazno from './ekrani/Prazno.jsx';
+import Klubovi from './ekrani/Klubovi.jsx';
 
-const EKRANI = { sistem: Sistem };
+const EKRANI = { sistem: Sistem, klubovi: Klubovi };
+// Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
+const FIKSNO = new Set(['klubovi']);
 
 // Globalne precice: radnja(ev) -> hash ili dogadjaj na documentu.
 function izvrsi(ev) {
@@ -52,7 +55,7 @@ export default function App() {
       <Meni ekran={ekran} verzija={verzija} />
       <div className="glavno">
         <Traka naslov={naslov} />
-        <main className="sadrzaj">
+        <main className={FIKSNO.has(ekran) ? 'sadrzaj sadrzaj-fiksno' : 'sadrzaj'}>
           {Ekran ? <Ekran /> : <Prazno ime={ekran} />}
         </main>
       </div>
