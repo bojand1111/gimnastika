@@ -19,6 +19,8 @@ nsis:
   allowToChangeInstallationDirectory: true
   artifactName: Gimnastika-Setup-${version}.exe
   shortcutName: Gimnastika desktop
+  include: installer/installer.nsh
+  uninstallDisplayName: "Gimnastika desktop ${version}"
 publish:
   - provider: github
     owner: bojand1111
