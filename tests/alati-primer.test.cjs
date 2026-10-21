@@ -50,3 +50,11 @@ test('uvoz primera: postojeci klub i kategorija se prepoznaju bez obzira na veli
   assert.equal(broj(baza, 'kategorije'), 1);
   baza.zatvori();
 });
+
+test('uvoz primera: ID broj je 100 + startni broj na 5 cifara', () => {
+  const baza = nova();
+  uvezi(baza, json);
+  const t = baza.jedan("SELECT prezime, ime FROM takmicari WHERE id_broj = '00121'");
+  assert.equal(`${t.prezime} ${t.ime}`, 'Petrović Ana');
+  baza.zatvori();
+});

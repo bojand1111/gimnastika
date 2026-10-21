@@ -49,10 +49,10 @@ function uvezi(baza, json) {
     }
   }
 
-  // Takmicari po id_broj (P + startni broj, ne meša se sa brojčanim ID brojevima).
+  // Takmicari po id_broj = 100 + startni broj, 5 cifara (npr. startni 21 => 00121).
   for (const [pol, kljuc] of [['Z', 'zsg_kadet_c'], ['M', 'msg_kadet_c']]) {
     for (const t of json[kljuc].takmicari) {
-      const idBroj = 'P' + String(t.startni_broj).padStart(4, '0');
+      const idBroj = String(100 + t.startni_broj).padStart(5, '0');
       rez.takmicara++;
       if (baza.svi('SELECT id_broj FROM takmicari').some((r) => istiTekst(r.id_broj, idBroj))) continue;
       const razmak = t.prezime_ime.indexOf(' ');
