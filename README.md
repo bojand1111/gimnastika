@@ -1,12 +1,25 @@
 # Gimnastika
 
-Desktop aplikacija za zapisnicara na takmicenju u sportskoj gimnastici
+Desktop aplikacija za zapisničara na takmičenju u sportskoj gimnastici
 (Electron, React, SQLite). Radi bez interneta.
 
 ## Komande
 
 - `npm install`: instalira zavisnosti.
 - `npm start`: gradi interfejs i otvara aplikaciju.
-- `npm test`: pokrece testove.
+- `npm run dev`: razvojni režim (Vite server i Electron).
+- `npm test`: pokreće testove.
+- `npm run installer`: gradi instaler u `release/` (`Gimnastika-Setup-<verzija>.exe`).
+- `npm run publish-release -- --notes beleske/<verzija>.md [--dry-run]`: objavljuje izdanje na GitHub. Prvo pokrenite sa `--dry-run`. Token se čita iz `~/.config/github-token.txt`.
 
-Podaci se cuvaju u `%APPDATA%\Gimnastika` (ili u fascikli iz `GIM_PODACI`).
+## Podešavanja kroz okruženje
+
+- `GIM_PODACI`: fascikla podataka umesto podrazumevane.
+- `GIM_EKRAN`: ekran koji se otvara pri pokretanju (na primer `sistem`).
+- `GIM_DEBUG=1`: ispis teksta iz prozora na stdout i Ctrl+Shift+I za razvojne alate.
+
+## Instalirani program
+
+Izvršni fajl je `GimnastikaDesktop.exe`, a prečica se zove "Gimnastika desktop".
+Podaci (`gimnastika.sqlite`, `dnevnik.log`) su u `%APPDATA%\Gimnastika` (ili u fascikli iz `GIM_PODACI`).
+Profil pregledača je odvojen, u `%LOCALAPPDATA%\Gimnastika\profil`.

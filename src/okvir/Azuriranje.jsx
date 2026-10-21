@@ -10,7 +10,7 @@ export function useAzuriranje() {
     let odjava = () => {};
     // U obicnom browseru (bez window.gim) nema azuriranja.
     if (window.gim?.azuriranje) {
-      gim.azuriranje.stanje().then((s) => { if (ziv) postaviStanje((tr) => tr || s); }).catch(() => {});
+      gim.azuriranje.stanje().then((s) => { if (ziv) postaviStanje((tr) => tr || s); }).catch((err) => obavesti(err.message, 'greska'));
       odjava = window.gim.azuriranje.naStanje((s) => { if (ziv) postaviStanje(s); });
     }
     return () => { ziv = false; odjava(); };

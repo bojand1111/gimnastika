@@ -45,3 +45,24 @@ test('ocene su celi brojevi u hiljaditim delovima', () => {
   assert.equal(k, 13050);
   b.zatvori();
 });
+
+test('zatvori brise WAL i fajl baze se ponovo otvara sa podacima', () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-baza-'));
+  try {
+    const putanja = path.join(dir, 'gimnastika.sqlite');
+    const b = otvori(putanja); b.migriraj();
+    const sad = Baza.sad();
+    b.ubaci('klubovi', { puno_ime: 'Klub WAL', skracenica: 'WAL', kreirano: sad, izmenjeno: sad });
+    b.zatvori();
+    const wal = putanja + '-wal';
+    assert.ok(!fs.existsSync(wal) || fs.statSync(wal).size === 0, 'WAL je prazan ili ne postoji');
+    const b2 = otvori(putanja);
+    assert.equal(b2.vrednost('SELECT puno_ime FROM klubovi'), 'Klub WAL');
+    b2.zatvori();
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

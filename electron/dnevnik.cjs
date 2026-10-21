@@ -5,7 +5,12 @@ const { fasciklaPodataka } = require('./putanje.cjs');
 
 function upisi(tekst) {
   const vreme = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  fs.appendFileSync(path.join(fasciklaPodataka(), 'dnevnik.log'), `${vreme} ${tekst}\n`);
+  try {
+    fs.appendFileSync(path.join(fasciklaPodataka(), 'dnevnik.log'), `${vreme} ${tekst}\n`);
+  } catch (err) {
+    // Neuspeo upis ne sme da obori pozivaoca; ispis ide na stderr.
+    console.error(`dnevnik: upis nije uspeo (${err.message}): ${tekst}`);
+  }
 }
 
 function info(tekst) {

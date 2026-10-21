@@ -12,6 +12,7 @@ function createUpdater({ app, send, dnevnik, preInstalacije }) {
   function primeni(dogadjaj) {
     stanje = sledece(stanje, dogadjaj);
     dnevnik.info(`Azuriranje: ${dogadjaj.tip} -> ${stanje.stanje}${stanje.poruka ? ` (${stanje.poruka})` : ''}${stanje.verzija ? ` verzija ${stanje.verzija}` : ''}`);
+    if (dogadjaj.tip === 'error') dnevnik.info(`Azuriranje greska (tekst): ${dogadjaj.poruka}`);
     send(stanje);
   }
 

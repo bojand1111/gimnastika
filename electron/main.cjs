@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, session } = require('electron');
 const path = require('node:path');
 const { verzija } = require('./sistem.cjs');
 const { putanjaBaze } = require('./putanje.cjs');
@@ -16,11 +16,15 @@ function log(tekst) {
   dnevnik.info(tekst);
 }
 
+// Profil Chromiuma ide u LocalAppData, da fascikla podataka ostane cista.
+const lokalno = process.env.LOCALAPPDATA || path.join(app.getPath('appData'), '..', 'Local');
+app.setPath('userData', path.join(lokalno, 'Gimnastika', 'profil'));
+
 // Debug: ispis teksta iz renderera (ceka da React iscrta naslov).
 async function ispisiRenderer() {
   const tekst = await prozor.webContents.executeJavaScript(
     "new Promise(r => { let n = 0; const t = setInterval(() => { const x = document.body.innerText; if ((x.trim().length > 11 && x.trim() !== 'Gimnastika') || ++n > 30) { clearInterval(t); r(x); } }, 100); })");
-  log(`Renderer: ${tekst}`);
+  console.log(`Renderer: ${tekst}`); // samo na stdout: vise redova
 }
 
 function napraviProzor() {
@@ -36,7 +40,18 @@ function napraviProzor() {
       sandbox: false,
     },
   });
-  prozor.setMenuBarVisibility(false);
+  // Bez menija nema ni podrazumevanih precica (Ctrl+W, Ctrl+R, F11...).
+  Menu.setApplicationMenu(null);
+  const wc = prozor.webContents;
+  const adresa = process.env.VITE_DEV_URL || require('node:url').pathToFileURL(path.join(__dirname, '..', 'dist', 'index.html')).href;
+  wc.setWindowOpenHandler(() => ({ action: 'deny' }));
+  wc.on('will-navigate', (e, url) => { if (!url.startsWith(adresa.split('#')[0])) e.preventDefault(); });
+  session.defaultSession.setPermissionRequestHandler((_wc, _dozvola, cb) => cb(false));
+  if (process.env.GIM_DEBUG === '1') {
+    wc.on('before-input-event', (e, ulaz) => {
+      if (ulaz.type === 'keyDown' && ulaz.control && ulaz.shift && ulaz.key.toLowerCase() === 'i') wc.toggleDevTools();
+    });
+  }
   prozor.webContents.once('did-finish-load', () => {
     log(`Gimnastika ${verzija()}: prozor otvoren`);
     if (process.env.GIM_DEBUG === '1') ispisiRenderer();
@@ -50,6 +65,36 @@ function napraviProzor() {
   prozor.on('closed', () => { prozor = null; });
 }
 
+function pokreni() {
+  try {
+    baza = otvori(putanjaBaze());
+    const primenjene = baza.migriraj();
+    log(`migracije: ${primenjene.length ? primenjene.join(', ') : 'nema novih'}`);
+  } catch (err) {
+    dnevnik.greska('baza i migracije', err);
+    dialog.showErrorBox('Gimnastika', `Baza se ne može otvoriti: ${err.message}`);
+    app.exit(1);
+    return;
+  }
+  azuriranje = createUpdater({
+    app,
+    send: (stanje) => { if (prozor && !prozor.isDestroyed()) prozor.webContents.send('gim:azuriranje:stanje', stanje); },
+    dnevnik,
+    // Faza 7: ovde kopija baze vrste pre_azuriranja.
+    preInstalacije: () => dnevnik.info(`Azuriranje: instalacija verzije ${azuriranje.status().verzija}`),
+  });
+  registruj(ipcMain, {
+    sistem: { verzija },
+    azuriranje: {
+      stanje: () => azuriranje.status(),
+      proveri: () => azuriranje.check(),
+      preuzmi: () => azuriranje.download(),
+      instaliraj: () => azuriranje.install(),
+    },
+  }, dnevnik);
+  napraviProzor();
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -61,32 +106,17 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.whenReady().then(() => {
     try {
-      baza = otvori(putanjaBaze());
-      const primenjene = baza.migriraj();
-      log(`migracije: ${primenjene.length ? primenjene.join(', ') : 'nema novih'}`);
+      pokreni();
     } catch (err) {
-      dnevnik.greska('baza i migracije', err);
-      dialog.showErrorBox('Gimnastika', `Baza se ne moze otvoriti: ${err.message}`);
+      dnevnik.greska('pokretanje', err);
+      dialog.showErrorBox('Gimnastika', `Program se ne može pokrenuti: ${err.message}`);
       app.exit(1);
-      return;
     }
-    azuriranje = createUpdater({
-      app,
-      send: (stanje) => { if (prozor && !prozor.isDestroyed()) prozor.webContents.send('gim:azuriranje:stanje', stanje); },
-      dnevnik,
-      // Faza 7: ovde kopija baze vrste pre_azuriranja.
-      preInstalacije: () => dnevnik.info(`Azuriranje: instalacija verzije ${azuriranje.status().verzija}`),
-    });
-    registruj(ipcMain, {
-      sistem: { verzija },
-      azuriranje: {
-        stanje: () => azuriranje.status(),
-        proveri: () => azuriranje.check(),
-        preuzmi: () => azuriranje.download(),
-        instaliraj: () => azuriranje.install(),
-      },
-    }, dnevnik);
-    napraviProzor();
+  });
+  // Baza se zatvara pre izlaza (i pre quitAndInstall), da WAL ne ostane na disku.
+  app.on('will-quit', () => {
+    try { if (baza) baza.zatvori(); } catch (err) { dnevnik.greska('zatvaranje baze', err); }
+    baza = null;
   });
   app.on('window-all-closed', () => app.quit());
 }

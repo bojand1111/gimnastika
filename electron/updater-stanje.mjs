@@ -1,6 +1,8 @@
 // Cista logika stanja azuriranja: bez Electrona, bez mreze.
-const MREZA = ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'net::'];
-const NEMA_VERZIJA = ['No published versions', 'Cannot find latest.yml', 'Unable to find latest version', '404'];
+const MREZA = ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH', 'Request timed out', 'net::'];
+// Poruke electron-updater i builder-util-runtime kad release ili latest.yml ne postoji.
+const NEMA_VERZIJA = ['No published versions', 'Cannot find latest.yml', 'Unable to find latest version', 'status 404', 'HttpError: 404', '404 Not Found', 'HTTP 404'];
+const OPSTA_GRESKA = 'Ažuriranje nije uspelo. Pogledajte dnevnik.log.';
 
 export function pocetno(verzija) {
   return { stanje: 'idle', trenutna: verzija, poruka: '' };
@@ -30,7 +32,8 @@ export function sledece(stanje, dogadjaj) {
       if (NEMA_VERZIJA.some((m) => poruka.includes(m))) {
         return napravi(stanje, { stanje: 'none', poruka: 'Nema objavljenih verzija.' });
       }
-      return napravi(stanje, { stanje: 'error', poruka });
+      // Sirov tekst ide samo u dnevnik (updater.cjs), ne u interfejs.
+      return napravi(stanje, { stanje: 'error', poruka: OPSTA_GRESKA });
     }
     default:
       return stanje;
