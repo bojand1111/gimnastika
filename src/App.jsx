@@ -9,8 +9,9 @@ import Sistem from './ekrani/Sistem.jsx';
 import Prazno from './ekrani/Prazno.jsx';
 import Klubovi from './ekrani/Klubovi.jsx';
 import Takmicari from './ekrani/Takmicari.jsx';
+import Podesavanja from './ekrani/Podesavanja.jsx';
 
-const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari };
+const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja };
 // Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
 const FIKSNO = new Set(['klubovi', 'takmicari']);
 
