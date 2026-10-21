@@ -32,9 +32,11 @@ export default function Traka({ naslov }) {
               <span className="traka-datum broj">{datumPrikaz(aktivno.datum)}</span>
             </>
           ) : (
-            <span className="mali">Nema aktivnog takmičenja</span>
+            <>
+              <span className="mali">Nema aktivnog takmičenja</span>
+              <a href={url('takmicenja')} className="dugme dugme-malo">Izaberi</a>
+            </>
           )}
-          <a href={url('takmicenja')} className="dugme dugme-malo">Izaberi</a>
         </div>
       </div>
     </header>
