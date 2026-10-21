@@ -1,0 +1,1139 @@
+{
+  "napomena": "Izmisljeni podaci za probu i testove. Ocene su decimalni brojevi sa tackom (u interfejsu se prikazuju sa zarezom). Polja ocekivano_* su rezultat koji aplikacija mora da izracuna sama.",
+  "takmicenje": {
+    "naziv": "Jesenji kup 2026",
+    "datum": "2026-10-17",
+    "mesto": "Novi Sad",
+    "broj_e_sudija": 4,
+    "pravilo_e": "odbaci_krajnje",
+    "ekipno_broji": 3
+  },
+  "klubovi": [
+    {
+      "skracenica": "VOJ",
+      "puno_ime": "SD „Vojvodina“",
+      "grad": "Novi Sad"
+    },
+    {
+      "skracenica": "BGD",
+      "puno_ime": "GK „Beograd“",
+      "grad": "Beograd"
+    },
+    {
+      "skracenica": "NIŠ",
+      "puno_ime": "GK „Niš“",
+      "grad": "Niš"
+    },
+    {
+      "skracenica": "SPA",
+      "puno_ime": "SD „Spartak“",
+      "grad": "Subotica"
+    },
+    {
+      "skracenica": "PŽS",
+      "puno_ime": "GD „Partizan-Željezničar“",
+      "grad": "Subotica"
+    },
+    {
+      "skracenica": "ESM",
+      "puno_ime": "SGK „ES-EM“",
+      "grad": "Sremska Mitrovica"
+    }
+  ],
+  "sprave": {
+    "Z": [
+      {
+        "skracenica": "PR",
+        "naziv": "Preskok"
+      },
+      {
+        "skracenica": "DR",
+        "naziv": "Dvovisinski razboj"
+      },
+      {
+        "skracenica": "GR",
+        "naziv": "Greda"
+      },
+      {
+        "skracenica": "PA",
+        "naziv": "Parter"
+      }
+    ],
+    "M": [
+      {
+        "skracenica": "PA",
+        "naziv": "Parter"
+      },
+      {
+        "skracenica": "KH",
+        "naziv": "Konj sa hvataljkama"
+      },
+      {
+        "skracenica": "KA",
+        "naziv": "Karike"
+      },
+      {
+        "skracenica": "PR",
+        "naziv": "Preskok"
+      },
+      {
+        "skracenica": "RA",
+        "naziv": "Razboj"
+      },
+      {
+        "skracenica": "VR",
+        "naziv": "Vratilo"
+      }
+    ]
+  },
+  "zsg_kadet_c": {
+    "takmicari": [
+      {
+        "startni_broj": 21,
+        "prezime_ime": "Petrović Ana",
+        "klub": "VOJ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "4.200",
+            "e": "8.700",
+            "odbitak": "0.000",
+            "konacna": "12.900",
+            "ocekivano_mesto": "1"
+          },
+          "DR": {
+            "d": "3.900",
+            "e": "7.850",
+            "odbitak": "0.000",
+            "konacna": "11.750",
+            "ocekivano_mesto": "2"
+          },
+          "GR": {
+            "d": "4.800",
+            "e": "8.250",
+            "odbitak": "0.000",
+            "konacna": "13.050",
+            "ocekivano_mesto": "1"
+          },
+          "PA": {
+            "d": "4.500",
+            "e": "8.100",
+            "odbitak": "0.000",
+            "konacna": "12.600",
+            "ocekivano_mesto": "2"
+          }
+        },
+        "viseboj": "50.300",
+        "ocekivano_mesto_viseboj": "1"
+      },
+      {
+        "startni_broj": 24,
+        "prezime_ime": "Nikolić Teodora",
+        "klub": "BGD",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "4.200",
+            "e": "8.500",
+            "odbitak": "0.000",
+            "konacna": "12.700",
+            "ocekivano_mesto": "2"
+          },
+          "DR": {
+            "d": "3.900",
+            "e": "8.000",
+            "odbitak": "0.000",
+            "konacna": "11.900",
+            "ocekivano_mesto": "1"
+          },
+          "GR": {
+            "d": "5.100",
+            "e": "7.550",
+            "odbitak": "0.000",
+            "konacna": "12.650",
+            "ocekivano_mesto": "2"
+          },
+          "PA": {
+            "d": "4.400",
+            "e": "8.050",
+            "odbitak": "0.000",
+            "konacna": "12.450",
+            "ocekivano_mesto": "3"
+          }
+        },
+        "viseboj": "49.700",
+        "ocekivano_mesto_viseboj": "2"
+      },
+      {
+        "startni_broj": 26,
+        "prezime_ime": "Stojanović Nina",
+        "klub": "SPA",
+        "van_konkurencije": true,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "4.200",
+            "e": "8.600",
+            "odbitak": "0.000",
+            "konacna": "12.800",
+            "ocekivano_mesto": "VK"
+          },
+          "DR": {
+            "d": "3.700",
+            "e": "7.900",
+            "odbitak": "0.000",
+            "konacna": "11.600",
+            "ocekivano_mesto": "VK"
+          },
+          "GR": {
+            "d": "4.600",
+            "e": "7.800",
+            "odbitak": "0.000",
+            "konacna": "12.400",
+            "ocekivano_mesto": "VK"
+          },
+          "PA": {
+            "d": "4.300",
+            "e": "8.000",
+            "odbitak": "0.000",
+            "konacna": "12.300",
+            "ocekivano_mesto": "VK"
+          }
+        },
+        "viseboj": "49.100",
+        "ocekivano_mesto_viseboj": "VK"
+      },
+      {
+        "startni_broj": 22,
+        "prezime_ime": "Jovanović Milica",
+        "klub": "NIŠ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "4.000",
+            "e": "8.500",
+            "odbitak": "0.000",
+            "konacna": "12.500",
+            "ocekivano_mesto": "3"
+          },
+          "DR": {
+            "d": "3.600",
+            "e": "7.700",
+            "odbitak": "0.000",
+            "konacna": "11.300",
+            "ocekivano_mesto": "3"
+          },
+          "GR": {
+            "d": "4.500",
+            "e": "7.950",
+            "odbitak": "0.100",
+            "konacna": "12.350",
+            "ocekivano_mesto": "3"
+          },
+          "PA": {
+            "d": "4.600",
+            "e": "8.200",
+            "odbitak": "0.000",
+            "konacna": "12.800",
+            "ocekivano_mesto": "1"
+          }
+        },
+        "viseboj": "48.950",
+        "ocekivano_mesto_viseboj": "3"
+      },
+      {
+        "startni_broj": 25,
+        "prezime_ime": "Pavlović Katarina",
+        "klub": "VOJ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "4.000",
+            "e": "8.300",
+            "odbitak": "0.000",
+            "konacna": "12.300",
+            "ocekivano_mesto": "5"
+          },
+          "DR": {
+            "d": "3.500",
+            "e": "7.600",
+            "odbitak": "0.000",
+            "konacna": "11.100",
+            "ocekivano_mesto": "5"
+          },
+          "GR": {
+            "d": "4.700",
+            "e": "7.450",
+            "odbitak": "0.000",
+            "konacna": "12.150",
+            "ocekivano_mesto": "4"
+          },
+          "PA": {
+            "d": "4.300",
+            "e": "7.950",
+            "odbitak": "0.000",
+            "konacna": "12.250",
+            "ocekivano_mesto": "4"
+          }
+        },
+        "viseboj": "47.800",
+        "ocekivano_mesto_viseboj": "4"
+      },
+      {
+        "startni_broj": 27,
+        "prezime_ime": "Marković Lena",
+        "klub": "BGD",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "4.000",
+            "e": "8.100",
+            "odbitak": "0.000",
+            "konacna": "12.100",
+            "ocekivano_mesto": "6"
+          },
+          "DR": {
+            "d": "3.500",
+            "e": "7.450",
+            "odbitak": "0.000",
+            "konacna": "10.950",
+            "ocekivano_mesto": "6"
+          },
+          "GR": {
+            "d": "4.400",
+            "e": "7.500",
+            "odbitak": "0.000",
+            "konacna": "11.900",
+            "ocekivano_mesto": "5"
+          },
+          "PA": {
+            "d": "4.200",
+            "e": "7.850",
+            "odbitak": "0.000",
+            "konacna": "12.050",
+            "ocekivano_mesto": "6"
+          }
+        },
+        "viseboj": "47.000",
+        "ocekivano_mesto_viseboj": "5"
+      },
+      {
+        "startni_broj": 28,
+        "prezime_ime": "Popović Iva",
+        "klub": "VOJ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "4.000",
+            "e": "7.950",
+            "odbitak": "0.000",
+            "konacna": "11.950",
+            "ocekivano_mesto": "7"
+          },
+          "DR": {
+            "d": "3.400",
+            "e": "7.300",
+            "odbitak": "0.000",
+            "konacna": "10.700",
+            "ocekivano_mesto": "7"
+          },
+          "GR": {
+            "d": "4.300",
+            "e": "7.300",
+            "odbitak": "0.000",
+            "konacna": "11.600",
+            "ocekivano_mesto": "7"
+          },
+          "PA": {
+            "d": "4.300",
+            "e": "7.900",
+            "odbitak": "0.000",
+            "konacna": "12.200",
+            "ocekivano_mesto": "5"
+          }
+        },
+        "viseboj": "46.450",
+        "ocekivano_mesto_viseboj": "6"
+      },
+      {
+        "startni_broj": 31,
+        "prezime_ime": "Simić Dunja",
+        "klub": "BGD",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "3.800",
+            "e": "8.000",
+            "odbitak": "0.000",
+            "konacna": "11.800",
+            "ocekivano_mesto": "8"
+          },
+          "DR": {
+            "d": "3.300",
+            "e": "7.100",
+            "odbitak": "0.000",
+            "konacna": "10.400",
+            "ocekivano_mesto": "8"
+          },
+          "GR": {
+            "d": "4.400",
+            "e": "7.350",
+            "odbitak": "0.000",
+            "konacna": "11.750",
+            "ocekivano_mesto": "6"
+          },
+          "PA": {
+            "d": "4.100",
+            "e": "7.800",
+            "odbitak": "0.000",
+            "konacna": "11.900",
+            "ocekivano_mesto": "7"
+          }
+        },
+        "viseboj": "45.850",
+        "ocekivano_mesto_viseboj": "7"
+      },
+      {
+        "startni_broj": 30,
+        "prezime_ime": "Varga Ema",
+        "klub": "NIŠ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PR": {
+            "d": "3.800",
+            "e": "7.900",
+            "odbitak": "0.000",
+            "konacna": "11.700",
+            "ocekivano_mesto": "9"
+          },
+          "DR": {
+            "d": "3.200",
+            "e": "7.050",
+            "odbitak": "0.000",
+            "konacna": "10.250",
+            "ocekivano_mesto": "9"
+          },
+          "GR": {
+            "d": "4.200",
+            "e": "7.250",
+            "odbitak": "0.000",
+            "konacna": "11.450",
+            "ocekivano_mesto": "8"
+          },
+          "PA": {
+            "d": "4.000",
+            "e": "7.750",
+            "odbitak": "0.000",
+            "konacna": "11.750",
+            "ocekivano_mesto": "8"
+          }
+        },
+        "viseboj": "45.150",
+        "ocekivano_mesto_viseboj": "8"
+      },
+      {
+        "startni_broj": 23,
+        "prezime_ime": "Đorđević Sara",
+        "klub": "NIŠ",
+        "van_konkurencije": false,
+        "odustao": true,
+        "ocene": {
+          "PR": {
+            "d": "4.000",
+            "e": "8.400",
+            "odbitak": "0.000",
+            "konacna": "12.400",
+            "ocekivano_mesto": "4"
+          },
+          "DR": {
+            "d": "3.600",
+            "e": "7.600",
+            "odbitak": "0.000",
+            "konacna": "11.200",
+            "ocekivano_mesto": "4"
+          }
+        },
+        "viseboj": null,
+        "ocekivano_mesto_viseboj": null
+      }
+    ],
+    "ekipno": [
+      {
+        "ocekivano_mesto": 1,
+        "klub": "VOJ",
+        "po_spravi": {
+          "PR": "37.150",
+          "DR": "33.550",
+          "GR": "36.800",
+          "PA": "37.050"
+        },
+        "ukupno": "144.550",
+        "clanovi": [
+          "Petrović Ana",
+          "Pavlović Katarina",
+          "Popović Iva"
+        ]
+      },
+      {
+        "ocekivano_mesto": 2,
+        "klub": "BGD",
+        "po_spravi": {
+          "PR": "36.600",
+          "DR": "33.250",
+          "GR": "36.300",
+          "PA": "36.400"
+        },
+        "ukupno": "142.550",
+        "clanovi": [
+          "Nikolić Teodora",
+          "Marković Lena",
+          "Simić Dunja"
+        ]
+      },
+      {
+        "ocekivano_mesto": 3,
+        "klub": "NIŠ",
+        "po_spravi": {
+          "PR": "36.600",
+          "DR": "32.750",
+          "GR": "23.800",
+          "PA": "24.550"
+        },
+        "ukupno": "117.700",
+        "clanovi": [
+          "Jovanović Milica",
+          "Varga Ema",
+          "Đorđević Sara"
+        ]
+      }
+    ]
+  },
+  "msg_kadet_c": {
+    "takmicari": [
+      {
+        "startni_broj": 41,
+        "prezime_ime": "Stanković Luka",
+        "klub": "VOJ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "4.000",
+            "e": "8.700",
+            "odbitak": "0.000",
+            "konacna": "12.700",
+            "ocekivano_mesto": "1"
+          },
+          "KH": {
+            "d": "3.500",
+            "e": "8.750",
+            "odbitak": "0.000",
+            "konacna": "12.250",
+            "ocekivano_mesto": "1"
+          },
+          "KA": {
+            "d": "3.300",
+            "e": "8.700",
+            "odbitak": "0.000",
+            "konacna": "12.000",
+            "ocekivano_mesto": "1"
+          },
+          "PR": {
+            "d": "3.700",
+            "e": "8.750",
+            "odbitak": "0.000",
+            "konacna": "12.450",
+            "ocekivano_mesto": "1"
+          },
+          "RA": {
+            "d": "3.700",
+            "e": "8.700",
+            "odbitak": "0.000",
+            "konacna": "12.400",
+            "ocekivano_mesto": "1"
+          },
+          "VR": {
+            "d": "3.400",
+            "e": "8.750",
+            "odbitak": "0.000",
+            "konacna": "12.150",
+            "ocekivano_mesto": "1"
+          }
+        },
+        "viseboj": "73.950",
+        "ocekivano_mesto_viseboj": "1"
+      },
+      {
+        "startni_broj": 42,
+        "prezime_ime": "Ilić Nikola",
+        "klub": "PŽS",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "4.100",
+            "e": "8.450",
+            "odbitak": "0.000",
+            "konacna": "12.550",
+            "ocekivano_mesto": "2"
+          },
+          "KH": {
+            "d": "3.400",
+            "e": "8.700",
+            "odbitak": "0.000",
+            "konacna": "12.100",
+            "ocekivano_mesto": "3"
+          },
+          "KA": {
+            "d": "3.400",
+            "e": "8.450",
+            "odbitak": "0.000",
+            "konacna": "11.850",
+            "ocekivano_mesto": "2"
+          },
+          "PR": {
+            "d": "3.600",
+            "e": "8.700",
+            "odbitak": "0.000",
+            "konacna": "12.300",
+            "ocekivano_mesto": "3"
+          },
+          "RA": {
+            "d": "3.800",
+            "e": "8.450",
+            "odbitak": "0.000",
+            "konacna": "12.250",
+            "ocekivano_mesto": "2"
+          },
+          "VR": {
+            "d": "3.300",
+            "e": "8.700",
+            "odbitak": "0.000",
+            "konacna": "12.000",
+            "ocekivano_mesto": "3"
+          }
+        },
+        "viseboj": "73.050",
+        "ocekivano_mesto_viseboj": "2"
+      },
+      {
+        "startni_broj": 43,
+        "prezime_ime": "Živković Uroš",
+        "klub": "ESM",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "4.000",
+            "e": "8.250",
+            "odbitak": "0.000",
+            "konacna": "12.250",
+            "ocekivano_mesto": "4"
+          },
+          "KH": {
+            "d": "3.500",
+            "e": "8.650",
+            "odbitak": "0.000",
+            "konacna": "12.150",
+            "ocekivano_mesto": "2"
+          },
+          "KA": {
+            "d": "3.300",
+            "e": "8.250",
+            "odbitak": "0.000",
+            "konacna": "11.550",
+            "ocekivano_mesto": "4"
+          },
+          "PR": {
+            "d": "3.700",
+            "e": "8.650",
+            "odbitak": "0.000",
+            "konacna": "12.350",
+            "ocekivano_mesto": "2"
+          },
+          "RA": {
+            "d": "3.700",
+            "e": "8.250",
+            "odbitak": "0.000",
+            "konacna": "11.950",
+            "ocekivano_mesto": "4"
+          },
+          "VR": {
+            "d": "3.400",
+            "e": "8.650",
+            "odbitak": "0.000",
+            "konacna": "12.050",
+            "ocekivano_mesto": "2"
+          }
+        },
+        "viseboj": "72.300",
+        "ocekivano_mesto_viseboj": "3"
+      },
+      {
+        "startni_broj": 44,
+        "prezime_ime": "Ristić Ognjen",
+        "klub": "VOJ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "4.000",
+            "e": "8.400",
+            "odbitak": "0.000",
+            "konacna": "12.400",
+            "ocekivano_mesto": "3"
+          },
+          "KH": {
+            "d": "3.300",
+            "e": "8.450",
+            "odbitak": "0.000",
+            "konacna": "11.750",
+            "ocekivano_mesto": "5"
+          },
+          "KA": {
+            "d": "3.300",
+            "e": "8.400",
+            "odbitak": "0.000",
+            "konacna": "11.700",
+            "ocekivano_mesto": "3"
+          },
+          "PR": {
+            "d": "3.500",
+            "e": "8.450",
+            "odbitak": "0.000",
+            "konacna": "11.950",
+            "ocekivano_mesto": "5"
+          },
+          "RA": {
+            "d": "3.700",
+            "e": "8.400",
+            "odbitak": "0.000",
+            "konacna": "12.100",
+            "ocekivano_mesto": "3"
+          },
+          "VR": {
+            "d": "3.200",
+            "e": "8.450",
+            "odbitak": "0.000",
+            "konacna": "11.650",
+            "ocekivano_mesto": "5"
+          }
+        },
+        "viseboj": "71.550",
+        "ocekivano_mesto_viseboj": "4"
+      },
+      {
+        "startni_broj": 45,
+        "prezime_ime": "Đurić Andrej",
+        "klub": "PŽS",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "3.900",
+            "e": "8.150",
+            "odbitak": "0.000",
+            "konacna": "12.050",
+            "ocekivano_mesto": "5"
+          },
+          "KH": {
+            "d": "3.400",
+            "e": "8.400",
+            "odbitak": "0.000",
+            "konacna": "11.800",
+            "ocekivano_mesto": "4"
+          },
+          "KA": {
+            "d": "3.200",
+            "e": "8.150",
+            "odbitak": "0.000",
+            "konacna": "11.350",
+            "ocekivano_mesto": "5"
+          },
+          "PR": {
+            "d": "3.600",
+            "e": "8.400",
+            "odbitak": "0.000",
+            "konacna": "12.000",
+            "ocekivano_mesto": "4"
+          },
+          "RA": {
+            "d": "3.600",
+            "e": "8.150",
+            "odbitak": "0.000",
+            "konacna": "11.750",
+            "ocekivano_mesto": "5"
+          },
+          "VR": {
+            "d": "3.300",
+            "e": "8.400",
+            "odbitak": "0.000",
+            "konacna": "11.700",
+            "ocekivano_mesto": "4"
+          }
+        },
+        "viseboj": "70.650",
+        "ocekivano_mesto_viseboj": "5"
+      },
+      {
+        "startni_broj": 46,
+        "prezime_ime": "Jović Dušan",
+        "klub": "ESM",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "4.000",
+            "e": "7.950",
+            "odbitak": "0.000",
+            "konacna": "11.950",
+            "ocekivano_mesto": "6"
+          },
+          "KH": {
+            "d": "3.300",
+            "e": "8.350",
+            "odbitak": "0.000",
+            "konacna": "11.650",
+            "ocekivano_mesto": "6"
+          },
+          "KA": {
+            "d": "3.300",
+            "e": "7.950",
+            "odbitak": "0.000",
+            "konacna": "11.250",
+            "ocekivano_mesto": "6"
+          },
+          "PR": {
+            "d": "3.500",
+            "e": "8.350",
+            "odbitak": "0.000",
+            "konacna": "11.850",
+            "ocekivano_mesto": "6"
+          },
+          "RA": {
+            "d": "3.700",
+            "e": "7.950",
+            "odbitak": "0.000",
+            "konacna": "11.650",
+            "ocekivano_mesto": "6"
+          },
+          "VR": {
+            "d": "3.200",
+            "e": "8.350",
+            "odbitak": "0.000",
+            "konacna": "11.550",
+            "ocekivano_mesto": "6"
+          }
+        },
+        "viseboj": "69.900",
+        "ocekivano_mesto_viseboj": "6"
+      },
+      {
+        "startni_broj": 47,
+        "prezime_ime": "Kovač Marko",
+        "klub": "VOJ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "3.800",
+            "e": "8.100",
+            "odbitak": "0.000",
+            "konacna": "11.900",
+            "ocekivano_mesto": "7"
+          },
+          "KH": {
+            "d": "3.300",
+            "e": "8.150",
+            "odbitak": "0.000",
+            "konacna": "11.450",
+            "ocekivano_mesto": "7"
+          },
+          "KA": {
+            "d": "3.100",
+            "e": "8.100",
+            "odbitak": "0.000",
+            "konacna": "11.200",
+            "ocekivano_mesto": "7"
+          },
+          "PR": {
+            "d": "3.500",
+            "e": "8.150",
+            "odbitak": "0.000",
+            "konacna": "11.650",
+            "ocekivano_mesto": "7"
+          },
+          "RA": {
+            "d": "3.500",
+            "e": "8.100",
+            "odbitak": "0.000",
+            "konacna": "11.600",
+            "ocekivano_mesto": "7"
+          },
+          "VR": {
+            "d": "3.200",
+            "e": "8.150",
+            "odbitak": "0.000",
+            "konacna": "11.350",
+            "ocekivano_mesto": "7"
+          }
+        },
+        "viseboj": "69.150",
+        "ocekivano_mesto_viseboj": "7"
+      },
+      {
+        "startni_broj": 48,
+        "prezime_ime": "Lazić Pavle",
+        "klub": "PŽS",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "3.900",
+            "e": "7.850",
+            "odbitak": "0.000",
+            "konacna": "11.750",
+            "ocekivano_mesto": "8"
+          },
+          "KH": {
+            "d": "3.200",
+            "e": "8.100",
+            "odbitak": "0.000",
+            "konacna": "11.300",
+            "ocekivano_mesto": "9"
+          },
+          "KA": {
+            "d": "3.200",
+            "e": "7.850",
+            "odbitak": "0.000",
+            "konacna": "11.050",
+            "ocekivano_mesto": "8"
+          },
+          "PR": {
+            "d": "3.400",
+            "e": "8.100",
+            "odbitak": "0.000",
+            "konacna": "11.500",
+            "ocekivano_mesto": "9"
+          },
+          "RA": {
+            "d": "3.600",
+            "e": "7.850",
+            "odbitak": "0.000",
+            "konacna": "11.450",
+            "ocekivano_mesto": "8"
+          },
+          "VR": {
+            "d": "3.100",
+            "e": "8.100",
+            "odbitak": "0.000",
+            "konacna": "11.200",
+            "ocekivano_mesto": "9"
+          }
+        },
+        "viseboj": "68.250",
+        "ocekivano_mesto_viseboj": "8"
+      },
+      {
+        "startni_broj": 49,
+        "prezime_ime": "Tasić Lazar",
+        "klub": "ESM",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "3.800",
+            "e": "7.650",
+            "odbitak": "0.000",
+            "konacna": "11.450",
+            "ocekivano_mesto": "10"
+          },
+          "KH": {
+            "d": "3.300",
+            "e": "8.050",
+            "odbitak": "0.000",
+            "konacna": "11.350",
+            "ocekivano_mesto": "8"
+          },
+          "KA": {
+            "d": "3.100",
+            "e": "7.650",
+            "odbitak": "0.000",
+            "konacna": "10.750",
+            "ocekivano_mesto": "10"
+          },
+          "PR": {
+            "d": "3.500",
+            "e": "8.050",
+            "odbitak": "0.000",
+            "konacna": "11.550",
+            "ocekivano_mesto": "8"
+          },
+          "RA": {
+            "d": "3.500",
+            "e": "7.650",
+            "odbitak": "0.000",
+            "konacna": "11.150",
+            "ocekivano_mesto": "10"
+          },
+          "VR": {
+            "d": "3.200",
+            "e": "8.050",
+            "odbitak": "0.000",
+            "konacna": "11.250",
+            "ocekivano_mesto": "8"
+          }
+        },
+        "viseboj": "67.500",
+        "ocekivano_mesto_viseboj": "9"
+      },
+      {
+        "startni_broj": 50,
+        "prezime_ime": "Popov Filip",
+        "klub": "VOJ",
+        "van_konkurencije": false,
+        "odustao": false,
+        "ocene": {
+          "PA": {
+            "d": "3.800",
+            "e": "7.800",
+            "odbitak": "0.000",
+            "konacna": "11.600",
+            "ocekivano_mesto": "9"
+          },
+          "KH": {
+            "d": "3.100",
+            "e": "7.850",
+            "odbitak": "0.000",
+            "konacna": "10.950",
+            "ocekivano_mesto": "10"
+          },
+          "KA": {
+            "d": "3.100",
+            "e": "7.800",
+            "odbitak": "0.000",
+            "konacna": "10.900",
+            "ocekivano_mesto": "9"
+          },
+          "PR": {
+            "d": "3.300",
+            "e": "7.850",
+            "odbitak": "0.000",
+            "konacna": "11.150",
+            "ocekivano_mesto": "10"
+          },
+          "RA": {
+            "d": "3.500",
+            "e": "7.800",
+            "odbitak": "0.000",
+            "konacna": "11.300",
+            "ocekivano_mesto": "9"
+          },
+          "VR": {
+            "d": "3.000",
+            "e": "7.850",
+            "odbitak": "0.000",
+            "konacna": "10.850",
+            "ocekivano_mesto": "10"
+          }
+        },
+        "viseboj": "66.750",
+        "ocekivano_mesto_viseboj": "10"
+      }
+    ],
+    "ekipno": [
+      {
+        "ocekivano_mesto": 1,
+        "klub": "VOJ",
+        "po_spravi": {
+          "PA": "37.000",
+          "KH": "35.450",
+          "KA": "34.900",
+          "PR": "36.050",
+          "RA": "36.100",
+          "VR": "35.150"
+        },
+        "ukupno": "214.650",
+        "clanovi": [
+          "Stanković Luka",
+          "Ristić Ognjen",
+          "Kovač Marko",
+          "Popov Filip"
+        ]
+      },
+      {
+        "ocekivano_mesto": 2,
+        "klub": "PŽS",
+        "po_spravi": {
+          "PA": "36.350",
+          "KH": "35.200",
+          "KA": "34.250",
+          "PR": "35.800",
+          "RA": "35.450",
+          "VR": "34.900"
+        },
+        "ukupno": "211.950",
+        "clanovi": [
+          "Ilić Nikola",
+          "Đurić Andrej",
+          "Lazić Pavle"
+        ]
+      },
+      {
+        "ocekivano_mesto": 3,
+        "klub": "ESM",
+        "po_spravi": {
+          "PA": "35.650",
+          "KH": "35.150",
+          "KA": "33.550",
+          "PR": "35.750",
+          "RA": "34.750",
+          "VR": "34.850"
+        },
+        "ukupno": "209.700",
+        "clanovi": [
+          "Živković Uroš",
+          "Jović Dušan",
+          "Tasić Lazar"
+        ]
+      }
+    ]
+  },
+  "e_sudije_primer": {
+    "takmicar": "Petrović Ana",
+    "po_spravi": {
+      "PR": [
+        "8.700",
+        "8.600",
+        "8.800",
+        "8.700"
+      ],
+      "DR": [
+        "7.800",
+        "7.900",
+        "7.800",
+        "8.000"
+      ],
+      "GR": [
+        "8.300",
+        "8.100",
+        "8.400",
+        "8.200"
+      ],
+      "PA": [
+        "8.100",
+        "8.000",
+        "8.200",
+        "8.100"
+      ]
+    }
+  }
+}
