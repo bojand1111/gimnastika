@@ -1,10 +1,62 @@
 import { useEffect, useState } from 'react';
 import gim from './gim.js';
+import { razlozi } from './ruter.js';
+import { radnja } from './precice.js';
+import Meni, { naslovEkrana } from './okvir/Meni.jsx';
+import Traka from './okvir/Traka.jsx';
+import Poruke from './okvir/Poruke.jsx';
+import Sistem from './ekrani/Sistem.jsx';
+import Prazno from './ekrani/Prazno.jsx';
+
+const EKRANI = { sistem: Sistem };
+
+// Globalne precice: radnja(ev) -> hash ili dogadjaj na documentu.
+function izvrsi(ev) {
+  const r = radnja(ev);
+  if (r === 'unos') { ev.preventDefault(); location.hash = '#/unos'; }
+  else if (r === 'rang') { ev.preventDefault(); location.hash = '#/rang'; }
+  else if (r === 'novi') { ev.preventDefault(); document.dispatchEvent(new CustomEvent('app:novi')); }
+  else if (r === 'otkazi') document.dispatchEvent(new CustomEvent('app:otkazi'));
+  else if (r === 'stampa') { ev.preventDefault(); window.print(); }
+  else if (r === 'kopija') { ev.preventDefault(); document.dispatchEvent(new CustomEvent('app:kopija')); }
+}
 
 export default function App() {
+  const [hash, postaviHash] = useState(location.hash);
   const [verzija, postaviVerziju] = useState('');
+
   useEffect(() => {
-    gim.sistem.verzija().then(postaviVerziju);
+    const naPromeni = () => postaviHash(location.hash);
+    window.addEventListener('hashchange', naPromeni);
+    document.addEventListener('keydown', izvrsi);
+    return () => {
+      window.removeEventListener('hashchange', naPromeni);
+      document.removeEventListener('keydown', izvrsi);
+    };
   }, []);
-  return <h1>Gimnastika {verzija}</h1>;
+
+  useEffect(() => {
+    // U obicnom browseru (bez window.gim) pokazi ? umesto da pukne.
+    (async () => {
+      try { postaviVerziju(await gim.sistem.verzija()); } catch { postaviVerziju('?'); }
+    })();
+  }, []);
+
+  const { ekran } = razlozi(hash);
+  const naslov = naslovEkrana(ekran);
+  useEffect(() => { document.title = `${naslov} · Gimnastika`; }, [naslov]);
+
+  const Ekran = EKRANI[ekran];
+  return (
+    <div className="app">
+      <Meni ekran={ekran} verzija={verzija} />
+      <div className="glavno">
+        <Traka naslov={naslov} />
+        <main className="sadrzaj">
+          {Ekran ? <Ekran /> : <Prazno ime={ekran} />}
+        </main>
+      </div>
+      <Poruke />
+    </div>
+  );
 }

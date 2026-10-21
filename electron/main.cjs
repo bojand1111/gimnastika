@@ -39,8 +39,10 @@ function napraviProzor() {
     log(`Gimnastika ${verzija()}: prozor otvoren`);
     if (process.env.GIM_DEBUG === '1') ispisiRenderer();
   });
-  if (process.env.VITE_DEV_URL) prozor.loadURL(process.env.VITE_DEV_URL);
-  else prozor.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  // GIM_EKRAN=sistem otvara #/sistem (za proveru ekrana).
+  const hash = process.env.GIM_EKRAN ? '/' + process.env.GIM_EKRAN : '';
+  if (process.env.VITE_DEV_URL) prozor.loadURL(process.env.VITE_DEV_URL + (hash ? '#' + hash : ''));
+  else prozor.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), hash ? { hash } : undefined);
   prozor.on('closed', () => { prozor = null; });
 }
 

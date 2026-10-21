@@ -1,0 +1,51 @@
+/* Vizuelni sistem: tokeni. Opis u docs/VIZUELNI-SISTEM.md */
+:root {
+  --primary: #C8102E;
+  --primary-dark: #9E0B23;
+  --primary-soft: #FCE9EC;
+  --ink: #1C1B1F;
+  --ink-2: #45434B;
+  --muted: #6A6872;
+  --line: #E4E2DD;
+  --line-2: #B9B6AF;
+  --ground: #F6F5F2;
+  --surface: #FFFFFF;
+  --sel: #F1EEE8;
+  --sub: #FAF9F7;
+  --link: #1B4F8F;
+  --info: #1F4E79;
+  --info-soft: #E4EDF6;
+  --ok: #0F6B3A;
+  --ok-soft: #DDF2E5;
+  --warn: #7A4300;
+  --warn-soft: #FFEFCC;
+  --warn-border: #C77700;
+  --bad: #A50E22;
+  --bad-soft: #FBE3E6;
+  --neutral-soft: #E9ECF1;
+
+  --font: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  --radius-chip: 6px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --sidebar-w: 220px;
+  --topbar-h: 56px;
+  --gap: 12px;
+  --focus-ring: 0 0 0 3px rgba(28, 27, 31, 0.16);
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+/* brojevi: cifre jednake sirine, da kolone ocena ostanu poravnate */
+.num { font-variant-numeric: tabular-nums; }
+
+input, select, button { font-family: inherit; }
+input:focus, select:focus, button:focus-visible, a:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
