@@ -4,6 +4,7 @@ const { verzija } = require('./sistem.cjs');
 const { putanjaBaze } = require('./putanje.cjs');
 const { otvori } = require('./baza/baza.cjs');
 const dnevnik = require('./dnevnik.cjs');
+const { registruj } = require('./ipc.cjs');
 
 let prozor = null;
 let baza = null; // otvorena baza; modeli je dobijaju odavde
@@ -63,7 +64,7 @@ if (!app.requestSingleInstanceLock()) {
       app.exit(1);
       return;
     }
-    ipcMain.handle('gim:sistem:verzija', () => verzija());
+    registruj(ipcMain, { sistem: { verzija } }, dnevnik);
     napraviProzor();
   });
   app.on('window-all-closed', () => app.quit());

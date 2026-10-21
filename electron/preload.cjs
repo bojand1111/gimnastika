@@ -1,6 +1,13 @@
-// Most ka rendereru. Zadatak 3 ovo generalizuje.
+// Most ka rendereru: window.gim se gradi iz spiska MODULI.
 const { contextBridge, ipcRenderer } = require('electron');
+const { MODULI } = require('./api.cjs');
 
-contextBridge.exposeInMainWorld('gim', {
-  sistem: { verzija: () => ipcRenderer.invoke('gim:sistem:verzija') },
-});
+const gim = {};
+for (const [modul, radnje] of Object.entries(MODULI)) {
+  gim[modul] = {};
+  for (const radnja of radnje) {
+    gim[modul][radnja] = (...args) => ipcRenderer.invoke(`gim:${modul}:${radnja}`, ...args);
+  }
+}
+
+contextBridge.exposeInMainWorld('gim', gim);

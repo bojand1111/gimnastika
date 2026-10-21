@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import gim from './gim.js';
 
 export default function App() {
   const [verzija, postaviVerziju] = useState('');
   useEffect(() => {
-    window.gim.sistem.verzija().then(postaviVerziju);
+    gim.sistem.verzija().then(postaviVerziju);
   }, []);
   return <h1>Gimnastika {verzija}</h1>;
 }
