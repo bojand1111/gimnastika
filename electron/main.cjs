@@ -88,7 +88,7 @@ function pokreni() {
     preInstalacije: () => dnevnik.info(`Azuriranje: instalacija verzije ${azuriranje.status().verzija}`),
   });
   registruj(ipcMain, {
-    ...napraviModule(baza, { dialog, fasciklaPodataka }),
+    ...napraviModule(baza, { dialog, fasciklaPodataka, roditelj: () => BrowserWindow.getFocusedWindow() || prozor }),
     sistem: { verzija },
     azuriranje: {
       stanje: () => azuriranje.status(),

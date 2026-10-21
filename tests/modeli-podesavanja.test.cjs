@@ -111,3 +111,20 @@ test('seme: dva puta daje 10 sprava i prag jednom', () => {
   const z = baza.svi("SELECT skracenica FROM sprave WHERE pol = 'Z' ORDER BY redosled");
   assert.deepEqual(z.map((r) => r.skracenica), ['PR', 'DR', 'GR', 'PA']);
 });
+
+test('sacuvajOpsta: slika koja ne postoji baca bez upisa; vec sacuvani fajl prolazi', () => {
+  const { p, dir } = nova();
+  try {
+    assert.throws(() => p.sacuvajOpsta({ organizator: 'Novi', grb_levo: { putanja: path.join(dir, 'nema.png') } }),
+      (e) => e instanceof GreskaKorisnika && e.message === 'Izabrana slika više ne postoji.');
+    assert.equal(p.daj('organizator'), '');
+    assert.equal(p.daj('grb_levo'), '');
+
+    fs.mkdirSync(path.join(dir, 'grb'));
+    const cuvan = path.join(dir, 'grb', 'grb_levo.png');
+    fs.writeFileSync(cuvan, 'stari');
+    p.sacuvajOpsta({ grb_levo: { putanja: cuvan } });
+    assert.equal(p.daj('grb_levo'), 'grb/grb_levo.png');
+    assert.equal(fs.readFileSync(cuvan, 'utf8'), 'stari');
+  } finally { ocisti(dir); }
+});

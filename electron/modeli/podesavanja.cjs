@@ -82,12 +82,14 @@ function napravi(baza, fasciklaPodataka) {
         const ext = path.extname(String(g.putanja)).slice(1).toLowerCase();
         if (!EKSTENZIJE.includes(ext)) throw new GreskaKorisnika('Grb mora biti PNG, JPG, GIF ili SVG slika.');
         const rel = `grb/${kljuc}.${ext}`;
+        if (!fs.existsSync(g.putanja)) throw new GreskaKorisnika('Izabrana slika više ne postoji.');
         kopije.push({ izvor: g.putanja, cilj: path.join(fasciklaPodataka, 'grb', `${kljuc}.${ext}`) });
         upis[kljuc] = rel;
       }
     }
 
     for (const k of kopije) {
+      if (path.resolve(k.izvor) === path.resolve(k.cilj)) continue; // vec je to sacuvani fajl
       fs.mkdirSync(path.dirname(k.cilj), { recursive: true });
       fs.copyFileSync(k.izvor, k.cilj);
     }

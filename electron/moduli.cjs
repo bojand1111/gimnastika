@@ -10,7 +10,7 @@ const podesavanja = require('./modeli/podesavanja.cjs');
 const broj = (id) => (id === null || id === undefined || id === '' ? null : Number(id));
 const prazno = (v) => v === null || v === undefined || v === '';
 
-function napraviModule(baza, { dialog, fasciklaPodataka }) {
+function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null }) {
   const k = klubovi.napravi(baza);
   const t = takmicari.napravi(baza);
   const s = sifarnici.napravi(baza);
@@ -22,7 +22,8 @@ function napraviModule(baza, { dialog, fasciklaPodataka }) {
   function grbUrl(vrednost) {
     if (!vrednost) return '';
     const fajl = path.join(fasciklaPodataka(), vrednost);
-    return fs.existsSync(fajl) ? pathToFileURL(fajl).href : '';
+    // ?v= (vreme izmene) da Chromium ne prikazuje staru sliku posle zamene grba
+    return fs.existsSync(fajl) ? `${pathToFileURL(fajl).href}?v=${Math.round(fs.statSync(fajl).mtimeMs)}` : '';
   }
 
   return {
@@ -57,10 +58,12 @@ function napraviModule(baza, { dialog, fasciklaPodataka }) {
       },
       sacuvajOpsta: (u) => p.sacuvajOpsta(u),
       izaberiGrb: async () => {
-        const r = await dialog.showOpenDialog({
+        const opcije = {
           properties: ['openFile'],
           filters: [{ name: 'Slike', extensions: ['png', 'jpg', 'jpeg', 'svg', 'gif'] }],
-        });
+        };
+        const prozor = roditelj();
+        const r = prozor ? await dialog.showOpenDialog(prozor, opcije) : await dialog.showOpenDialog(opcije);
         return r.canceled || !r.filePaths.length ? null : r.filePaths[0];
       },
       aktivno: () => p.aktivno(),

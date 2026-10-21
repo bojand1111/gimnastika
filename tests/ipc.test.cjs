@@ -109,11 +109,11 @@ test('podesavanja.sva dodaje grb URL samo kad fajl postoji; izaberiGrb vraca put
   fs.writeFileSync(path.join(dir, 'grb', 'grb_levo.png'), 'x');
   baza.izvrsi("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('grb_levo','grb/grb_levo.png'), ('grb_desno','grb/nema.png') ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost");
   s = m.podesavanja.sva();
-  assert.equal(s.grb_levo_url, require('node:url').pathToFileURL(path.join(dir, 'grb/grb_levo.png')).href);
+  assert.ok(s.grb_levo_url.startsWith(require('node:url').pathToFileURL(path.join(dir, 'grb/grb_levo.png')).href + '?v='));
   assert.equal(s.grb_desno_url, '');
   assert.equal(await m.podesavanja.izaberiGrb(), null);
-  odgovor = { canceled: false, filePaths: ['C:\a.png', 'C:\b.png'] };
-  assert.equal(await m.podesavanja.izaberiGrb(), 'C:\a.png');
+  odgovor = { canceled: false, filePaths: [String.raw`C:\a.png`, String.raw`C:\b.png`] };
+  assert.equal(await m.podesavanja.izaberiGrb(), String.raw`C:\a.png`);
   assert.equal(m.podesavanja.aktivno(), null);
   const sif = m.sifarnici.vrste();
   assert.ok(sif.vrste.kategorije && Array.isArray(sif.ikone));
@@ -121,4 +121,22 @@ test('podesavanja.sva dodaje grb URL samo kad fajl postoji; izaberiGrb vraca put
   assert.equal(d.stavka.naziv, 'Pocetnice');
   assert.equal(d.id, d.stavka.id);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('podesavanja.sva: URL grba se menja kad se fajl zameni (kes slike)', () => {
+  const baza = otvori(':memory:');
+  baza.migriraj();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-grb-'));
+  try {
+    const m = napraviModule(baza, { dialog: {}, fasciklaPodataka: () => dir });
+    fs.mkdirSync(path.join(dir, 'grb'));
+    const fajl = path.join(dir, 'grb', 'grb_levo.png');
+    fs.writeFileSync(fajl, 'x');
+    fs.utimesSync(fajl, new Date(2026, 0, 1), new Date(2026, 0, 1));
+    baza.izvrsi("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('grb_levo','grb/grb_levo.png')");
+    const prvi = m.podesavanja.sva().grb_levo_url;
+    assert.ok(prvi.includes('?v='));
+    fs.utimesSync(fajl, new Date(2026, 5, 1), new Date(2026, 5, 1));
+    assert.notEqual(m.podesavanja.sva().grb_levo_url, prvi);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
