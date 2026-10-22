@@ -130,7 +130,7 @@ function prijavi(baza, json, rez) {
 function napraviGrupeZaPrimer(baza, takmId, rez) {
   const grupe = napraviGrupe(baza);
   for (const pol of ['Z', 'M']) {
-    if (grupe.lista(takmId, pol).length === 0) {
+    if (grupe.lista(takmId, pol).length === 0) baza.transakcija(() => {
       const ids = [grupe.dodaj(takmId, pol), grupe.dodaj(takmId, pol)];
       rez.grupe_novih += 2;
       const prijave = baza.svi(
@@ -141,7 +141,7 @@ function napraviGrupeZaPrimer(baza, takmId, rez) {
         const k = i % 2;
         grupe.premesti(takmId, Number(p.id), ids[k], popunjeno[k]++, 1);
       });
-    }
+    });
     rez.grupe += grupe.lista(takmId, pol).length;
   }
 }
