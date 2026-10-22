@@ -132,13 +132,18 @@ function napravi(baza, fasciklaPodataka) {
     baza.izvrsi('DELETE FROM takmicenja WHERE id = ?', [id]);
   }
 
+  function postaviPomeraj(id, vrednost) {
+    if (!nadji(id)) throw new GreskaKorisnika('Takmičenje ne postoji.');
+    baza.izmeni('takmicenja', { pomeraj_redosled: da(vrednost), izmenjeno: Baza.sad() }, 'id = ?', [id]);
+  }
+
   // Status za prikaz: aktivno ima prednost nad zavrsenim.
   function status(t, aktivnoId) {
     if (aktivnoId !== null && aktivnoId !== undefined && Number(t.id) === Number(aktivnoId)) return 'aktivno';
     return Number(t.zavrseno) === 1 ? 'zavrseno' : 'priprema';
   }
 
-  return { POLJA, GRBOVI, sva, nadji, imaOcena, brojPrijava, prazno, proveri, sacuvaj, postaviGrb, sacuvajGrb, obrisi, status };
+  return { POLJA, GRBOVI, sva, nadji, imaOcena, brojPrijava, prazno, proveri, sacuvaj, postaviGrb, sacuvajGrb, obrisi, postaviPomeraj, status };
 }
 
 module.exports = { POLJA, GRBOVI, napravi };
