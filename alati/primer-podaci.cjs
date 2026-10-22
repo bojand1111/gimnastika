@@ -11,6 +11,7 @@ const { napravi: napraviTakmicare } = require('../electron/modeli/takmicari.cjs'
 const { napravi: napraviSifarnike } = require('../electron/modeli/sifarnici.cjs');
 const { napravi: napraviTakmicenja } = require('../electron/modeli/takmicenja.cjs');
 const { napravi: napraviPrijave } = require('../electron/modeli/prijave.cjs');
+const { napravi: napraviGrupe } = require('../electron/modeli/grupe.cjs');
 const { napravi: napraviPodesavanja } = require('../electron/modeli/podesavanja.cjs');
 const { istiTekst } = require('../electron/modeli/sortiranje.cjs');
 
@@ -30,7 +31,7 @@ function uvezi(baza, json) {
   const klubovi = napraviKlubove(baza);
   const takmicari = napraviTakmicare(baza);
   const sifarnici = napraviSifarnike(baza);
-  const rez = { klubovi: 0, klubovi_novih: 0, takmicara: 0, takmicara_novih: 0, sprave: 0, kategorija: 'Kadet', program: 'C program', takmicenje: json.takmicenje.naziv, takmicenje_novo: false, prijava: 0, prijava_novih: 0, preskoceno: [] };
+  const rez = { klubovi: 0, klubovi_novih: 0, takmicara: 0, takmicara_novih: 0, sprave: 0, kategorija: 'Kadet', program: 'C program', takmicenje: json.takmicenje.naziv, takmicenje_novo: false, prijava: 0, prijava_novih: 0, grupe: 0, grupe_novih: 0, preskoceno: [] };
 
   // Sprave ako fale (tabela prazna).
   pocetniPodaci(baza);
@@ -122,10 +123,31 @@ function prijavi(baza, json, rez) {
       if (t.van_konkurencije) prijave.izmeniPolje(takmId, r.prijava_id, 'van_konkurencije', 1);
     }
   }
+  napraviGrupeZaPrimer(baza, takmId, rez);
+}
+
+// Po polu Grupa A i B, prijave po startnom broju naizmenicno; preskace pol koji vec ima grupe.
+function napraviGrupeZaPrimer(baza, takmId, rez) {
+  const grupe = napraviGrupe(baza);
+  for (const pol of ['Z', 'M']) {
+    if (grupe.lista(takmId, pol).length === 0) {
+      const ids = [grupe.dodaj(takmId, pol), grupe.dodaj(takmId, pol)];
+      rez.grupe_novih += 2;
+      const prijave = baza.svi(
+        `SELECT p.id FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id
+         WHERE p.takmicenje_id = ? AND t.pol = ? ORDER BY p.startni_broj, t.prezime, t.ime`, [takmId, pol]);
+      const popunjeno = [0, 0];
+      prijave.forEach((p, i) => {
+        const k = i % 2;
+        grupe.premesti(takmId, Number(p.id), ids[k], popunjeno[k]++, 1);
+      });
+    }
+    rez.grupe += grupe.lista(takmId, pol).length;
+  }
 }
 
 function poruka(r) {
-  return `Primer podaci: klubova ${r.klubovi} (novih ${r.klubovi_novih}), takmičara ${r.takmicara} (novih ${r.takmicara_novih}), kategorija ${r.kategorija}, program ${r.program}, sprave ${r.sprave}, takmičenje ${r.takmicenje} (novo: ${r.takmicenje_novo ? 'da' : 'ne'}), prijava ${r.prijava} (novih ${r.prijava_novih})${r.preskoceno.length ? ', preskočeno: ' + r.preskoceno.join('; ') : ''}`;
+  return `Primer podaci: klubova ${r.klubovi} (novih ${r.klubovi_novih}), takmičara ${r.takmicara} (novih ${r.takmicara_novih}), kategorija ${r.kategorija}, program ${r.program}, sprave ${r.sprave}, takmičenje ${r.takmicenje} (novo: ${r.takmicenje_novo ? 'da' : 'ne'}), prijava ${r.prijava} (novih ${r.prijava_novih}), grupa ${r.grupe} (novih ${r.grupe_novih})${r.preskoceno.length ? ', preskočeno: ' + r.preskoceno.join('; ') : ''}`;
 }
 
 function pokreni() {

@@ -153,3 +153,42 @@ test('uvoz primera: lekarski_sprecava_prijavu = da preskace prijave bez vazeceg 
   assert.equal(broj(baza, 'takmicari'), svi.length + NA_UVOZ);
   baza.zatvori();
 });
+
+// Grupe primera: po polu Grupa A i Grupa B, naizmenicno po startnom broju.
+const { napravi: napraviGrupe } = require('../electron/modeli/grupe.cjs');
+
+function grupeStanje(baza) {
+  const grupe = napraviGrupe(baza);
+  const takmId = Number(baza.vrednost('SELECT id FROM takmicenja'));
+  return { grupe, takmId, Z: grupe.lista(takmId, 'Z'), M: grupe.lista(takmId, 'M') };
+}
+
+test('uvoz primera: po dve grupe po polu, svi raspodeljeni, naizmenicno po startnom broju', () => {
+  const baza = nova();
+  const rez = uvezi(baza, json);
+  const { grupe, takmId, ...po } = grupeStanje(baza);
+  assert.equal(rez.grupe, 4);
+  assert.equal(rez.grupe_novih, 4);
+  for (const pol of ['Z', 'M']) {
+    assert.deepEqual(po[pol].map((g) => g.naziv), ['Grupa A', 'Grupa B']);
+    assert.equal(grupe.nerasporedjeni(takmId, pol).length, 0);
+    const startni = [...(pol === 'Z' ? json.zsg_kadet_c : json.msg_kadet_c).takmicari].map((t) => t.startni_broj).sort((a, b) => a - b);
+    assert.deepEqual(po[pol].map((g) => g.clanovi.length), [startni.length / 2, startni.length / 2]);
+    assert.equal(po[pol][0].clanovi.length, 5);
+    assert.deepEqual(po[pol][0].clanovi.map((c) => c.startni_broj), startni.filter((_, i) => i % 2 === 0));
+    assert.deepEqual(po[pol][1].clanovi.map((c) => c.startni_broj), startni.filter((_, i) => i % 2 === 1));
+  }
+  baza.zatvori();
+});
+
+test('uvoz primera: drugi put ne dira grupe', () => {
+  const baza = nova();
+  uvezi(baza, json);
+  const pre = JSON.stringify(grupeStanje(baza).Z) + JSON.stringify(grupeStanje(baza).M);
+  const rez = uvezi(baza, json);
+  assert.equal(rez.grupe_novih, 0);
+  assert.equal(rez.grupe, 4);
+  assert.equal(broj(baza, 'grupe'), 4);
+  assert.equal(JSON.stringify(grupeStanje(baza).Z) + JSON.stringify(grupeStanje(baza).M), pre);
+  baza.zatvori();
+});

@@ -12,6 +12,7 @@ Potreban je Node 22.12 ili noviji (require ESM modula).
 - `npm run dev`: razvojni režim (Vite server i Electron).
 - `npm test`: pokreće testove.
 - `node alati/primer-podaci.cjs`: upisuje primer klubove i takmičare (fascikla podataka iz `GIM_PODACI`, inače podrazumevana; aplikacija mora biti zatvorena).
+  Primer takmičenje dolazi sa po dve grupe za svaki pol (Grupa A i Grupa B), da se mogu isprobati Rotacije i kasnije Unos ocena.
   Za probu uvoza prijava: `tests/fajlovi/prijava-partizan.docx` i `prijava-vojvodina.xlsx` (Herceg Aron je u fajlu 2012, u bazi 2013, pa uvoz pokazuje `sličan`; Neorčić Noah pokazuje `postoji`).
 - `npm run installer`: gradi instaler u `release/` (`Gimnastika-Setup-<verzija>.exe`).
 - `npm run publish-release -- --notes beleske/<verzija>.md [--dry-run]`: objavljuje izdanje na GitHub. Prvo pokrenite sa `--dry-run`. Token se čita iz `~/.config/github-token.txt`.
