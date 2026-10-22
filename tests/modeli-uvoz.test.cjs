@@ -227,6 +227,7 @@ test('ID broj koji vec postoji: uzima se sledeci slobodan', () => {
   // izvor ID brojeva vidi samo '00001', pa je prvi predlog '00002', a on postoji u bazi
   baza.ubaci('takmicari', { id_broj: '00002', ime: 'Zauzet', prezime: 'Broj', godina_rodjenja: 2012, pol: 'M', klub_id: null, kreirano: S, izmenjeno: S });
   const lazna = Object.create(baza);
+  // prefiks SQL-a je kontrakt sa takmicari.sledeciIdBroj: ako se upit promeni, ovaj test mora da se uskladi
   lazna.svi = (sql, params) => (sql.startsWith('SELECT id_broj FROM takmicari') ? [{ id_broj: '00001' }] : baza.svi(sql, params));
   const uvozL = napravi(lazna, podesavanja, BEZ_DNEVNIKA);
   const fajl = priprema(uvozL, s.takm, docxRedovi('Klub Jedan', [
@@ -246,7 +247,8 @@ test('greska u upisu ne ostavlja polovican uvoz (jedna transakcija)', () => {
     if (tabela === 'prijave' && ++poziva === 2) throw new Error('kvar');
     return baza.ubaci(tabela, red);
   };
-  const uvozL = napravi(lazna, podesavanja, BEZ_DNEVNIKA);
+  const upisano = [];
+  const uvozL = napravi(lazna, podesavanja, { info: (t) => upisano.push(t), greska() {} });
   const fajl = priprema(uvozL, s.takm, docxRedovi('Klub Jedan', [
     ['Aaa', 'Pera', 'I', '01.02.2012.', 'pojedinac'],
     ['Bbb', 'Mika', 'I', '03.04.2013.', 'pojedinac'],
@@ -258,5 +260,67 @@ test('greska u upisu ne ostavlja polovican uvoz (jedna transakcija)', () => {
     redovi: { 0: { uvezi: '1', postupak: 'novi' }, 1: { uvezi: '1', postupak: 'novi' } },
   } }));
   assert.equal(msg, 'kvar');
+  assert.deepEqual(upisano, []); // posle neuspeha nema reda u dnevniku
   assert.deepEqual(['takmicari', 'prijave', 'kategorije'].map((t) => broj(baza, t)), pre);
+});
+
+const REDOVI_A = [['Aaa', 'Pera', 'I', '01.02.2012.', 'pojedinac']];
+const IZBOR_NOVI = (dopuna = {}) => ({ 0: { pol: 'M', redovi: { 0: { uvezi: '1', postupak: 'novi' } }, ...dopuna } });
+
+test('drugi fajl koristi takmicara koga je prvi napravio u istom uvozu', () => {
+  const { baza, s, uvoz } = nova();
+  const f1 = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', REDOVI_A), 'a.docx');
+  const f2 = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', REDOVI_A), 'b.docx');
+  const pre = broj(baza, 'takmicari');
+  const r = uvoz.upisi(s.takm, [f1, f2], { 0: IZBOR_NOVI()[0], 1: IZBOR_NOVI()[0] });
+  assert.equal(broj(baza, 'takmicari'), pre + 1);
+  assert.equal(r.novih, 1);
+  assert.equal(r.prijavljeno, 1);
+  assert.equal(r.vec, 1); // isti takmicar je u drugom fajlu vec prijavljen
+  assert.equal(r.postojecih, 0);
+  assert.equal(broj(baza, 'prijave'), 1);
+});
+
+test('red bez godine rodjenja se preskace i ne pravi takmicara', () => {
+  const { baza, s, uvoz } = nova();
+  const fajl = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', REDOVI_A));
+  fajl.redovi[0].godina = null;
+  const pre = broj(baza, 'takmicari');
+  const r = uvoz.upisi(s.takm, [fajl], IZBOR_NOVI());
+  assert.deepEqual(r.preskoceno, ['Aaa Pera (nema godine rođenja)']);
+  assert.equal(r.prijavljeno, 0);
+  assert.equal(r.novih, 0);
+  assert.equal(broj(baza, 'takmicari'), pre);
+});
+
+test('red koji ne prodje proveru takmicara se preskace sa porukama provere', () => {
+  const { baza, s, uvoz } = nova();
+  const fajl = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', REDOVI_A));
+  fajl.redovi[0].godina = 1800;
+  const pre = broj(baza, 'takmicari');
+  const r = uvoz.upisi(s.takm, [fajl], IZBOR_NOVI());
+  assert.equal(r.preskoceno.length, 1);
+  assert.match(r.preskoceno[0], /^Aaa Pera \(.+\)$/);
+  assert.equal(r.prijavljeno, 0);
+  assert.equal(broj(baza, 'takmicari'), pre);
+});
+
+test('izbor bez kljuca klub_id koristi klub prepoznat u fajlu', () => {
+  const { baza, s, uvoz } = nova();
+  const fajl = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', REDOVI_A));
+  assert.equal(fajl.klub_id, s.k1);
+  uvoz.upisi(s.takm, [fajl], IZBOR_NOVI());
+  assert.equal(Number(baza.vrednost('SELECT klub_id FROM takmicari WHERE prezime = ?', ['Aaa'])), s.k1);
+  assert.equal(Number(baza.vrednost('SELECT klub_id FROM prijave WHERE takmicenje_id = ?', [s.takm])), s.k1);
+});
+
+test('postupak nista se preskace bez upisa', () => {
+  const { baza, s, uvoz } = nova();
+  const fajl = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', REDOVI_A));
+  const pre = broj(baza, 'takmicari');
+  const r = uvoz.upisi(s.takm, [fajl], { 0: { pol: 'M', redovi: { 0: { uvezi: '1', postupak: 'nista' } } } });
+  assert.equal(r.prijavljeno, 0);
+  assert.deepEqual(r.preskoceno, []);
+  assert.equal(broj(baza, 'takmicari'), pre);
+  assert.equal(broj(baza, 'prijave'), 0);
 });

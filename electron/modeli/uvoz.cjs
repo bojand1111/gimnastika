@@ -21,6 +21,8 @@ function sledeci(idBroj) {
 const prazno = (v) => v === undefined || v === null || v === '' || v === '0' || v === 0 || v === false;
 
 function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
+  // Modeli su tanki omotaci oko baze bez stanja; model uvoza ih pravi sam da zavisi samo od
+  // (baza, podesavanja, dnevnik) i da se testira bez moduli.cjs.
   const takmicari = napraviTakmicare(baza);
   const klubovi = napraviKlubove(baza);
   const sifarnici = napraviSifarnike(baza);

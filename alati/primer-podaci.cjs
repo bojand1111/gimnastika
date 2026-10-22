@@ -32,7 +32,6 @@ function uvezi(baza, json) {
   const sifarnici = napraviSifarnike(baza);
   const rez = { klubovi: 0, klubovi_novih: 0, takmicara: 0, takmicara_novih: 0, sprave: 0, kategorija: 'Kadet', program: 'C program', takmicenje: json.takmicenje.naziv, takmicenje_novo: false, prijava: 0, prijava_novih: 0, preskoceno: [] };
 
-
   // Sprave ako fale (tabela prazna).
   pocetniPodaci(baza);
   rez.sprave = Number(baza.vrednost('SELECT COUNT(*) FROM sprave'));
@@ -108,8 +107,8 @@ function prijavi(baza, json, rez) {
     for (const t of json[kljuc].takmicari) {
       const idBroj = String(100 + t.startni_broj).padStart(5, '0');
       const tk = baza.svi('SELECT id, id_broj FROM takmicari').find((r) => istiTekst(r.id_broj, idBroj));
-      rez.prijava++;
       if (!tk) continue;
+      rez.prijava++;
       const r = prijave.dodajJednu(takmId, Number(tk.id), Number(kategorijaId), Number(programId), 'pojedinac');
       if (r.stanje === 'vec') continue;
       if (r.stanje !== 'dodato') {
@@ -118,6 +117,7 @@ function prijavi(baza, json, rez) {
       }
       rez.prijava_novih++;
       prijave.izmeniPolje(takmId, r.prijava_id, 'startni_broj', t.startni_broj);
+      // clan_ekipe: takmicar je u spisku clanova bilo koje ekipe iz JSON-a (ekipno)
       if (clanovi.has(t.prezime_ime)) prijave.izmeniPolje(takmId, r.prijava_id, 'clan_ekipe', 1);
       if (t.van_konkurencije) prijave.izmeniPolje(takmId, r.prijava_id, 'van_konkurencije', 1);
     }

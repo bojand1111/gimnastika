@@ -220,3 +220,50 @@ test('lekarskiUpozorenja i brojevi', () => {
   baza.izmeni('takmicenja', { zavrseno: 1 }, 'id = ?', [s.takm]);
   assert.deepEqual(p.lekarskiUpozorenja(30), []);
 });
+
+test('lekarskiUpozorenja: vraca i red sa stanjem istice (u pragu)', () => {
+  const { baza, s, p } = nova();
+  p.dodajVise(s.takm, [s.t.Ana, s.t.Ceca]);
+  assert.deepEqual(p.lekarskiUpozorenja(30), []);
+  // takmicenje je 2026-10-17: 10 dana do isteka je u pragu od 30
+  baza.izmeni('takmicari', { lekarski_do: '2026-10-27' }, 'id = ?', [s.t.Ceca]);
+  const u = p.lekarskiUpozorenja(30);
+  assert.deepEqual(u.map((x) => [x.ime, x.lek.stanje, x.lek.dana]), [['Ceca', 'istice', 10]]);
+});
+
+test('dodeliStartneBrojeve: postojeci brojevi sa rupama ostaju, novi idu posle najveceg', () => {
+  const { baza, s, p } = nova();
+  p.dodajVise(s.takm, [s.t.Ana, s.t.Bea, s.t.Ceca]);
+  const pid = Object.fromEntries(p.lista(s.takm).map((x) => [x.ime, x.id]));
+  p.izmeniPolje(s.takm, pid.Ana, 'startni_broj', '5');
+  p.izmeniPolje(s.takm, pid.Bea, 'startni_broj', '2');
+  assert.equal(p.dodeliStartneBrojeve(s.takm), 1);
+  const br = Object.fromEntries(p.lista(s.takm).map((x) => [x.ime, x.startni_broj]));
+  assert.deepEqual(br, { Ana: 5, Bea: 2, Ceca: 6 });
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM prijave WHERE startni_broj IS NULL'), 0);
+});
+
+test('izmena polja, sprave i ucesca ne ponistava potvrdu kluba', () => {
+  const { baza, s, p } = nova();
+  p.dodajVise(s.takm, [s.t.Ana, s.t.Bea]);
+  p.potvrdiKlub(s.takm, s.k1, true);
+  const pid = p.lista(s.takm)[0].id;
+  const potvrdjen = () => p.stanjePripreme(s.takm).klubovi[s.k1].potvrdjeno;
+  assert.equal(potvrdjen(), true);
+  p.izmeniPolje(s.takm, pid, 'kategorija_id', s.kat);
+  p.izmeniPolje(s.takm, pid, 'program_id', s.prog);
+  p.izmeniPolje(s.takm, pid, 'startni_broj', '9');
+  assert.equal(potvrdjen(), true);
+  p.postaviSpravu(s.takm, pid, s.gr, false);
+  assert.equal(potvrdjen(), true);
+  p.postaviUcesce(s.takm, pid, 'ekipa');
+  assert.equal(potvrdjen(), true);
+});
+
+test('idZa: id prijave ili null', () => {
+  const { s, p } = nova();
+  p.dodajVise(s.takm, [s.t.Ana]);
+  const pid = p.lista(s.takm)[0].id;
+  assert.equal(p.idZa(s.takm, s.t.Ana), Number(pid));
+  assert.equal(p.idZa(s.takm, s.t.Bea), null);
+});

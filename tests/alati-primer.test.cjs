@@ -139,3 +139,17 @@ test('uvoz primera: aktivno takmicenje se postavlja samo ako nije izabrano', () 
   assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje'"), '999');
   baza.zatvori();
 });
+
+test('uvoz primera: lekarski_sprecava_prijavu = da preskace prijave bez vazeceg lekarskog, bez greske', () => {
+  const baza = nova();
+  baza.ubaci('podesavanja', { kljuc: 'lekarski_sprecava_prijavu', vrednost: 'da' });
+  let rez;
+  assert.doesNotThrow(() => { rez = uvezi(baza, json); });
+  assert.equal(rez.preskoceno.length, 2); // Simić Dunja i Stanković Luka: lekarski istekao pre takmicenja
+  assert.ok(rez.preskoceno.every((p) => p.includes('lekarski ne važi na dan takmičenja')));
+  assert.equal(rez.prijava, svi.length);
+  assert.equal(rez.prijava_novih, svi.length - rez.preskoceno.length);
+  assert.equal(broj(baza, 'prijave'), svi.length - 2);
+  assert.equal(broj(baza, 'takmicari'), svi.length + NA_UVOZ);
+  baza.zatvori();
+});
