@@ -1,0 +1,113 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Ikona from '../../komponente/Ikona.jsx';
+import { vidljivTakmicar } from '../prijaveFilter.js';
+import { url } from '../../ruter.js';
+
+const POLOVI = [['', 'Svi'], ['M', 'M'], ['Z', 'Ž']];
+
+// Leva kartica: baza takmicara sa pretragom, klubom i polom; Enter ili "Prijavi" prijavljuje oznacene.
+export default function BazaTakmicara({ d, pol, naDodaj, naNovi }) {
+  const [upit, postaviUpit] = useState('');
+  const [klub, postaviKlub] = useState('');
+  const [oznaceni, postaviOznaceni] = useState(() => new Set());
+  const lista = useRef(null);
+  const pretraga = useRef(null);
+
+  const prijavljeni = useMemo(() => new Set(d.prijavljeni.map(Number)), [d.prijavljeni]);
+  const redovi = useMemo(
+    () => d.takmicari.filter((t) => pol === '' || t.pol === pol),
+    [d.takmicari, pol]);
+  const vidljivi = useMemo(
+    () => redovi.filter((t) => vidljivTakmicar(t, { upit, klub })), [redovi, upit, klub]);
+
+  useEffect(() => { if (pretraga.current) pretraga.current.focus(); }, []);
+
+  // Alt+N otvara dijalog sa kluba iz leve liste.
+  const novi = () => naNovi(klub);
+  useEffect(() => {
+    document.addEventListener('app:novi', novi);
+    return () => document.removeEventListener('app:novi', novi);
+  });
+
+  function promeniOznaku(id, da) {
+    postaviOznaceni((s) => { const n = new Set(s); if (da) n.add(id); else n.delete(id); return n; });
+  }
+
+  async function dodaj(ids) {
+    if (await naDodaj(ids)) postaviOznaceni(new Set());
+  }
+
+  function izPretrage(ev) {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      let ids = [...oznaceni];
+      // Tacno jedan vidljiv neprijavljen i nista oznaceno: Enter ga prijavljuje.
+      if (!ids.length && vidljivi.length === 1 && !prijavljeni.has(vidljivi[0].id)) ids = [vidljivi[0].id];
+      dodaj(ids);
+    } else if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      const prvi = lista.current.querySelector('input:not(:disabled)');
+      if (prvi) prvi.focus();
+    }
+  }
+
+  function izListe(ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); dodaj([...oznaceni]); return; }
+    if (ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp') return;
+    ev.preventDefault();
+    const sva = [...lista.current.querySelectorAll('input:not(:disabled)')];
+    const sused = sva[sva.indexOf(ev.target) + (ev.key === 'ArrowDown' ? 1 : -1)];
+    if (sused) sused.focus();
+  }
+
+  return (
+    <section className="kartica" style={{ width: 248, flexShrink: 0, overflow: 'hidden' }}>
+      <div className="kartica-zaglavlje" style={{ padding: '0 12px' }}>
+        <h2 className="kartica-naslov">Baza takmičara</h2>
+        <button type="button" className="dugme dugme-malo" id="novi-takmicar" title="Takmičar koga nema u bazi (Alt+N)" onClick={novi}>
+          <Ikona ime="plus" velicina={14} />Novi</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', borderBottom: '1px solid var(--line)' }}>
+        <label className="pretraga">
+          <span className="ikona-pretraga" style={{ display: 'flex' }}><Ikona ime="pretraga" velicina={16} /></span>
+          <input type="text" className="unos" id="pretraga" ref={pretraga} value={upit} placeholder="Ime, prezime ili ID"
+            aria-label="Pretraga" autoComplete="off" onChange={(ev) => postaviUpit(ev.target.value)} onKeyDown={izPretrage} />
+        </label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <select className="unos" id="f-klub" aria-label="Klub" style={{ flex: '1 1 0', minWidth: 0 }}
+            value={klub} onChange={(ev) => postaviKlub(ev.target.value)}>
+            <option value="">Svi klubovi</option>
+            {d.klubovi.map((k) => <option key={k.id} value={String(k.id)}>{k.skracenica}</option>)}
+          </select>
+          <div className="izbor" role="group" aria-label="Pol" id="f-pol">
+            {POLOVI.map(([v, tekst]) => (
+              <a key={v} href={url('prijave', v ? { pol: v } : {})} className={pol === v ? 'izabrano' : ''}
+                style={{ padding: '0 9px' }}>{tekst}</a>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="kartica-skrol" id="baza-lista" ref={lista} onKeyDown={izListe}>
+        {vidljivi.map((t) => {
+          const vec = prijavljeni.has(t.id);
+          return (
+            <label key={t.id} className={`baza-red ${vec ? 'vec' : ''}`}>
+              <input type="checkbox" value={t.id} checked={vec || oznaceni.has(t.id)} disabled={vec}
+                aria-label={`${t.prezime} ${t.ime}`} onChange={(ev) => promeniOznaku(t.id, ev.target.checked)} />
+              <span style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', lineHeight: '17px' }}>
+                <span className="odseci">{t.prezime} {t.ime}</span>
+                <span className="mali sivo">{t.godina_rodjenja} · {t.pol === 'Z' ? 'Ž' : 'M'} · {t.klub_skr ?? ''}</span>
+              </span>
+              {vec && <span className="sivo" title="Već prijavljen"><Ikona ime="kvacica" velicina={14} /></span>}
+            </label>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--line)', flexShrink: 0 }}>
+        <span className="sek" style={{ fontSize: 13 }} id="izabrano">Izabrano: {oznaceni.size}</span>
+        <button type="button" className="dugme dugme-glavno" id="dodaj" style={{ padding: '0 10px' }}
+          onClick={() => dodaj([...oznaceni])}><span>Prijavi</span><kbd>Enter</kbd></button>
+      </div>
+    </section>
+  );
+}
