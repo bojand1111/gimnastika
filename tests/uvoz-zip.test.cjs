@@ -81,3 +81,23 @@ test('zip: nepodrzana metoda, ostecen zapis, deflate i centralni direktorijum', 
     assert.throws(() => zip.lista(t.put), { message: 'Ostecen centralni direktorijum zipa.' });
   } finally { t.ukloni(); }
 });
+
+test('zip: ogranicenje velicine stavke i provera deklarisane duzine', () => {
+  const t = privremeni('a.zip');
+  try {
+    zip.napravi(t.put, { 'a.txt': { sadrzaj: 'x' }, 'b.txt': { sadrzaj: 'abc'.repeat(100) } });
+    const orig = fs.readFileSync(t.put);
+    const cd = orig.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    // a.txt je store, zaglavlje tvrdi 100 MB
+    const velika = Buffer.from(orig);
+    velika.writeUInt32LE(100 * 1024 * 1024, cd + 24);
+    fs.writeFileSync(t.put, velika);
+    assert.throws(() => zip.procitaj(t.put, 'a.txt'), { message: 'Prevelika stavka u zipu: a.txt' });
+    // b.txt je deflate, zaglavlje potcenjuje duzinu za 1 bajt
+    const cd2 = cd + 46 + 'a.txt'.length;
+    const mala = Buffer.from(orig);
+    mala.writeUInt32LE(299, cd2 + 24);
+    fs.writeFileSync(t.put, mala);
+    assert.throws(() => zip.procitaj(t.put, 'b.txt'), { message: 'Ne mogu da raspakujem b.txt' });
+  } finally { t.ukloni(); }
+});

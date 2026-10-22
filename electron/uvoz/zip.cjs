@@ -6,6 +6,7 @@ const zlib = require('node:zlib');
 const POTPIS_LOKALNI = 0x04034b50;
 const POTPIS_CENTRALNI = 0x02014b50;
 const POTPIS_KRAJ = 0x06054b50;
+const NAJVECA_STAVKA = 50 * 1024 * 1024; // bajtova, i kompresovano i raspakovano
 
 const TABELA_CRC = (() => {
   const t = new Uint32Array(256);
@@ -134,6 +135,7 @@ function procitaj(putanja, ime, spisak = null) {
   spisak ??= lista(putanja);
   const s = spisak[ime];
   if (!s) throw new Error('U arhivi nema stavke ' + ime);
+  if (s.duz > NAJVECA_STAVKA || s.kduz > NAJVECA_STAVKA) throw new Error('Prevelika stavka u zipu: ' + ime);
   const fajl = otvoriFajl(putanja);
   if (s.ofset + 30 > fajl.length || fajl.readUInt32LE(s.ofset) !== POTPIS_LOKALNI) {
     throw new Error('Ostecen zapis u zipu: ' + ime);
@@ -143,11 +145,14 @@ function procitaj(putanja, ime, spisak = null) {
   if (s.metoda === 0) return Buffer.from(komp);
   if (s.metoda === 8) {
     if (komp.length === 0) return Buffer.alloc(0);
+    let izlaz;
     try {
-      return zlib.inflateRawSync(komp);
+      izlaz = zlib.inflateRawSync(komp, { maxOutputLength: s.duz });
     } catch {
       throw new Error('Ne mogu da raspakujem ' + ime);
     }
+    if (izlaz.length !== s.duz) throw new Error('Ostecen zapis u zipu: ' + ime);
+    return izlaz;
   }
   throw new Error('Nepodrzana metoda kompresije u zipu: ' + s.metoda);
 }
