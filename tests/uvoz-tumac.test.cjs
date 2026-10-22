@@ -107,6 +107,16 @@ test('tumac: pomocne funkcije', () => {
   assert.equal(tumac.normalizuj('Đorđe'), 'djordje');
 });
 
+test('tumac: lepo ime posle crtice i apostrofa', () => {
+  const r = tumac.protumaci({ tekst: '', tabele: [[
+    ['Prezime', 'Ime'], ['KOVAČ-NIKOLIĆ', 'laudis-nanaši'], ['O'+'\x27'+'BRIEN', 'McDonald'],
+  ]] });
+  assert.equal(r.redovi[0].prezime, 'Kovač-Nikolić');
+  assert.equal(r.redovi[0].ime, 'Laudis-Nanaši');
+  assert.equal(r.redovi[1].prezime, 'O\x27Brien');
+  assert.equal(r.redovi[1].ime, 'McDonald');
+});
+
 test('tumac: duplikat u fajlu se ovde ne ocenjuje', () => {
   const r = tumac.protumaci({ tekst: '', tabele: [[
     ['Prezime', 'Ime', 'Godište'], ['Kovač', 'Ana', '2014'], ['Kovač', 'Ana', '2014'],

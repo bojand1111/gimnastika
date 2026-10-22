@@ -46,10 +46,11 @@ function kolone(red) {
 function lepoIme(s) {
   s = s.replace(/\s+/g, ' ').trim();
   if (s === '' || (s !== velika(s) && s !== mala(s))) return s;
-  return s.split(' ').map((rec) => {
-    const [prvi = '', ...ostalo] = Array.from(rec);
+  // prvo slovo svakog niza slova veliko (i posle crtice i apostrofa), ostalo malo
+  return s.replace(/\p{L}+/gu, (rec) => {
+    const [prvi, ...ostalo] = Array.from(rec);
     return velika(prvi) + mala(ostalo.join(''));
-  }).join(' ');
+  });
 }
 
 const dvocifreno = (n, duzina) => String(n).padStart(duzina, '0');
