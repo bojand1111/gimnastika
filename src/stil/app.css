@@ -366,3 +366,24 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 /* Blok greske u formi: dobija fokus da ga cita citac ekrana */
 .blok-gresaka { margin-bottom: 12px; }
 .blok-gresaka:focus { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Rotacije: traka, zaglavlja kolona i podnozje (iz inline stilova PHP pogleda) */
+#rot-traka { flex-direction: row; align-items: center; gap: 16px; padding: 10px 12px; flex-shrink: 0; }
+#filter-kp { width: 190px; }
+.rot-rotacija { display: flex; align-items: center; gap: 8px; }
+.rot-rotacija-link { min-width: 40px; justify-content: center; }
+.rot-razmak { flex-grow: 1; }
+#rot-kolone { min-height: 0; align-items: stretch; }
+#rot-kolone > .rot-grupa { overflow: hidden; }
+.rot-red { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.rot-naziv { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rot-desno { display: inline-flex; align-items: center; gap: 4px; }
+.rot-brojac { font-size: 13px; font-weight: 600; }
+.rot-izmeni, .rot-obrisi { width: 26px; height: 26px; }
+.rot-podred { display: flex; align-items: center; gap: 4px; height: 22px; }
+.rot-vrati { width: 24px; height: 22px; }
+.rot-kartica .status-vk { height: 18px; padding: 0 4px; }
+.rot-podnozje { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.rot-legenda { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 18px; font-size: 13px; flex: 1 1 0; min-width: 0; }
+.rot-legenda > span.rot-stavka { display: inline-flex; align-items: center; gap: 6px; }
+#zavrsi { flex-shrink: 0; }
