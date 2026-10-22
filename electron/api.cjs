@@ -7,6 +7,7 @@ const MODULI = {
   podesavanja: ['sva', 'sacuvajOpsta', 'izaberiGrb', 'aktivno'],
   takmicenja: ['sva', 'nadji', 'prazno', 'sacuvaj', 'izaberiGrb', 'sacuvajGrb', 'ukloniGrb', 'obrisi', 'otvori', 'stanje'],
   prijave: ['lista', 'podaci', 'dodaj', 'izmeni', 'sprava', 'ucesce', 'obrisi', 'potvrda', 'startni', 'noviTakmicar', 'stanje'],
+  rotacije: ['podaci', 'dodaj', 'izmeni', 'obrisi', 'premesti', 'vrati', 'pomeraj', 'zavrsi'],
   uvoz: ['izaberiFajlove', 'pripremi', 'upisi'],
   azuriranje: ['stanje', 'proveri', 'preuzmi', 'instaliraj'],
 };

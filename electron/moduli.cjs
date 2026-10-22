@@ -9,10 +9,13 @@ const podesavanja = require('./modeli/podesavanja.cjs');
 const takmicenjaModel = require('./modeli/takmicenja.cjs');
 const prijaveModel = require('./modeli/prijave.cjs');
 const uvozModel = require('./modeli/uvoz.cjs');
+const grupeModel = require('./modeli/grupe.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
 const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
 const { lekarski } = require('./racun/lekarski.mjs');
 const { datumPrikaz } = require('./racun/datum.mjs');
+const { pozicijaURotaciji, redosledURotaciji } = require('./racun/grupe.mjs');
+const { KOLATOR } = require('./modeli/sortiranje.cjs');
 
 const broj = (id) => (id === null || id === undefined || id === '' ? null : Number(id));
 const prazno = (v) => v === null || v === undefined || v === '';
@@ -32,6 +35,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
   const tk = takmicenjaModel.napravi(baza, fasciklaPodataka);
   const pr = prijaveModel.napravi(baza, p);
   const uv = uvozModel.napravi(baza, p, dnevnik);
+  const gr = grupeModel.napravi(baza);
 
   // Id aktivnog takmicenja; bez njega prijave i uvoz ne rade (POPIS 0.1).
   function aktivnoRed() {
@@ -215,6 +219,80 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
         return { takmicar_id: tid, prijava_id: pr.idZa(aid, tid), dodato: r.dodato, preskoceno: r.preskoceno, upozorenja: r.upozorenja };
       },
       stanje: () => pr.stanjePripreme(aktivnoId()),
+    },
+    rotacije: {
+      // Jedan poziv za ceo ekran Rotacije (POPIS 4.2).
+      podaci: (pol, rot) => {
+        const takm = aktivnoRed();
+        const polIzbor = pol === 'M' ? 'M' : 'Z';
+        const sprave = s.sprave(polIzbor);
+        const brojSprava = Math.max(1, sprave.length);
+        const rotacija = Math.max(1, Math.min(brojSprava, Math.trunc(Number(rot)) || 1));
+        const pomeraj = Number(takm.pomeraj_redosled) === 1;
+        const grupe = gr.lista(Number(takm.id), polIzbor).map((g) => {
+          const poz = pozicijaURotaciji(g.pocetna_pozicija, rotacija, brojSprava);
+          const rucniRot = Object.hasOwn(g.rucni, rotacija);
+          const sp = sprave[poz - 1] ?? null;
+          return {
+            id: g.id, naziv: g.naziv, redosled: g.redosled, pocetna_pozicija: g.pocetna_pozicija,
+            sprava: sp ? { id: sp.id, naziv: sp.naziv } : null,
+            clanovi: g.clanovi,
+            redosled_rot: redosledURotaciji(g.clanovi, rotacija, pomeraj, g.rucni[rotacija] ?? null),
+            rucni_rot: rucniRot,
+            rucni_rotacije: Object.keys(g.rucni).map(Number).sort((x, y) => x - y),
+          };
+        });
+        // Kombinacije koje postoje u prijavama tog pola; null prvi kao u MySQL-u.
+        const kombinacije = baza.svi(
+          `SELECT DISTINCT kat.id AS kid, kat.naziv AS kat, pr.id AS pid, pr.naziv AS prog,
+                  kat.redosled AS kat_red, pr.redosled AS prog_red
+           FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id
+           LEFT JOIN kategorije kat ON kat.id = p.kategorija_id
+           LEFT JOIN programi pr ON pr.id = p.program_id
+           WHERE p.takmicenje_id = ? AND t.pol = ?`, [Number(takm.id), polIzbor])
+          .sort((x, y) => (x.kat_red ?? -Infinity) - (y.kat_red ?? -Infinity) || (x.prog_red ?? -Infinity) - (y.prog_red ?? -Infinity)
+            || KOLATOR.compare(String(x.kat ?? ''), String(y.kat ?? '')) || KOLATOR.compare(String(x.prog ?? ''), String(y.prog ?? '')))
+          .map(({ kid, kat, pid, prog }) => ({ kid, kat, pid, prog }));
+        return {
+          takm: { id: takm.id, naziv: takm.naziv, pomeraj_redosled: takm.pomeraj_redosled },
+          pol: polIzbor,
+          rot: rotacija,
+          brojSprava,
+          sprave: sprave.map((x) => ({ id: x.id, naziv: x.naziv, skracenica: x.skracenica, redosled: x.redosled })),
+          kombinacije,
+          pomeraj,
+          grupe,
+          nerasporedjeni: gr.nerasporedjeni(Number(takm.id), polIzbor),
+          stanje: pr.stanjePripreme(Number(takm.id)),
+        };
+      },
+      dodaj: (pol) => {
+        const aid = aktivnoId();
+        return { grupa: gr.nadji(gr.dodaj(aid, pol)) };
+      },
+      izmeni: (id, naziv, pocetnaPozicija) => gr.izmeni(aktivnoId(), broj(id), String(naziv ?? '').trim(), parseInt(pocetnaPozicija, 10) || 0),
+      obrisi: (id) => gr.obrisi(aktivnoId(), broj(id)),
+      // grupaId 0/''/null = neraspoređeni; rotacija najmanje 1.
+      premesti: (prijavaId, grupaId, pozicija, rotacija) => gr.premesti(
+        aktivnoId(), broj(prijavaId), Number(grupaId) || null, Number(pozicija) || 0, Math.max(1, Number(rotacija) || 1)),
+      vrati: (id, rotacija) => gr.vratiRedosled(aktivnoId(), broj(id), Number(rotacija) || 0),
+      // Kao PHP !empty: '0', '', 0, false, null, undefined su ne.
+      pomeraj: (vrednost) => {
+        const v = istina(vrednost) ? 1 : 0;
+        tk.postaviPomeraj(aktivnoId(), v);
+        return v;
+      },
+      // Samo kaze sta fali; poruku prikazuje renderer (POPIS 4.1).
+      zavrsi: () => {
+        const stanje = pr.stanjePripreme(aktivnoId());
+        if (stanje.prijava === 0) {
+          return { stanje, poruka: { tekst: 'Još nema prijava. Prvo prijavite takmičare.', vrsta: 'upozorenje' }, ide: 'prijave' };
+        }
+        const poruka = stanje.nerasporedjeni > 0
+          ? { tekst: `Takmičari koji nisu raspoređeni u grupe: ${stanje.nerasporedjeni}. Njih neće biti u unosu ocena dok se ne rasporede.`, vrsta: 'upozorenje' }
+          : { tekst: 'Priprema je završena: svi prijavljeni su raspoređeni u grupe.', vrsta: 'ok' };
+        return { stanje, poruka, ide: 'takmicenje' };
+      },
     },
     uvoz: {
       izaberiFajlove: () => izaberi({
