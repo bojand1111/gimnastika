@@ -2,7 +2,11 @@
 function razmotaj(poziv) {
   return async (...args) => {
     const odgovor = await poziv(...args);
-    if (!odgovor.ok) throw new Error(odgovor.greska);
+    if (!odgovor.ok) {
+      const err = new Error(odgovor.greska);
+      err.greske = odgovor.greske || null; // lista pojedinacnih poruka provere, ako je ima
+      throw err;
+    }
     return odgovor.podaci;
   };
 }

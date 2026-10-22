@@ -78,13 +78,13 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi, reset }) {
   }
 
   return (
-    <section className="kartica" style={{ width: 248, flexShrink: 0, overflow: 'hidden' }}>
-      <div className="kartica-zaglavlje" style={{ padding: '0 12px' }}>
+    <section className="kartica baza-kartica">
+      <div className="kartica-zaglavlje baza-zaglavlje">
         <h2 className="kartica-naslov">Baza takmičara</h2>
         <button type="button" className="dugme dugme-malo" id="novi-takmicar" title="Takmičar koga nema u bazi (Alt+N)" onClick={novi}>
           <Ikona ime="plus" velicina={14} />Novi</button>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', borderBottom: '1px solid var(--line)' }}>
+      <div className="baza-filteri">
         <label className="pretraga">
           <span className="ikona-pretraga" style={{ display: 'flex' }}><Ikona ime="pretraga" velicina={16} /></span>
           <input type="text" className="unos" id="pretraga" data-fokus ref={pretraga} value={upit} placeholder="Ime, prezime ili ID"
@@ -120,7 +120,7 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi, reset }) {
           );
         })}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--line)', flexShrink: 0 }}>
+      <div className="baza-podnozje">
         <span className="sek" style={{ fontSize: 13 }} id="izabrano">Izabrano: {oznaceni.size}</span>
         <button type="button" className="dugme dugme-glavno" id="dodaj" style={{ padding: '0 10px' }}
           onClick={() => dodaj([...oznaceni])}><span>Prijavi</span><kbd>Enter</kbd></button>

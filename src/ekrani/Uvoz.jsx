@@ -4,10 +4,10 @@ import Ikona from '../komponente/Ikona.jsx';
 import Koraci from '../komponente/Koraci.jsx';
 import FajlKartica from './uvoz/FajlKartica.jsx';
 import { najavi, obavesti } from '../okvir/Poruke.jsx';
+import { obradiNemaAktivnog } from './aktivno.js';
 import { nedostajePol, pocetniIzbor, prebroj, zaUpis, zbir } from './uvozBrojac.js';
 import * as uvozStanje from '../uvozStanje.js';
 
-const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja.';
 const PRAZAN = 'Na ekranu Prijave kliknite „Uvezi iz fajla“ i izaberite prijavu kluba (.docx ili .xlsx).';
 const OTKAZAN = 'Uvoz je otkazan, ništa nije upisano.';
 
@@ -23,11 +23,12 @@ const nazad = () => { location.hash = '#/prijave'; };
 
 // Ekran Uvoz prijava iz fajla (POPIS 7): pregled pre upisa, nista se ne upisuje dok se ne potvrdi.
 export default function Uvoz() {
-  const [fajlovi, postaviFajlove] = useState(() => uvozStanje.uzmi() || []);
+  const [fajlovi, postaviFajlove] = useState(() => (uvozStanje.uzmi() || { fajlovi: [] }).fajlovi);
   const [izbori, postaviIzbore] = useState(() => pocetni(fajlovi));
   const [d, postaviD] = useState(null);
   const [radi, postaviRadi] = useState(false);
   const potvrdaRef = useRef(null);
+  const radiRef = useRef(false); // upis u toku, postavlja se pre prvog await
   const radnje = useRef({});
 
   // Bez fajlova nema sta da se pregleda: nazad na Prijave sa uputstvom.
@@ -35,23 +36,30 @@ export default function Uvoz() {
     if (fajlovi.length === 0) { najavi(PRAZAN, 'info'); nazad(); }
   }, [fajlovi.length]);
 
+  // Ucitava stanje pripreme i aktivno takmicenje; fajlovi drugog takmicenja se odbacuju (POPIS 7.1).
   useEffect(() => {
-    if (uvozStanje.uzmi() === null || uvozStanje.uzmi().length === 0) return;
+    const st = uvozStanje.uzmi();
+    if (st === null || st.fajlovi.length === 0) return undefined;
+    let ziv = true;
     (async () => {
       try {
-        const [podaci, klubovi, kategorije, programi, podesavanja] = await Promise.all([
-          gim.prijave.podaci(null), gim.klubovi.svi(), gim.sifarnici.lista('kategorije'),
+        const akt = await gim.podesavanja.aktivno();
+        if (!ziv) return;
+        if (!akt) { obradiNemaAktivnog(new Error('Nema aktivnog takmičenja.')); return; }
+        if (Number(akt.id) !== st.takmId) { uvozStanje.ocisti(); najavi(PRAZAN, 'info'); nazad(); return; }
+        const [stanje, klubovi, kategorije, programi, podesavanja] = await Promise.all([
+          gim.prijave.stanje(), gim.klubovi.svi(), gim.sifarnici.lista('kategorije'),
           gim.sifarnici.lista('programi'), gim.podesavanja.sva(),
         ]);
-        postaviD({ stanje: podaci.stanje, takmId: Number(podaci.takm.id), klubovi, kategorije, programi,
+        if (!ziv) return;
+        postaviD({ stanje, takmId: Number(akt.id), klubovi, kategorije, programi,
           lekarski: podesavanja.lekarski_sprecava_prijavu === 'da' });
       } catch (e) {
-        if (String(e.message).startsWith(NEMA_AKTIVNOG)) {
-          najavi('Prvo izaberite aktivno takmičenje.', 'upozorenje');
-          location.hash = '#/takmicenja';
-        } else obavesti(e.message, 'greska');
+        if (!ziv) return;
+        if (!obradiNemaAktivnog(e)) obavesti(e.message, 'greska');
       }
     })();
+    return () => { ziv = false; };
   }, []);
 
   const poIndeksu = Object.fromEntries(fajlovi.map((f, i) => [i, izbori[kljuc(f)] ?? pocetniIzbor(f)]));
@@ -67,19 +75,22 @@ export default function Uvoz() {
   }));
 
   function odustani() {
+    if (radiRef.current) return;
     uvozStanje.ocisti();
     najavi(OTKAZAN, 'info');
     nazad();
   }
 
   function ukloni(i) {
+    if (radiRef.current) return;
     uvozStanje.ukloni(i);
-    const ostalo = uvozStanje.uzmi();
+    const ostalo = uvozStanje.uzmi().fajlovi;
     if (ostalo.length === 0) { odustani(); return; }
     postaviFajlove(ostalo);
   }
 
   async function dodajFajlove() {
+    if (radiRef.current) return;
     try {
       const putanje = await gim.uvoz.izaberiFajlove();
       if (!putanje.length) return;
@@ -88,12 +99,12 @@ export default function Uvoz() {
       if (!r.fajlovi.length) return;
       uvozStanje.dodaj(r.fajlovi);
       postaviIzbore((x) => ({ ...pocetni(r.fajlovi), ...x }));
-      postaviFajlove(uvozStanje.uzmi());
+      postaviFajlove(uvozStanje.uzmi().fajlovi);
     } catch (e) { obavesti(e.message, 'greska'); }
   }
 
   async function uvezi() {
-    if (radi || brojevi.ukupno === 0) return;
+    if (radiRef.current || brojevi.ukupno === 0) return;
     const bezPola = nedostajePol(fajlovi, poIndeksu);
     if (bezPola !== null) {
       obavesti('Izaberite pol takmičara u fajlu: potreban je za nove takmičare.', 'greska');
@@ -101,6 +112,7 @@ export default function Uvoz() {
       if (sel) sel.focus();
       return;
     }
+    radiRef.current = true;
     postaviRadi(true);
     try {
       const r = await gim.uvoz.upisi(fajlovi, zaUpis(poIndeksu));
@@ -112,13 +124,14 @@ export default function Uvoz() {
       nazad();
     } catch (e) {
       obavesti(e.message, 'greska');
+      radiRef.current = false;
       postaviRadi(false);
     }
   }
 
   // Najnovije radnje za slusaoce na documentu (Esc, Ctrl+Enter), da ne vide stare vrednosti.
   radnje.current = {
-    otkazi() { if (window.confirm('Otkazati uvoz? Ništa neće biti upisano.')) odustani(); },
+    otkazi() { if (radiRef.current) return; if (window.confirm('Otkazati uvoz? Ništa neće biti upisano.')) odustani(); },
     potvrdi() { uvezi(); },
   };
   const naOtkazi = useCallback(() => radnje.current.otkazi(), []);
@@ -149,13 +162,13 @@ export default function Uvoz() {
         {fajlovi.map((f, i) => (
           <FajlKartica key={kljuc(f)} f={f} i={i} izbor={poIndeksu[i]} b={brojevi.poFajlu[i]} d={d}
             naPolje={(p, v) => naPolje(f, p, v)} naOznaku={(oi, p, v) => naOznaku(f, oi, p, v)}
-            naRed={(ri, deo) => naRed(f, ri, deo)} naSve={(v) => naSve(f, v)} naUkloni={() => ukloni(i)} />
+            naRed={(ri, deo) => naRed(f, ri, deo)} naSve={(v) => naSve(f, v)} naUkloni={() => ukloni(i)} zauzet={radi} />
         ))}
         <div className="kartica uvoz-dno">
           <span className="sek" id="uvoz-zbir">{zbir(brojevi)}</span>
           <span className="raste" />
-          <button type="button" className="dugme" onClick={dodajFajlove}><Ikona ime="fascikla" velicina={16} /><span>Dodaj još fajlova</span></button>
-          <button type="button" className="dugme" id="uvoz-otkazi" onClick={() => radnje.current.otkazi()}><span>Otkaži</span><kbd>Esc</kbd></button>
+          <button type="button" className="dugme" disabled={radi} onClick={dodajFajlove}><Ikona ime="fascikla" velicina={16} /><span>Dodaj još fajlova</span></button>
+          <button type="button" className="dugme" id="uvoz-otkazi" disabled={radi} onClick={() => radnje.current.otkazi()}><span>Otkaži</span><kbd>Esc</kbd></button>
           <button type="button" className="dugme dugme-glavno dugme-veliko" id="uvoz-potvrdi" ref={potvrdaRef}
             disabled={brojevi.ukupno === 0 || radi} onClick={uvezi}><span>Uvezi prijave</span><kbd>Ctrl+Enter</kbd></button>
         </div>

@@ -51,7 +51,7 @@ export function porukaDalje(stanje) {
   return fali.length ? `U prijavama još nije dovršeno: ${fali.join('; ')}.` : null;
 }
 
-// Cip sa brojem prijava u prikazu; uz filter pola i ukupan broj.
-export function cipPrijava(n, ukupno, pol) {
-  return `${n} ${n === 1 ? 'prijava' : 'prijave'}${pol !== '' ? ` · ukupno ${ukupno}` : ''}`;
+// Cip sa brojem prijava u prikazu; uz filter (pol ili klub) i ukupan broj.
+export function cipPrijava(n, ukupno, filtrirano) {
+  return `${n} ${n === 1 ? 'prijava' : 'prijave'}${filtrirano ? ` · ukupno ${ukupno}` : ''}`;
 }

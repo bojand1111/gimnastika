@@ -81,9 +81,9 @@ test('jediniSlobodan: vec prijavljeni se ne broje', () => {
 });
 
 test('cipPrijava: jednina, mnozina i ukupno uz filter pola', () => {
-  assert.equal(cipPrijava(1, 4, ''), '1 prijava');
-  assert.equal(cipPrijava(0, 0, ''), '0 prijave');
-  assert.equal(cipPrijava(3, 9, ''), '3 prijave');
-  assert.equal(cipPrijava(3, 9, 'M'), '3 prijave · ukupno 9');
-  assert.equal(cipPrijava(1, 9, 'Z'), '1 prijava · ukupno 9');
+  assert.equal(cipPrijava(1, 4, false), '1 prijava');
+  assert.equal(cipPrijava(0, 0, false), '0 prijave');
+  assert.equal(cipPrijava(3, 9, false), '3 prijave');
+  assert.equal(cipPrijava(3, 9, true), '3 prijave · ukupno 9');
+  assert.equal(cipPrijava(1, 9, true), '1 prijava · ukupno 9');
 });

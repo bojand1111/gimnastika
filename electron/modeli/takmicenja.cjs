@@ -89,7 +89,7 @@ function napravi(baza, fasciklaPodataka) {
 
   function sacuvaj(p, id) {
     const greske = proveri(p, id);
-    if (greske.length) throw new GreskaKorisnika(greske.join(' '));
+    if (greske.length) throw new GreskaKorisnika(greske.join(' '), { greske });
     const o = ocisti(p);
     const red = {};
     for (const k of POLJA) red[k] = o[k];

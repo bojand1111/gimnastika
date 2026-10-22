@@ -24,7 +24,9 @@ function registruj(ipcMain, moduli, dnevnik, spisak = MODULI) {
         try {
           return { ok: true, podaci: await fn(...args) };
         } catch (err) {
-          if (err instanceof GreskaKorisnika) return { ok: false, greska: err.message };
+          if (err instanceof GreskaKorisnika) {
+            return err.greske ? { ok: false, greska: err.message, greske: err.greske } : { ok: false, greska: err.message };
+          }
           dnevnik.greska(kanal, err);
           return { ok: false, greska: OPSTA_GRESKA };
         }

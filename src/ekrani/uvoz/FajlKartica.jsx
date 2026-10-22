@@ -7,14 +7,14 @@ function Upozorenje({ tekst }) {
 }
 
 // Jedan fajl uvoza: zaglavlje, upozorenja, podesavanja (klub, pol, oznake) i tabela redova (POPIS 7.7).
-export default function FajlKartica({ f, i, izbor, b, d, naPolje, naOznaku, naRed, naSve, naUkloni }) {
+export default function FajlKartica({ f, i, izbor, b, d, naPolje, naOznaku, naRed, naSve, naUkloni, zauzet }) {
   return (
     <section className="kartica" style={{ overflow: 'hidden' }}>
       <div className="kartica-zaglavlje">
         <h2 className="kartica-naslov">{f.ime} <span className="status status-info" style={{ marginLeft: 6 }}>{f.vrsta.toUpperCase()}</span></h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className="status" data-brojac={i}>{cipFajla(b)}</span>
-          <button type="button" className="dugme dugme-malo" title="Izbaci ovaj fajl iz uvoza" onClick={naUkloni}>
+          <button type="button" className="dugme dugme-malo" title="Izbaci ovaj fajl iz uvoza" disabled={zauzet} onClick={naUkloni}>
             <Ikona ime="iks" velicina={14} />Ukloni fajl
           </button>
         </div>

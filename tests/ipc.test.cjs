@@ -89,7 +89,7 @@ test('klubovi.sacuvaj: krug preko IPC, greska korisnika, string id', async () =>
   const k = ipc.kanali;
   assert.deepEqual(await k['gim:klubovi:sacuvaj']({}, { puno_ime: 'Sokol', skracenica: 'sok', grad: 'NS' }, null), { ok: true, podaci: { id: 1 } });
   assert.deepEqual(await k['gim:klubovi:sacuvaj']({}, { puno_ime: '', skracenica: 'x' }, null),
-    { ok: false, greska: 'Puno ime kluba je obavezno. Skraćenica mora imati 2 do 4 slova.' });
+    { ok: false, greska: 'Puno ime kluba je obavezno. Skraćenica mora imati 2 do 4 slova.', greske: ['Puno ime kluba je obavezno.', 'Skraćenica mora imati 2 do 4 slova.'] });
   // string id ne sme da napravi laznu duplu skracenicu
   assert.deepEqual(await k['gim:klubovi:sacuvaj']({}, { puno_ime: 'Sokol 2', skracenica: 'SOK', grad: '' }, '1'), { ok: true, podaci: { id: 1 } });
   assert.equal(dn.poziva, 0);
@@ -139,4 +139,43 @@ test('podesavanja.sva: URL grba se menja kad se fajl zameni (kes slike)', () => 
     fs.utimesSync(fajl, new Date(2026, 5, 1), new Date(2026, 5, 1));
     assert.notEqual(m.podesavanja.sva().grb_levo_url, prvi);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('GreskaKorisnika sa listom: greske ide u odgovor kao niz, bez nje nema polja', async () => {
+  const ipc = lazniIpc(), dn = laznidnevnik();
+  registruj(ipc, { klub: {
+    a: () => { throw new GreskaKorisnika('Prva. Druga.', { greske: ['Prva.', 'Druga.'] }); },
+    b: () => { throw new GreskaKorisnika('Jedna.'); },
+  } }, dn, { klub: ['a', 'b'] });
+  assert.deepEqual(await ipc.kanali['gim:klub:a']({}), { ok: false, greska: 'Prva. Druga.', greske: ['Prva.', 'Druga.'] });
+  assert.deepEqual(await ipc.kanali['gim:klub:b']({}), { ok: false, greska: 'Jedna.' });
+  assert.equal(dn.poziva, 0);
+});
+
+test('GreskaKorisnika cuva cause i kopira listu gresaka', () => {
+  const uzrok = new Error('x'), lista = ['A.', 'B.'];
+  const g = new GreskaKorisnika('A. B.', { cause: uzrok, greske: lista });
+  assert.equal(g.cause, uzrok);
+  assert.deepEqual(g.greske, ['A.', 'B.']);
+  assert.notEqual(g.greske, lista);
+  assert.equal(new GreskaKorisnika('x').greske, undefined);
+});
+
+test('src/gim.js: greska postaje Error sa greske nizom (ili null)', async () => {
+  const { pathToFileURL } = require('node:url');
+  const path = require('node:path');
+  const gim = (await import(pathToFileURL(path.join(__dirname, '..', 'src', 'gim.js')).href)).default;
+  const prethodni = globalThis.window;
+  globalThis.window = { gim: { m: {
+    a: async () => ({ ok: false, greska: 'A. B.', greske: ['A.', 'B.'] }),
+    b: async () => ({ ok: false, greska: 'Jedna.' }),
+    c: async () => ({ ok: true, podaci: 5 }),
+  } } };
+  try {
+    await assert.rejects(gim.m.a(), (e) => e.message === 'A. B.' && JSON.stringify(e.greske) === '["A.","B."]');
+    await assert.rejects(gim.m.b(), (e) => e.message === 'Jedna.' && e.greske === null);
+    assert.equal(await gim.m.c(), 5);
+  } finally {
+    if (prethodni === undefined) delete globalThis.window; else globalThis.window = prethodni;
+  }
 });

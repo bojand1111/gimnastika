@@ -9,11 +9,12 @@ export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije 
   const vidljive = klub === '' ? grupe : grupe.filter((g) => String(g.klubId) === klub);
   const broj = vidljive.reduce((n, g) => n + g.prijave.length, 0);
   const najvise = Math.max(1, pol === '' ? Math.max(sprave.M.length, sprave.Z.length) : sprave[pol].length);
-  const tekstLegende = ['Poj. = pojedinac', 'VK = van konkurencije', ...legenda(sprave, pol)].join(' · ');
+  const spraveLegende = legenda(sprave, pol).join(' · ');
+  const tekstLegende = ['Poj. = pojedinac', 'VK = van konkurencije', spraveLegende].join(' · ');
   const naslov = `Prijavljeni${pol !== '' ? ` · ${pol === 'M' ? 'MSG' : 'ŽSG'}` : ''}`;
 
   return (
-    <section className="kartica raste" style={{ overflow: 'hidden' }}>
+    <section className="kartica raste kartica-skriveno">
       <div className="kartica-zaglavlje">
         <h2 className="kartica-naslov">{naslov}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -26,7 +27,7 @@ export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije 
               ))}
             </select>
           )}
-          <span className="status" id="broj-prijava">{cipPrijava(broj, d.ukupno, pol || (klub !== '' ? 'klub' : ''))}</span>
+          <span className="status" id="broj-prijava">{cipPrijava(broj, d.ukupno, pol !== '' || klub !== '')}</span>
           {upozorenja.length > 0 && (
             <span className="status status-bad"><Ikona ime="upozorenje" velicina={13} />
               {upozorenja.length} {upozorenja.length === 1 ? 'upozorenje' : 'upozorenja'}</span>
@@ -38,7 +39,7 @@ export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije 
         </div>
       </div>
       {upozorenja.map((u, i) => (
-        <div key={i} role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, padding: '4px 16px', background: 'var(--bad-soft)', color: 'var(--bad)', fontSize: 13, fontWeight: 600, borderBottom: '1px solid var(--line)' }}>
+        <div key={i} role="alert" className="prijave-upozorenje">
           <Ikona ime="upozorenje" velicina={16} /><span>{u}</span>
         </div>
       ))}
@@ -60,8 +61,8 @@ export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije 
           </tbody>
         </table>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, minHeight: 52, padding: '0 12px 0 16px', flexShrink: 0, borderTop: '1px solid var(--line)' }}>
-        <span className="sivo mali odseci" style={{ flex: '1 1 0', minWidth: 0 }} title={tekstLegende}>{tekstLegende}</span>
+      <div className="prijave-podnozje">
+        <span className="sivo mali odseci prijave-legenda" title={spraveLegende}>{tekstLegende}</span>
         <button type="button" className="dugme dugme-glavno" id="sledece" onClick={akcije.dalje}>
           <span>Sledeće: Rotacije</span><Ikona ime="strelica-desno" velicina={16} /></button>
       </div>

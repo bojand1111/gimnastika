@@ -18,6 +18,10 @@ const broj = (id) => (id === null || id === undefined || id === '' ? null : Numb
 const prazno = (v) => v === null || v === undefined || v === '';
 // PHP istinitost za kvacice iz forme: '0', '', 0, false, null su ne.
 const istina = (v) => Boolean(v) && v !== '0';
+const GRB_DIJALOG = {
+  properties: ['openFile'],
+  filters: [{ name: 'Slike', extensions: ['png', 'jpg', 'jpeg', 'svg', 'gif'] }],
+};
 const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.';
 
 function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul }) {
@@ -112,15 +116,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
         return { ...sva, grb_levo_url: grbUrl(sva.grb_levo), grb_desno_url: grbUrl(sva.grb_desno) };
       },
       sacuvajOpsta: (u) => p.sacuvajOpsta(u),
-      izaberiGrb: async () => {
-        const opcije = {
-          properties: ['openFile'],
-          filters: [{ name: 'Slike', extensions: ['png', 'jpg', 'jpeg', 'svg', 'gif'] }],
-        };
-        const prozor = roditelj();
-        const r = prozor ? await dialog.showOpenDialog(prozor, opcije) : await dialog.showOpenDialog(opcije);
-        return r.canceled || !r.filePaths.length ? null : r.filePaths[0];
-      },
+      izaberiGrb: async () => (await izaberi(GRB_DIJALOG))[0] ?? null,
       aktivno: () => p.aktivno(),
     },
     takmicenja: {
@@ -128,7 +124,11 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
         const aid = p.aktivnoTakmicenjeId();
         return tk.sva().map((r) => ({ ...r, status: tk.status(r, aid), stanje: pr.stanjePripreme(Number(r.id)) }));
       },
-      nadji: (id) => sGrbovima(tk.nadji(broj(id))),
+      // ima_ocena (0|1): forma zakljucava broj E sudija kad su ocene vec unete.
+      nadji: (id) => {
+        const r = sGrbovima(tk.nadji(broj(id)));
+        return r ? { ...r, ima_ocena: tk.imaOcena(Number(r.id)) ? 1 : 0 } : r;
+      },
       prazno: () => sGrbovima(tk.prazno()),
       // Novo takmicenje odmah postaje aktivno (POPIS 4.3); renderer posle odgovora emituje app:aktivno.
       sacuvaj: (u, id) => {
@@ -138,10 +138,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
         if (novo) p.postavi('aktivno_takmicenje', String(sid));
         return { id: sid, novo, aktivno: novo };
       },
-      izaberiGrb: async () => (await izaberi({
-        properties: ['openFile'],
-        filters: [{ name: 'Slike', extensions: ['png', 'jpg', 'jpeg', 'svg', 'gif'] }],
-      }))[0] ?? null,
+      izaberiGrb: async () => (await izaberi(GRB_DIJALOG))[0] ?? null,
       sacuvajGrb: (id, polje, putanja) => {
         postoji(broj(id));
         const vrednost = tk.sacuvajGrb(broj(id), polje, putanja);
@@ -215,8 +212,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
           lekarski_do: tekst(u.lekarski_do),
         }, null);
         const r = pr.dodajVise(aid, [tid]);
-        const prijavaId = baza.vrednost('SELECT id FROM prijave WHERE takmicenje_id = ? AND takmicar_id = ?', [aid, tid]);
-        return { takmicar_id: tid, prijava_id: prijavaId === null ? null : Number(prijavaId), dodato: r.dodato, preskoceno: r.preskoceno, upozorenja: r.upozorenja };
+        return { takmicar_id: tid, prijava_id: pr.idZa(aid, tid), dodato: r.dodato, preskoceno: r.preskoceno, upozorenja: r.upozorenja };
       },
       stanje: () => pr.stanjePripreme(aktivnoId()),
     },

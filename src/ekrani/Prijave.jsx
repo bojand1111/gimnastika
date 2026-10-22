@@ -9,8 +9,8 @@ import { najavi, obavesti } from '../okvir/Poruke.jsx';
 import { porukaDalje } from './prijaveFilter.js';
 import { poljaUcesca } from '../../electron/racun/priprema.mjs';
 import * as uvozStanje from '../uvozStanje.js';
+import { obradiNemaAktivnog } from './aktivno.js';
 
-const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja.';
 const polIzHasha = () => {
   const p = razlozi(location.hash).parametri.pol;
   return p === 'M' || p === 'Z' ? p : '';
@@ -23,7 +23,10 @@ export default function Prijave() {
   const [klub, postaviKlubDrzac] = useState('');
   const [izabranId, postaviIzabran] = useState(null);
   const [reset, postaviReset] = useState(0);
-  const mounted = useRef(true);
+  const [greskaUcitavanja, postaviGresku] = useState(false);
+  const ziv = useRef(true);
+  const dRef = useRef(null);
+  const naCekanju = useRef(new Map()); // brojac izmena po redu i polju (optimisticki select)
   const radi = useRef({ dodaj: false, startni: false });
   const klubRef = useRef('');
   const polRef = useRef(pol);
@@ -50,11 +53,8 @@ export default function Prijave() {
   }, [postaviKlub]);
 
   const nemaAktivnog = useCallback((e) => {
-    if (!mounted.current) return true;
-    if (!String(e.message).startsWith(NEMA_AKTIVNOG)) return false;
-    najavi('Prvo izaberite aktivno takmičenje.', 'upozorenje');
-    location.hash = '#/takmicenja';
-    return true;
+    if (!ziv.current) return true;
+    return obradiNemaAktivnog(e);
   }, []);
 
   // Sve podatke ekrana ucitava iznova; zastarel odgovor se odbacuje.
@@ -63,13 +63,18 @@ export default function Prijave() {
     try {
       const podaci = await gim.prijave.podaci(p || null);
       if (moj !== brojac.current) return null;
-      if (!mounted.current) return null;
+      if (!ziv.current) return null;
       postaviD({ ...podaci, polPodaci: p });
+      postaviGresku(false);
+      postaviIzabran(null); // oznaka novog reda traje do sledeceg ucitavanja
       uskladiKlub(podaci);
       return podaci;
     } catch (e) {
-      if (moj !== brojac.current || !mounted.current) return null;
-      if (!nemaAktivnog(e)) obavesti(e.message, 'greska');
+      if (moj !== brojac.current || !ziv.current) return null;
+      if (!nemaAktivnog(e)) {
+        obavesti(e.message, 'greska');
+        if (!dRef.current) postaviGresku(true);
+      }
       return null;
     }
   }, [uskladiKlub, nemaAktivnog]);
@@ -79,7 +84,7 @@ export default function Prijave() {
     window.addEventListener('hashchange', naHash);
     return () => window.removeEventListener('hashchange', naHash);
   }, []);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { ziv.current = true; return () => { ziv.current = false; }; }, []);
   useEffect(() => { polRef.current = pol; ucitaj(pol); }, [pol, ucitaj]);
 
   // Posle novog takmicara: izabran red, centriran, fokus na prvu spravu.
@@ -101,6 +106,7 @@ export default function Prijave() {
     } catch (e) { obavesti(`Prikaz stanja nije osvežen: ${e.message}`, 'upozorenje'); }
   }, []);
 
+  dRef.current = d;
   const izmeniRed = (id, deo) => postaviD((x) => ({ ...x, prijave: x.prijave.map((p) => (p.id === id ? { ...p, ...deo } : p)) }));
 
   async function dodaj(ids) {
@@ -116,18 +122,36 @@ export default function Prijave() {
   }
 
   // Greska se prikazuje ovde i baca dalje (polje startnog broja je oznacava crveno).
+  // Kategorija i program se prikazuju odmah (dve brze strelice rade) i vracaju na staro kad snimanje ne uspe.
   async function izmeni(id, polje, vrednost) {
+    const optimisticki = polje === 'kategorija_id' || polje === 'program_id';
+    const kljuc = `${id}:${polje}`;
+    let moj = 0;
+    let staro;
+    if (optimisticki) {
+      moj = (naCekanju.current.get(kljuc) || 0) + 1;
+      naCekanju.current.set(kljuc, moj);
+      const red = dRef.current.prijave.find((p) => p.id === id);
+      staro = red ? red[polje] : null;
+      izmeniRed(id, { [polje]: vrednost === null ? null : Number(vrednost) });
+    }
+    const najnovije = () => !optimisticki || naCekanju.current.get(kljuc) === moj;
     try {
       const r = await gim.prijave.izmeni(id, polje, vrednost);
-      izmeniRed(id, r.prijava);
+      if (najnovije()) izmeniRed(id, r.prijava);
+      else { const { [polje]: preskoci, ...ostalo } = r.prijava; izmeniRed(id, ostalo); }
       obavesti('Sačuvano.');
       if (polje !== 'startni_broj') osveziStanje();
       return r.prijava;
-    } catch (e) { obavesti(e.message, 'greska'); throw e; }
+    } catch (e) {
+      if (optimisticki && najnovije()) izmeniRed(id, { [polje]: staro });
+      obavesti(e.message, 'greska');
+      throw e;
+    }
   }
 
   const akcije = {
-    // Select ostaje na staroj vrednosti jer je kontrolisan; greska je vec u toastu.
+    // Greska je vec u toastu; select se vraca na staro u izmeni().
     izmeni: (id, polje, v) => izmeni(id, polje, v === '' ? null : v).catch(() => {}),
     startniBroj: (id, v) => izmeni(id, 'startni_broj', v === '' ? null : v).then((p) => p.startni_broj),
     async sprava(id, spravaId, radi) {
@@ -182,7 +206,8 @@ export default function Prijave() {
         const r = await gim.uvoz.pripremi(putanje);
         if (!r.fajlovi.length) { r.greske.forEach((g) => obavesti(g, 'greska')); return; }
         r.greske.forEach((g) => obavesti(g, 'greska'));
-        uvozStanje.postavi(r.fajlovi);
+        // Zamena (ne dodavanje kao u PHP 7.2) je namerna: stanje uvoza vazi za jednu posetu ekranu i vezano je za takmicenje.
+        uvozStanje.postavi(r.fajlovi, d.takm.id);
         location.hash = '#/uvoz';
       } catch (e) { obavesti(e.message, 'greska'); }
     },
@@ -216,12 +241,27 @@ export default function Prijave() {
     }
   }
 
-  if (!d) return null;
+  // Oznaka novog reda nestaje kad fokus predje na drugi red.
+  function naFokus(ev) {
+    if (izabranId == null) return;
+    const tr = ev.target.closest && ev.target.closest('tr');
+    if (!tr || tr.dataset.id !== String(izabranId)) postaviIzabran(null);
+  }
+
+  if (!d) {
+    if (!greskaUcitavanja) return null;
+    return (
+      <div className="prazno-stanje" role="alert">
+        <p>Prijave nisu učitane.</p>
+        <button type="button" className="dugme" data-fokus onClick={() => { postaviGresku(false); ucitaj(); }}>Pokušaj ponovo</button>
+      </div>
+    );
+  }
   const polD = d.polPodaci ?? pol; // pol za koji su podaci ucitani
   return (
     <>
       <Koraci stanje={d.stanje} tekuci="prijave" takmId={Number(d.takm.id)} />
-      <div className="red red-rastegni raste" style={{ minHeight: 0 }} id="prijave">
+      <div className="red red-rastegni raste prijave-ekran" id="prijave" onFocusCapture={naFokus}>
         <BazaTakmicara d={d} pol={polD} naDodaj={dodaj} naNovi={otvoriDijalog} reset={reset} />
         <TabelaPrijava d={d} pol={polD} klub={klub} naKlub={(k) => postaviKlub(k, d.takm.id)}
           izabranId={izabranId} akcije={akcije} />

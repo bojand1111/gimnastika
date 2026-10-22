@@ -38,7 +38,7 @@ function napravi(baza) {
 
   function sacuvaj(p, id) {
     const greske = proveri(p, id);
-    if (greske.length) throw new GreskaKorisnika(greske.join(' '));
+    if (greske.length) throw new GreskaKorisnika(greske.join(' '), { greske });
     const o = ocisti(p);
     const sad = Baza.sad();
     o.izmenjeno = sad;

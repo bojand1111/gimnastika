@@ -1,5 +1,6 @@
 // Faza 3: IPC moduli takmicenja, prijave, uvoz nad :memory: bazom.
 const test = require('node:test');
+const { after } = test;
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -18,10 +19,15 @@ function laznidnevnik() {
   return { poziva: 0, info() {}, greska() { this.poziva++; } };
 }
 
+// Svi privremeni folderi se brisu na kraju fajla, i kad test padne pre svog cisti(dir).
+const napravljeni = [];
+after(() => { for (const d of napravljeni) fs.rmSync(d, { recursive: true, force: true }); });
+
 function pravi(dialogOdgovor = { canceled: true, filePaths: [] }) {
   const baza = otvori(':memory:');
   baza.migriraj();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-ipc3-'));
+  napravljeni.push(dir);
   const dn = laznidnevnik();
   const moduli = napraviModule(baza, { dialog: { showOpenDialog: async () => dialogOdgovor }, fasciklaPodataka: () => dir, dnevnik: dn });
   return { baza, dir, moduli, dn };
@@ -228,4 +234,31 @@ test('uvoz: izaberiFajlove, pripremi (greske po fajlu), upisi', async () => {
   const u = await moduli.uvoz.upisi(r.fajlovi, {});
   assert.equal(typeof u.prijavljeno, 'number');
   cisti(dir);
+});
+
+test('takmicenja.nadji: ima_ocena je 0 dok nema unetih ocena, pa 1', (t) => {
+  const { baza, moduli, dir } = pravi();
+  t.after(() => cisti(dir));
+  const s = tokSeme(baza);
+  assert.equal(moduli.takmicenja.nadji(String(s.takm)).ima_ocena, 0);
+  const pid = baza.ubaci('prijave', { takmicenje_id: s.takm, takmicar_id: s.t.Ana, klub_id: s.k1, kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });
+  baza.ubaci('ocene', { prijava_id: pid, sprava_id: s.pr, status: 'nacrt', kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });
+  assert.equal(moduli.takmicenja.nadji(s.takm).ima_ocena, 0);
+  baza.izvrsi("UPDATE ocene SET status = 'uneto'");
+  assert.equal(moduli.takmicenja.nadji(s.takm).ima_ocena, 1);
+  assert.equal(moduli.takmicenja.nadji(999), null);
+});
+
+test('takmicenja.sacuvaj: lista gresaka provere ide u greske', async () => {
+  const { moduli, dir, dn } = pravi();
+  const ipc = lazniIpc();
+  registruj(ipc, { takmicenja: moduli.takmicenja }, dn, { takmicenja: MODULI.takmicenja });
+  try {
+    const o = await ipc.kanali['gim:takmicenja:sacuvaj']({}, { naziv: '', datum: '' }, null);
+    assert.equal(o.ok, false);
+    assert.ok(o.greske.length >= 2);
+    assert.equal(o.greske.join(' '), o.greska);
+  } finally {
+    cisti(dir);
+  }
 });

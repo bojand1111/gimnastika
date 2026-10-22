@@ -112,6 +112,12 @@ function napravi(baza, podesavanja) {
     return { dodato, preskoceno, upozorenja };
   }
 
+  // Id prijave takmicara na takmicenju, ili null.
+  function idZa(takmicenjeId, takmicarId) {
+    const id = baza.vrednost('SELECT id FROM prijave WHERE takmicenje_id = ? AND takmicar_id = ?', [takmicenjeId, takmicarId]);
+    return id === null ? null : Number(id);
+  }
+
   function dodajJednu(takmicenjeId, takmicarId, kategorijaId, programId, ucesce) {
     const takm = baza.jedan('SELECT * FROM takmicenja WHERE id = ?', [takmicenjeId]);
     if (takm === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
@@ -307,7 +313,7 @@ function napravi(baza, podesavanja) {
   }
 
   return {
-    lista, nadji, prijavljeniTakmicari, potvrdjeniKlubovi, brojevi, lekarskiUpozorenja, stanjePripreme,
+    lista, nadji, idZa, prijavljeniTakmicari, potvrdjeniKlubovi, brojevi, lekarskiUpozorenja, stanjePripreme,
     dodajVise, dodajJednu, izmeniPolje, postaviSpravu, postaviUcesce, obrisi, potvrdiKlub, dodeliStartneBrojeve,
   };
 }

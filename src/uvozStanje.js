@@ -1,11 +1,13 @@
-// Pripremljeni fajlovi koje ekran Prijave predaje ekranu Uvoz (obican modulni podatak).
+// Pripremljeni fajlovi koje ekran Prijave predaje ekranu Uvoz (obican modulni podatak), vezani za takmicenje.
 // Svaka izmena pravi novi niz, a objekti fajlova ostaju isti (React ih prepoznaje po identitetu).
 let stanje = null;
 
-export function postavi(novo) { stanje = novo; }
+export function postavi(fajlovi, takmId) { stanje = { fajlovi, takmId: Number(takmId) }; }
 export function uzmi() { return stanje; }
 export function ocisti() { stanje = null; }
-export function dodaj(fajlovi) { stanje = [...(stanje || []), ...fajlovi]; }
+export function dodaj(fajlovi) {
+  if (stanje) stanje = { ...stanje, fajlovi: [...stanje.fajlovi, ...fajlovi] };
+}
 export function ukloni(i) {
-  if (stanje) stanje = stanje.filter((_, k) => k !== i);
+  if (stanje) stanje = { ...stanje, fajlovi: stanje.fajlovi.filter((_, k) => k !== i) };
 }
