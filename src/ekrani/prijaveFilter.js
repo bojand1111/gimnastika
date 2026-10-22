@@ -10,6 +10,12 @@ export function vidljivTakmicar(red, { upit, klub }) {
   return klub === '' || String(red.klub_id ?? 0) === String(klub);
 }
 
+// Enter u pretrazi: id jedinog vidljivog takmicara koji nije vec prijavljen, inace null.
+export function jediniSlobodan(vidljivi, prijavljeni) {
+  const slobodni = vidljivi.filter((t) => !prijavljeni.has(t.id));
+  return slobodni.length === 1 ? slobodni[0].id : null;
+}
+
 // Prijave po klubu: redosled iz stanja.redosled_klubova bez 0, pa 0; unutar kluba ostaje redosled liste.
 export function grupisiPoKlubu(prijave, stanje) {
   const po = new Map();

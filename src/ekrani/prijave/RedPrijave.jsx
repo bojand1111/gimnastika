@@ -20,7 +20,8 @@ function StartniBroj({ red, naSnimi }) {
       postaviGresku(false);
     } catch {
       postaviGresku(true); // poruku je vec prikazao vlasnik (toast)
-      if (document.activeElement === document.body) ref.current.focus();
+      ref.current.focus();
+      ref.current.select();
     }
   }
 

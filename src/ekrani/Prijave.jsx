@@ -22,6 +22,9 @@ export default function Prijave() {
   const [d, postaviD] = useState(null);
   const [klub, postaviKlubDrzac] = useState('');
   const [izabranId, postaviIzabran] = useState(null);
+  const [reset, postaviReset] = useState(0);
+  const mounted = useRef(true);
+  const radi = useRef({ dodaj: false, startni: false });
   const klubRef = useRef('');
   const polRef = useRef(pol);
   const brojac = useRef(0);
@@ -47,6 +50,7 @@ export default function Prijave() {
   }, [postaviKlub]);
 
   const nemaAktivnog = useCallback((e) => {
+    if (!mounted.current) return true;
     if (!String(e.message).startsWith(NEMA_AKTIVNOG)) return false;
     najavi('Prvo izaberite aktivno takmičenje.', 'upozorenje');
     location.hash = '#/takmicenja';
@@ -59,10 +63,12 @@ export default function Prijave() {
     try {
       const podaci = await gim.prijave.podaci(p || null);
       if (moj !== brojac.current) return null;
-      postaviD(podaci);
+      if (!mounted.current) return null;
+      postaviD({ ...podaci, polPodaci: p });
       uskladiKlub(podaci);
       return podaci;
     } catch (e) {
+      if (moj !== brojac.current || !mounted.current) return null;
       if (!nemaAktivnog(e)) obavesti(e.message, 'greska');
       return null;
     }
@@ -73,6 +79,7 @@ export default function Prijave() {
     window.addEventListener('hashchange', naHash);
     return () => window.removeEventListener('hashchange', naHash);
   }, []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { polRef.current = pol; ucitaj(pol); }, [pol, ucitaj]);
 
   // Posle novog takmicara: izabran red, centriran, fokus na prvu spravu.
@@ -98,12 +105,14 @@ export default function Prijave() {
 
   async function dodaj(ids) {
     if (!ids.length) { obavesti('Označite bar jednog takmičara.', 'upozorenje'); return false; }
+    if (radi.current.dodaj) return false;
+    radi.current.dodaj = true;
     try {
       const r = await gim.prijave.dodaj(ids);
       await ucitaj();
       obavesti(`Prijavljeno: ${r.dodato}.${r.preskoceno.length ? ` Preskočeno: ${r.preskoceno.join('; ')}.` : ''}`);
       return true;
-    } catch (e) { obavesti(e.message, 'greska'); return false; }
+    } catch (e) { obavesti(e.message, 'greska'); return false; } finally { radi.current.dodaj = false; }
   }
 
   // Greska se prikazuje ovde i baca dalje (polje startnog broja je oznacava crveno).
@@ -149,11 +158,13 @@ export default function Prijave() {
       } catch (e) { obavesti(e.message, 'greska'); }
     },
     async startni() {
+      if (radi.current.startni) return;
+      radi.current.startni = true;
       try {
         const r = await gim.prijave.startni();
         await ucitaj();
         obavesti(`Dodeljeno startnih brojeva: ${r.dodeljeno}.`);
-      } catch (e) { obavesti(e.message, 'greska'); }
+      } catch (e) { obavesti(e.message, 'greska'); } finally { radi.current.startni = false; }
     },
     async dalje() {
       try {
@@ -187,29 +198,32 @@ export default function Prijave() {
     const r = await gim.prijave.noviTakmicar(unos);
     dijalog.current.zatvori();
     const ime = `${unos.prezime.trim()} ${unos.ime.trim()}`;
+    // Poruka prvo, da je upis vidljiv i kad osvezavanje ne uspe.
+    obavesti(r.prijava_id != null
+      ? `${ime} je upisan u bazu takmičara i prijavljen. Izaberite sprave i učešće.`
+      : `${ime} je upisan u bazu takmičara, ali nije prijavljen: ${r.preskoceno.join('; ')}.`);
     let podaci;
     try { podaci = await gim.prijave.podaci(null); } catch (e) { obavesti(e.message, 'greska'); return; }
     brojac.current += 1;
-    postaviD(podaci);
+    postaviD({ ...podaci, polPodaci: '' });
+    postaviReset((n) => n + 1);
     if (pol !== '') { polRef.current = ''; postaviPol(''); location.hash = '#/prijave'; }
     if (r.prijava_id != null) {
       const red = podaci.prijave.find((p) => p.id === r.prijava_id);
       if (klubRef.current !== '' && red && String(red.klub_id ?? 0) !== klubRef.current) postaviKlub('', podaci.takm.id);
       fokusId.current = r.prijava_id;
       postaviIzabran(r.prijava_id);
-      obavesti(`${ime} je upisan u bazu takmičara i prijavljen. Izaberite sprave i učešće.`);
-    } else {
-      obavesti(`${ime} je upisan u bazu takmičara, ali nije prijavljen: ${r.preskoceno.join('; ')}.`);
     }
   }
 
   if (!d) return null;
+  const polD = d.polPodaci ?? pol; // pol za koji su podaci ucitani
   return (
     <>
       <Koraci stanje={d.stanje} tekuci="prijave" takmId={Number(d.takm.id)} />
       <div className="red red-rastegni raste" style={{ minHeight: 0 }} id="prijave">
-        <BazaTakmicara d={d} pol={pol} naDodaj={dodaj} naNovi={otvoriDijalog} />
-        <TabelaPrijava d={d} pol={pol} klub={klub} naKlub={(k) => postaviKlub(k, d.takm.id)}
+        <BazaTakmicara d={d} pol={polD} naDodaj={dodaj} naNovi={otvoriDijalog} reset={reset} />
+        <TabelaPrijava d={d} pol={polD} klub={klub} naKlub={(k) => postaviKlub(k, d.takm.id)}
           izabranId={izabranId} akcije={akcije} />
       </div>
       <DijalogTakmicar ref={dijalog} klubovi={d.klubovi} naSnimi={noviTakmicar} />

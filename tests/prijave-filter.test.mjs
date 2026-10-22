@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalizuj, vidljivTakmicar, grupisiPoKlubu, sirinaSprava, legenda, porukaDalje, cipPrijava,
+  normalizuj, vidljivTakmicar, grupisiPoKlubu, sirinaSprava, legenda, porukaDalje, cipPrijava, jediniSlobodan,
 } from '../src/ekrani/prijaveFilter.js';
 
 const red = { id_broj: '00203', ime: 'Teodora', prezime: 'Nikolić', klub_id: 3 };
@@ -69,6 +69,15 @@ test('porukaDalje: nista kad je sve u redu, inace tekst iz 6.2', () => {
   assert.equal(porukaDalje({ prijava: 5, nepotpune: 0, nepotvrdjeni_klubovi: 3 }),
     'U prijavama još nije dovršeno: klubovi čiji spisak nije potvrđen: 3.');
   assert.equal(porukaDalje({ prijava: 0, nepotpune: 0, nepotvrdjeni_klubovi: 0 }), 'Još nema prijava. Prvo prijavite takmičare.');
+});
+
+test('jediniSlobodan: vec prijavljeni se ne broje', () => {
+  const t = (id) => ({ id });
+  assert.equal(jediniSlobodan([t(1), t(2)], new Set([1])), 2);
+  assert.equal(jediniSlobodan([t(1), t(2)], new Set()), null);
+  assert.equal(jediniSlobodan([t(1)], new Set([1])), null);
+  assert.equal(jediniSlobodan([], new Set()), null);
+  assert.equal(jediniSlobodan([t(5)], new Set()), 5);
 });
 
 test('cipPrijava: jednina, mnozina i ukupno uz filter pola', () => {

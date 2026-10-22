@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ikona from '../../komponente/Ikona.jsx';
-import { vidljivTakmicar } from '../prijaveFilter.js';
+import { vidljivTakmicar, jediniSlobodan } from '../prijaveFilter.js';
 import { url } from '../../ruter.js';
 
 const POLOVI = [['', 'Svi'], ['M', 'M'], ['Z', 'Ž']];
 
 // Leva kartica: baza takmicara sa pretragom, klubom i polom; Enter ili "Prijavi" prijavljuje oznacene.
-export default function BazaTakmicara({ d, pol, naDodaj, naNovi }) {
+export default function BazaTakmicara({ d, pol, naDodaj, naNovi, reset }) {
   const [upit, postaviUpit] = useState('');
   const [klub, postaviKlub] = useState('');
   const [oznaceni, postaviOznaceni] = useState(() => new Set());
@@ -22,6 +22,18 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi }) {
 
   useEffect(() => { if (pretraga.current) pretraga.current.focus(); }, []);
 
+  // Oznake iz drugog pola se odbacuju kad se promeni prikaz (ne smeju da se prijave).
+  useEffect(() => {
+    const ids = new Set(redovi.map((t) => t.id));
+    postaviOznaceni((s) => ([...s].every((id) => ids.has(id)) ? s : new Set([...s].filter((id) => ids.has(id)))));
+  }, [redovi]);
+
+  // Spoljni reset (novi takmicar): prazna pretraga, svi klubovi, bez oznaka.
+  useEffect(() => {
+    if (!reset) return;
+    postaviUpit(''); postaviKlub(''); postaviOznaceni(new Set());
+  }, [reset]);
+
   // Alt+N otvara dijalog sa kluba iz leve liste.
   const novi = () => naNovi(klub);
   useEffect(() => {
@@ -34,7 +46,11 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi }) {
   }
 
   async function dodaj(ids) {
-    if (await naDodaj(ids)) postaviOznaceni(new Set());
+    if (await naDodaj(ids)) {
+      // Kao PHP posle reload-a: prazna pretraga, "Svi klubovi", fokus u pretrazi.
+      postaviUpit(''); postaviKlub(''); postaviOznaceni(new Set());
+      if (pretraga.current) pretraga.current.focus();
+    }
   }
 
   function izPretrage(ev) {
@@ -42,7 +58,8 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi }) {
       ev.preventDefault();
       let ids = [...oznaceni];
       // Tacno jedan vidljiv neprijavljen i nista oznaceno: Enter ga prijavljuje.
-      if (!ids.length && vidljivi.length === 1 && !prijavljeni.has(vidljivi[0].id)) ids = [vidljivi[0].id];
+      const jedini = jediniSlobodan(vidljivi, prijavljeni);
+      if (!ids.length && jedini != null) ids = [jedini];
       dodaj(ids);
     } else if (ev.key === 'ArrowDown') {
       ev.preventDefault();
@@ -70,7 +87,7 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', borderBottom: '1px solid var(--line)' }}>
         <label className="pretraga">
           <span className="ikona-pretraga" style={{ display: 'flex' }}><Ikona ime="pretraga" velicina={16} /></span>
-          <input type="text" className="unos" id="pretraga" ref={pretraga} value={upit} placeholder="Ime, prezime ili ID"
+          <input type="text" className="unos" id="pretraga" data-fokus ref={pretraga} value={upit} placeholder="Ime, prezime ili ID"
             aria-label="Pretraga" autoComplete="off" onChange={(ev) => postaviUpit(ev.target.value)} onKeyDown={izPretrage} />
         </label>
         <div style={{ display: 'flex', gap: 8 }}>
