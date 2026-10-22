@@ -1,0 +1,184 @@
+// Faza 3: IPC moduli takmicenja, prijave, uvoz nad :memory: bazom.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { registruj } = require('../electron/ipc.cjs');
+const { GreskaKorisnika } = require('../electron/greska.cjs');
+const { MODULI } = require('../electron/api.cjs');
+const { otvori } = require('../electron/baza/baza.cjs');
+const { napraviModule } = require('../electron/moduli.cjs');
+const { tokSeme } = require('./pomoc/seme.cjs');
+
+function lazniIpc() {
+  return { kanali: {}, handle(kanal, fn) { this.kanali[kanal] = fn; } };
+}
+function laznidnevnik() {
+  return { poziva: 0, info() {}, greska() { this.poziva++; } };
+}
+
+function pravi(dialogOdgovor = { canceled: true, filePaths: [] }) {
+  const baza = otvori(':memory:');
+  baza.migriraj();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-ipc3-'));
+  const dn = laznidnevnik();
+  const moduli = napraviModule(baza, { dialog: { showOpenDialog: async () => dialogOdgovor }, fasciklaPodataka: () => dir, dnevnik: dn });
+  return { baza, dir, moduli, dn };
+}
+const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.';
+const cisti = (dir) => fs.rmSync(dir, { recursive: true, force: true });
+
+test('guard: svi moduli iz MODULI imaju handler (nema viska ni manjka)', () => {
+  const { moduli, dir } = pravi();
+  for (const k of ['takmicenja', 'prijave', 'uvoz']) assert.ok(MODULI[k], `MODULI.${k}`);
+  const ipc = lazniIpc();
+  registruj(ipc, moduli, laznidnevnik(), Object.fromEntries(Object.keys(moduli).map((k) => [k, MODULI[k]])));
+  for (const k of ['takmicenja', 'prijave', 'uvoz']) {
+    for (const r of MODULI[k]) assert.ok(ipc.kanali[`gim:${k}:${r}`], `${k}:${r}`);
+  }
+  cisti(dir);
+});
+
+test('bez aktivnog takmicenja prijave i uvoz bacaju poruku', async () => {
+  const { moduli, dir } = pravi();
+  assert.throws(() => moduli.prijave.podaci(null), (e) => e instanceof GreskaKorisnika && e.message === NEMA_AKTIVNOG);
+  assert.throws(() => moduli.prijave.stanje(), /Nema aktivnog/);
+  await assert.rejects(async () => moduli.uvoz.pripremi(['x.docx']), (e) => e.message === NEMA_AKTIVNOG);
+  cisti(dir);
+});
+
+test('takmicenja.sacuvaj: novo postaje aktivno, izmena ne; obrisi prazni aktivno', () => {
+  const { moduli, dir } = pravi();
+  const unos = { naziv: 'Kup', datum: '17.10.2026.', mesto: 'NS', broj_e_sudija: '4', pravilo_e: 'odbaci_krajnje', ekipno_broji: '3' };
+  assert.deepEqual(moduli.takmicenja.sacuvaj(unos, null), { id: 1, novo: true, aktivno: true });
+  assert.equal(moduli.podesavanja.aktivno().id, 1);
+  assert.equal(moduli.takmicenja.sacuvaj({ ...unos, naziv: 'Drugo' }, '').id, 2);
+  moduli.takmicenja.otvori('1');
+  assert.deepEqual(moduli.takmicenja.sacuvaj({ ...unos, naziv: 'Kup 2' }, '2'), { id: 2, novo: false, aktivno: false });
+  assert.equal(moduli.podesavanja.aktivno().id, 1);
+  moduli.takmicenja.obrisi('2');
+  assert.equal(moduli.podesavanja.aktivno().id, 1);
+  moduli.takmicenja.obrisi('1');
+  assert.equal(moduli.podesavanja.aktivno(), null);
+  cisti(dir);
+});
+
+test('takmicenja.otvori vraca korak po POPIS 4.5', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  assert.throws(() => moduli.takmicenja.otvori(999), /Takmičenje ne postoji\./);
+  let r = moduli.takmicenja.otvori(String(s.takm));
+  assert.equal(r.korak, 'prijave');
+  assert.equal(r.naziv, 'Test kup');
+  assert.equal(r.stanje.prijava, 0);
+  assert.equal(moduli.podesavanja.aktivno().id, s.takm);
+  assert.equal(moduli.prijave.dodaj([s.t.Ana]).dodato, 1);
+  r = moduli.takmicenja.otvori(s.takm);
+  assert.equal(r.korak, 'rotacije');
+  assert.equal(r.stanje.prijava, 1);
+  assert.equal(r.stanje.nerasporedjeni, 1);
+  const pid = moduli.prijave.podaci(null).prijave[0].id;
+  moduli.prijave.izmeni(pid, 'kategorija_id', '');
+  r = moduli.takmicenja.otvori(s.takm);
+  assert.equal(r.korak, 'prijave');
+  assert.equal(r.stanje.nepotpune, 1);
+  const sva = moduli.takmicenja.sva();
+  assert.equal(sva[0].status, 'aktivno');
+  assert.equal(sva[0].stanje.prijava, 1);
+  assert.equal(sva[0].broj_prijava, 1);
+  structuredClone(r);
+  cisti(dir);
+});
+
+test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.takmicenja.otvori(s.takm);
+  moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Dona, s.muski]);
+  const p = moduli.prijave.podaci(null);
+  assert.deepEqual(Object.keys(p).sort(), ['kategorije', 'klubovi', 'prijave', 'prijavljeni', 'programi', 'sledeciIdBroj', 'sprave', 'stanje', 'takm', 'takmicari', 'ukupno', 'upozorenja']);
+  assert.equal(p.takm.id, s.takm);
+  assert.equal(p.ukupno, 4);
+  assert.equal(p.prijave.length, 4);
+  assert.equal(p.takmicari.length, 5);
+  assert.ok('klub_skr' in p.takmicari[0]);
+  assert.deepEqual([...p.prijavljeni].sort((a, b) => a - b), [s.t.Ana, s.t.Bea, s.t.Dona, s.muski].sort((a, b) => a - b));
+  assert.deepEqual(Object.keys(p.sprave).sort(), ['M', 'Z']);
+  assert.equal(p.sprave.Z.length, 2);
+  assert.equal(p.sledeciIdBroj, '100');
+  assert.deepEqual(Object.fromEntries(p.prijave.map((r) => [r.ime, r.lek_ne_vazi])), { Ana: false, Bea: true, Dona: true, Marko: true });
+  assert.deepEqual(p.upozorenja.slice().sort(), [
+    'Test Bea: lekarski važi do 01.01.2026. i ne važi na dan takmičenja (17.10.2026.).',
+    'Test Dona: nema unet lekarski pregled.',
+    'Test Marko: nema unet lekarski pregled.',
+  ]);
+  const z = moduli.prijave.podaci('Z');
+  assert.equal(z.prijave.length, 3);
+  assert.equal(z.ukupno, 4);
+  assert.equal(moduli.prijave.podaci('X').prijave.length, 4);
+  structuredClone(p);
+  cisti(dir);
+});
+
+test('prijave.noviTakmicar, izmeni, sprava, startni', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.takmicenja.otvori(s.takm);
+  assert.throws(() => moduli.prijave.noviTakmicar({ prezime: '', ime: '', id_broj: '001', godina_rodjenja: '1800', pol: '', klub_id: '0' }),
+    /ID broj 001 već postoji\. Ime je obavezno\./);
+  const r = moduli.prijave.noviTakmicar({ prezime: 'Novak', ime: 'Eva', id_broj: '100', godina_rodjenja: '2013', pol: 'Z', klub_id: '0', lekarski_do: '' });
+  assert.equal(r.dodato, 1);
+  assert.ok(r.takmicar_id > 0 && r.prijava_id > 0);
+  assert.deepEqual(r.preskoceno, []);
+  assert.equal(r.upozorenja.length, 1);
+  assert.equal(moduli.prijave.izmeni(String(r.prijava_id), 'startni_broj', '7').prijava.startni_broj, 7);
+  moduli.prijave.sprava(r.prijava_id, s.gr, false);
+  assert.equal(moduli.prijave.stanje().prijava, 1);
+  assert.deepEqual(moduli.prijave.startni(), { dodeljeno: 0 });
+  moduli.prijave.dodaj([s.t.Ana]);
+  assert.deepEqual(moduli.prijave.startni(), { dodeljeno: 1 });
+  baza.izvrsi("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('lekarski_sprecava_prijavu','da') ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost");
+  const b = moduli.prijave.noviTakmicar({ prezime: 'Bez', ime: 'Lek', id_broj: '101', godina_rodjenja: '2013', pol: 'Z', klub_id: '', lekarski_do: '' });
+  assert.equal(b.prijava_id, null);
+  assert.deepEqual(b.preskoceno, ['Bez Lek (lekarski ne važi na dan takmičenja)']);
+  cisti(dir);
+});
+
+test('grbovi: sacuvajGrb vraca url, ukloniGrb, nadji i prazno', async () => {
+  const { baza, moduli, dir } = pravi({ canceled: false, filePaths: ['a.png', 'b.png'] });
+  const s = tokSeme(baza);
+  assert.equal(await moduli.takmicenja.izaberiGrb(), 'a.png');
+  const slika = path.join(dir, 'izvor.png');
+  fs.writeFileSync(slika, 'x');
+  const g = moduli.takmicenja.sacuvajGrb(String(s.takm), 'grb_levo', slika);
+  assert.match(g.vrednost, /^grb\/takmicenje_\d+_levo_/);
+  assert.ok(g.url.startsWith('file:') && g.url.includes('?v='));
+  const n = moduli.takmicenja.nadji(s.takm);
+  assert.equal(n.grb_levo, g.vrednost);
+  assert.equal(n.grb_levo_url, g.url);
+  assert.equal(n.grb_desno_url, '');
+  moduli.takmicenja.ukloniGrb(s.takm, 'grb_levo');
+  assert.equal(moduli.takmicenja.nadji(s.takm).grb_levo_url, '');
+  assert.equal(moduli.takmicenja.prazno().grb_levo_url, '');
+  cisti(dir);
+});
+
+test('uvoz: izaberiFajlove, pripremi (greske po fajlu), upisi', async () => {
+  const { baza, moduli, dir, dn } = pravi({ canceled: false, filePaths: ['a.docx', 'b.xlsx'] });
+  const s = tokSeme(baza);
+  assert.deepEqual(await moduli.uvoz.izaberiFajlove(), ['a.docx', 'b.xlsx']);
+  moduli.takmicenja.otvori(s.takm);
+  const lose = path.join(dir, 'lose.docx');
+  fs.writeFileSync(lose, 'nije zip');
+  const r = await moduli.uvoz.pripremi([lose, path.join(__dirname, 'fajlovi', 'prijava-partizan.docx')]);
+  assert.equal(r.fajlovi.length, 1);
+  assert.equal(r.fajlovi[0].ime, 'prijava-partizan.docx');
+  assert.equal(r.greske.length, 1);
+  assert.ok(r.greske[0].startsWith('lose.docx: '));
+  assert.ok(dn.poziva >= 1);
+  structuredClone(r);
+  const u = await moduli.uvoz.upisi(r.fajlovi, {});
+  assert.equal(typeof u.prijavljeno, 'number');
+  cisti(dir);
+});

@@ -13,7 +13,7 @@ import Podesavanja from './ekrani/Podesavanja.jsx';
 
 const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja };
 // Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
-const FIKSNO = new Set(['klubovi', 'takmicari']);
+const FIKSNO = new Set(['klubovi', 'takmicari', 'takmicenja', 'prijave']);
 
 // Globalne precice: radnja(ev) -> hash ili dogadjaj na documentu.
 function izvrsi(ev) {
