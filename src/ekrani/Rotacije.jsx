@@ -124,7 +124,7 @@ export default function Rotacije() {
     }
     document.addEventListener('keydown', naTaster);
     return () => document.removeEventListener('keydown', naTaster);
-  });
+  }, []); // cita samo refove
 
   // Greska radnje je u toastu; ekran se ponovo ucitava da prikaz odgovara bazi.
   async function radnja(poziv, ponovo = true) {
@@ -188,6 +188,7 @@ export default function Rotacije() {
 
   async function snimiGrupu(id, naziv, pocetna) {
     await gim.rotacije.izmeni(id, naziv, pocetna);
+    if (!ziv.current) return;
     dijalog.current.zatvori();
     await ucitaj();
   }

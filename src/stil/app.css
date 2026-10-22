@@ -368,7 +368,7 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .blok-gresaka:focus { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* Rotacije: traka, zaglavlja kolona i podnozje (iz inline stilova PHP pogleda) */
-#rot-traka { flex-direction: row; align-items: center; gap: 16px; padding: 10px 12px; flex-shrink: 0; }
+#rot-traka { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 16px; padding: 10px 12px; flex-shrink: 0; }
 #filter-kp { width: 190px; }
 .rot-rotacija { display: flex; align-items: center; gap: 8px; }
 .rot-rotacija-link { min-width: 40px; justify-content: center; }
