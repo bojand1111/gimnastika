@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Polje from '../../komponente/Polje.jsx';
 
 // Dijalog "Grupa" (POPIS 10.1) umesto window.prompt. otvori({id, naziv, pocetna_pozicija});
@@ -9,6 +9,12 @@ const DijalogGrupa = forwardRef(function DijalogGrupa({ brojSprava, sprave, naSn
   const [f, postaviF] = useState({ id: 0, naziv: '', pocetna: '1' });
   const [greska, postaviGresku] = useState('');
   const [radi, postaviRadi] = useState(false);
+  const [otvorenoBr, postaviOtvoreno] = useState(0);
+
+  // Fokus i selekcija tek posle rendera sa novim nazivom.
+  useEffect(() => {
+    if (otvorenoBr > 0 && nazivRef.current) { nazivRef.current.focus(); nazivRef.current.select(); }
+  }, [otvorenoBr]);
 
   useImperativeHandle(ref, () => ({
     otvoren: () => Boolean(dijalog.current && dijalog.current.open),
@@ -18,7 +24,7 @@ const DijalogGrupa = forwardRef(function DijalogGrupa({ brojSprava, sprave, naSn
       postaviGresku('');
       postaviRadi(false);
       dijalog.current.showModal();
-      if (nazivRef.current) { nazivRef.current.focus(); nazivRef.current.select(); }
+      postaviOtvoreno((n) => n + 1);
     },
   }));
 

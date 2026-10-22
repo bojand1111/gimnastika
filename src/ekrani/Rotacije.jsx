@@ -35,6 +35,8 @@ export default function Rotacije() {
   const izabranRef = useRef(null);
   const fokusId = useRef(null);
   const radi = useRef(false);
+  const uLetu = useRef(0); // premestanja ciji IPC jos traje
+  const odlozeno = useRef(false); // ucitavanje preskoceno zbog premestanja u toku
   const dijalog = useRef(null);
 
   dRef.current = d;
@@ -48,6 +50,7 @@ export default function Rotacije() {
     try {
       const podaci = await gim.rotacije.podaci(pol, rot);
       if (moj !== brojac.current || !ziv.current) return;
+      if (uLetu.current > 0) { odlozeno.current = true; return; } // zastareo odgovor bi pregazio lokalno stanje
       postaviD(podaci);
       postaviGresku(false);
     } catch (e) {
@@ -92,15 +95,20 @@ export default function Rotacije() {
     const rot = dRef.current.rot;
     postaviD((x) => premestiLokalno(x, prijavaId, grupaId, pozicija));
     if (fokus) fokusId.current = prijavaId;
+    uLetu.current += 1;
+    let uspeh = true;
     try {
       await gim.rotacije.premesti(prijavaId, grupaId, pozicija, rot);
-      if (rot === 1) { await osveziStanje(); return; }
-      fokusId.current = prijavaId;
-      await ucitaj();
     } catch (e) {
+      uspeh = false;
       obavesti(e.message, 'greska');
-      await ucitaj();
+    } finally {
+      uLetu.current -= 1;
+      if (uLetu.current === 0 && odlozeno.current) { odlozeno.current = false; ucitaj(); }
     }
+    if (uspeh && rot === 1) { await osveziStanje(); return; }
+    if (uspeh) fokusId.current = prijavaId;
+    await ucitaj();
   }
 
   // Alt+strelice za izabranu karticu; radi i kad je fokus u polju (kao PHP).
