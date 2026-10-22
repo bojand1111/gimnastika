@@ -329,3 +329,25 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .dva-reda .naziv-aktivno { font-weight: 700; }
 .napomena-dole { padding: 10px 16px; font-size: 13px; flex-shrink: 0; border-top: 1px solid var(--line); }
 .kartica-lista td.desno .dugme + .dugme { margin-left: 4px; }
+
+/* Forma takmicenja (POPIS 4.10) */
+.forma-takm { flex-shrink: 0; }
+.izbor-broj { min-width: 40px; }
+.red-polja { display: flex; gap: 12px; }
+.polje-datum { width: 150px; flex: none; }
+.red-uz-tekst { display: flex; align-items: center; gap: 12px; }
+.pravila { margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pravila legend { padding: 0 6px; }
+.pravila-naslov { font-size: 13px; font-weight: 600; }
+.radio-red { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.radio-red input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--ink); }
+.radio-red > span { display: flex; flex-direction: column; }
+.ekipno-red { display: flex; align-items: center; gap: 8px; padding-top: 2px; flex-wrap: wrap; }
+.unos.ekipno { width: 44px; height: 32px; padding: 0; text-align: center; }
+.unos.ekipno:focus { padding: 0; }
+.grb-blok { min-width: 0; }
+.grb-red { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.grb-red img { height: 36px; width: auto; max-width: 60px; }
+.grb-ime { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dno-forme { display: flex; align-items: center; gap: 8px; }
+.razmak { flex-grow: 1; }

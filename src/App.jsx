@@ -11,8 +11,10 @@ import Klubovi from './ekrani/Klubovi.jsx';
 import Takmicari from './ekrani/Takmicari.jsx';
 import Podesavanja from './ekrani/Podesavanja.jsx';
 import Takmicenja from './ekrani/Takmicenja.jsx';
+import TakmicenjeForma from './ekrani/TakmicenjeForma.jsx';
 
-const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja };
+const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja,
+  'takmicenja/novo': TakmicenjeForma, 'takmicenja/izmeni': TakmicenjeForma };
 // Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
 const FIKSNO = new Set(['klubovi', 'takmicari', 'takmicenja', 'prijave']);
 

@@ -44,6 +44,8 @@ export default function Meni({ ekran, verzija }) {
 
 // Naslov ekrana: tekst stavke menija ili poseban naslov; nepoznat ekran daje svoje ime.
 export function naslovEkrana(ekran) {
+  if (ekran === 'takmicenja/novo') return 'Novo takmičenje';
+  if (ekran === 'takmicenja/izmeni') return 'Takmičenje: podaci';
   const prvi = ekran.split('/')[0];
   if (prvi === 'sistem') return 'Vizuelni sistem';
   for (const [, stavke] of GRUPE) {
