@@ -6,32 +6,23 @@ import Ikona from '../komponente/Ikona.jsx';
 import StanjeOznake from '../komponente/StanjeOznake.jsx';
 import Tabela from '../komponente/Tabela.jsx';
 import { najavi, obavesti } from '../okvir/Poruke.jsx';
+import { porukaOtvaranja } from './takmicenjaPoruke.js';
 
 const NOVO = '#/takmicenja/novo';
 const IDE = { prijave: '#/prijave', rotacije: '#/rotacije', spremno: '#/takmicenje' };
 
-// Poruka posle "Otvori" po POPIS 4.5; spremno nema poruku.
-function porukaOtvaranja(r) {
-  const pre = `Aktivno takmičenje: ${r.naziv}.`;
-  if (r.korak === 'prijave') {
-    return r.stanje.prijava === 0
-      ? `${pre} Još nema prijava: prvo prijavite takmičare.`
-      : `${pre} Prijave bez kategorije, programa ili sprava: ${r.stanje.nepotpune}.`;
-  }
-  if (r.korak === 'rotacije') return `${pre} Takmičari koji nisu raspoređeni u grupe: ${r.stanje.nerasporedjeni}.`;
-  return null;
-}
-
 export default function Takmicenja() {
   const [takmicenja, postaviTakmicenja] = useState([]);
   const [izabranId, postaviIzabran] = useState(null);
+  const [greska, postaviGresku] = useState(false);
   const noviRef = useRef(null);
+  const otvaranje = useRef(false); // dvostruki Enter salje jedan poziv
 
   useEffect(() => {
     let ziv = true;
     gim.takmicenja.sva()
       .then((r) => { if (ziv) postaviTakmicenja(r); })
-      .catch((e) => obavesti(e.message, 'greska'));
+      .catch((e) => { if (ziv) postaviGresku(true); obavesti(e.message, 'greska'); });
     return () => { ziv = false; };
   }, []);
 
@@ -44,6 +35,8 @@ export default function Takmicenja() {
   }, []);
 
   const otvori = useCallback(async (id) => {
+    if (otvaranje.current) return;
+    otvaranje.current = true;
     try {
       const r = await gim.takmicenja.otvori(id);
       const poruka = porukaOtvaranja(r);
@@ -52,6 +45,8 @@ export default function Takmicenja() {
       location.hash = IDE[r.korak];
     } catch (e) {
       obavesti(e.message, 'greska');
+    } finally {
+      otvaranje.current = false;
     }
   }, []);
 
@@ -112,7 +107,7 @@ export default function Takmicenja() {
       <div className="kartica-skrol" onKeyDownCapture={uhvatiEnter}>
         <Tabela id="tabela-takmicenja" kolone={kolone} redovi={takmicenja} izabranId={izabranId}
           naIzbor={(t) => postaviIzabran(t.id)} naOtvori={(t) => otvori(t.id)}
-          prazno={takmicenja.length === 0 ? 'Još nema takmičenja. Kliknite „Novo takmičenje“.' : null} />
+          prazno={greska ? 'Lista takmičenja nije učitana.' : (takmicenja.length === 0 ? 'Još nema takmičenja. Kliknite „Novo takmičenje“.' : null)} />
       </div>
       <p className="sivo napomena-dole">
         Klik na takmičenje ili „Otvori“ postavlja ga kao aktivno i vodi na prvi nezavršen korak pripreme (prijave, rotacije), a kad je sve spremno na pregled takmičenja. Aktivno može biti samo jedno.

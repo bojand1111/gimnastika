@@ -7,7 +7,7 @@ import Polje from '../komponente/Polje.jsx';
 import DatumPolje from '../komponente/DatumPolje.jsx';
 import IzborBroja from '../komponente/IzborBroja.jsx';
 import { Greske, najavi, obavesti } from '../okvir/Poruke.jsx';
-import { izForme, uFormu, razdvojiGreske, poljeGreske } from './takmicenjeForma.js';
+import { izForme, uFormu, listaGresaka, poljeGreske } from './takmicenjeForma.js';
 
 const GRBOVI = [['grb_levo', 'Grb levo'], ['grb_desno', 'Grb desno']];
 const LISTA = '#/takmicenja';
@@ -24,6 +24,7 @@ export default function TakmicenjeForma() {
   }, []);
   const { parametri } = razlozi(hash);
   const id = parametri.id ? Number(parametri.id) : null;
+  if (!/^#\/takmicenja(\/|\?|$)/.test(hash)) return null; // posle odlaska sa ekrana nema remonta
   return <Forma key={id ?? 'novo'} id={id} />;
 }
 
@@ -41,32 +42,48 @@ function Forma({ id }) {
   const formaRef = useRef(null);
   const fokusiran = useRef(false);
 
-  const ucitaj = useCallback(async () => {
+  // jeZiv: ucitavanje se odbacuje ako je ekran u medjuvremenu napusten.
+  const ucitaj = useCallback(async (jeZiv = () => true) => {
     try {
       const r = id === null ? await gim.takmicenja.prazno() : await gim.takmicenja.nadji(id);
+      if (!jeZiv()) return;
       if (r === null) {
         najavi('Takmičenje ne postoji.', 'greska');
         location.hash = LISTA;
         return;
       }
+      let st = null;
+      let akt = null;
+      if (id !== null) [st, akt] = await Promise.all([gim.takmicenja.stanje(id), gim.podesavanja.aktivno()]);
+      if (!jeZiv()) return;
+      // sve tek posle ucitavanja, da imaOcena nikad nije privremeno false
       postaviRed(r);
-      postaviFormu(uFormu(r));
+      postaviImaOcena(Number(r.ima_ocena) === 1);
+      postaviStanje(st);
+      postaviJeAktivno(Boolean(akt) && Number(akt.id) === id);
       postaviGrb(bezGrba());
-      if (id !== null) {
-        // imaOcena nema svoj poziv: broj_ocena stize uz listu (status <> 'nacrt', kao u modelu)
-        const [sva, st, akt] = await Promise.all([gim.takmicenja.sva(), gim.takmicenja.stanje(id), gim.podesavanja.aktivno()]);
-        const t = sva.find((x) => Number(x.id) === id);
-        postaviImaOcena(Boolean(t) && Number(t.broj_ocena) > 0);
-        postaviStanje(st);
-        postaviJeAktivno(Boolean(akt) && Number(akt.id) === id);
-      }
-    } catch (e) { obavesti(e.message, 'greska'); }
+      postaviFormu(uFormu(r));
+    } catch (e) { if (jeZiv()) obavesti(e.message, 'greska'); }
   }, [id]);
 
-  useEffect(() => { ucitaj(); }, [ucitaj]);
+  useEffect(() => {
+    let ziv = true;
+    ucitaj(() => ziv);
+    return () => { ziv = false; };
+  }, [ucitaj]);
   useEffect(() => {
     gim.klubovi.svi().then(postaviKlubove).catch((e) => obavesti(e.message, 'greska'));
   }, []);
+
+  // Fokus na prvo polje sa greskom ako poruka stoji uz polje, inace na blok gresaka.
+  useEffect(() => {
+    if (!greske.length) return;
+    const polje = greske.map(poljeGreske).find(Boolean);
+    const el = polje === 'izbor-sudije'
+      ? document.querySelector('#izbor-sudije button:not([disabled])')
+      : polje && document.querySelector(`#forma [name="${polje}"]`);
+    (el || blokGresaka.current)?.focus();
+  }, [greske]);
 
   // Esc samo iz polja forme vodi na listu; bez pitanja (POPIS 4.11).
   useEffect(() => {
@@ -98,17 +115,6 @@ function Forma({ id }) {
     } catch (e) { obavesti(e.message, 'greska'); }
   }
 
-  // Fokus na prvo polje sa greskom ako poruka stoji uz polje, inace na blok gresaka.
-  function fokusirajGresku(lista) {
-    setTimeout(() => {
-      const polje = lista.map(poljeGreske).find(Boolean);
-      const el = polje === 'izbor-sudije'
-        ? document.querySelector('#izbor-sudije button:not([disabled])')
-        : polje && document.querySelector(`#forma [name="${polje}"]`);
-      (el || blokGresaka.current)?.focus();
-    }, 0);
-  }
-
   async function sacuvaj(ev) {
     ev.preventDefault();
     if (radi) return;
@@ -118,9 +124,7 @@ function Forma({ id }) {
       try {
         r = await gim.takmicenja.sacuvaj(izForme(forma), id);
       } catch (e) {
-        const lista = razdvojiGreske(e.message);
-        postaviGreske(lista);
-        fokusirajGresku(lista);
+        postaviGreske(listaGresaka(e));
         return;
       }
       postaviGreske([]);

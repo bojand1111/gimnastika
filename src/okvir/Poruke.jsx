@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { dodaj, pokupi } from '../najava.js';
+import { dodaj, pokupi, trajanje } from '../najava.js';
 
-// Kratko obavestenje u uglu (kao App.obavesti): 2500 ms, greska 6000 ms.
+// Kratko obavestenje u uglu (kao App.obavesti): 2500 ms, greska i najavljene poruke 6000 ms; klik zatvara.
 let nextId = 0;
 const slusaoci = new Set();
 
-export function obavesti(tekst, vrsta = 'ok') {
+export function obavesti(tekst, vrsta = 'ok', ms = trajanje(vrsta)) {
   const stavka = { id: ++nextId, tekst, vrsta };
   slusaoci.forEach((s) => s({ dodaj: stavka }));
-  setTimeout(() => slusaoci.forEach((s) => s({ ukloni: stavka.id })), vrsta === 'greska' ? 6000 : 2500);
+  setTimeout(() => ukloni(stavka.id), ms);
 }
+
+const ukloni = (id) => slusaoci.forEach((s) => s({ ukloni: id }));
 
 // Poruka koja se prikazuje tek kad se ekran promeni (hashchange), npr. posle skretanja sa liste.
 export function najavi(tekst, vrsta = 'ok') {
@@ -21,7 +23,7 @@ export default function Poruke() {
   useEffect(() => {
     const s = (d) => postaviStavke((tr) => (d.dodaj ? [...tr, d.dodaj] : tr.filter((x) => x.id !== d.ukloni)));
     slusaoci.add(s);
-    const naPromeni = () => pokupi().forEach((n) => obavesti(n.tekst, n.vrsta));
+    const naPromeni = () => pokupi().forEach((n) => obavesti(n.tekst, n.vrsta, trajanje(n.vrsta, true)));
     window.addEventListener('hashchange', naPromeni);
     return () => {
       slusaoci.delete(s);
@@ -32,7 +34,7 @@ export default function Poruke() {
   return (
     <div id="obavestenja" style={{ position: 'fixed', right: 24, top: 68, zIndex: 50, display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 420 }}>
       {stavke.map((s) => (
-        <div key={s.id} className={`poruka poruka-${s.vrsta}`} style={{ boxShadow: '0 8px 24px rgba(28,27,31,0.18)' }}>{s.tekst}</div>
+        <div key={s.id} className={`poruka poruka-${s.vrsta}`} onClick={() => ukloni(s.id)} style={{ boxShadow: '0 8px 24px rgba(28,27,31,0.18)' }}>{s.tekst}</div>
       ))}
     </div>
   );

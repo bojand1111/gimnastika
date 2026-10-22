@@ -11,3 +11,8 @@ export function pokupi() {
   red = [];
   return r;
 }
+
+// Trajanje obavestenja u ms: greska i najavljene poruke (duge liste) 6000, ostalo 2500.
+export function trajanje(vrsta, najavljeno = false) {
+  return vrsta === 'greska' || najavljeno ? 6000 : 2500;
+}

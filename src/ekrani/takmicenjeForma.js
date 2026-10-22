@@ -38,9 +38,9 @@ export function uFormu(r) {
   };
 }
 
-// Model vraca sve greske spojene u jednu nisku (razmak iza tacke); ovde ih vracamo u listu.
-export function razdvojiGreske(poruka) {
-  return String(poruka ?? '').split(/(?<=\.|\))\s+(?=[A-ZŠĐČĆŽ])/).filter(Boolean);
+// Lista poruka za prikaz: err.greske (niz) ili jedna err.message.
+export function listaGresaka(e) {
+  return e && Array.isArray(e.greske) && e.greske.length ? e.greske : [String((e && e.message) ?? e)];
 }
 
 // Id polja koje treba fokusirati za poruku modela, ili null.

@@ -47,3 +47,10 @@ test('koraci: spremno', () => {
   assert.equal(k[2].opis, 'svi su raspoređeni');
   assert.deepEqual(stanja(k), ['ok', 'ok', 'ok', '']);
 });
+
+test('koraci: tekuci je tacno jedan i prati zadati kljuc', () => {
+  const k = koraci(st({ prijava: 2 }), 'rotacije', 3);
+  assert.deepEqual(k.map((x) => x.tekuci), [false, false, true, false]);
+  assert.deepEqual(koraci(null, 'podaci', null).map((x) => x.tekuci), [true, false, false, false]);
+  assert.deepEqual(koraci(null, 'nepoznato', null).map((x) => x.tekuci), [false, false, false, false]);
+});

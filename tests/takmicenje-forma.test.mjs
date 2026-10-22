@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { izForme, uFormu, poljeGreske } from '../src/ekrani/takmicenjeForma.js';
+import { izForme, uFormu, poljeGreske, listaGresaka } from '../src/ekrani/takmicenjeForma.js';
 
 const red = {
   id: 7, naziv: 'Prvenstvo', datum: '2026-10-17', mesto: 'Novi Sad', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje',
@@ -62,9 +62,9 @@ test('poljeGreske: poruka modela vodi na polje', () => {
   assert.equal(poljeGreske('Nešto treće.'), null);
 });
 
-test('GRESKE: poruke modela se razdvajaju iz jedne niske', async () => {
-  const { razdvojiGreske } = await import('../src/ekrani/takmicenjeForma.js');
-  assert.deepEqual(razdvojiGreske('Naziv takmičenja je obavezan. Datum nije ispravan (dd.mm.gggg). Broj E sudija mora biti između 1 i 6.'),
-    ['Naziv takmičenja je obavezan.', 'Datum nije ispravan (dd.mm.gggg).', 'Broj E sudija mora biti između 1 i 6.']);
-  assert.deepEqual(razdvojiGreske('Jedna poruka.'), ['Jedna poruka.']);
+test('listaGresaka: err.greske ima prednost, inace jedna err.message', () => {
+  assert.deepEqual(listaGresaka({ message: 'A. B.', greske: ['A.', 'B.'] }), ['A.', 'B.']);
+  assert.deepEqual(listaGresaka({ message: 'Jedna.', greske: null }), ['Jedna.']);
+  assert.deepEqual(listaGresaka({ message: 'Jedna.', greske: [] }), ['Jedna.']);
+  assert.deepEqual(listaGresaka(new Error('Nema veze.')), ['Nema veze.']);
 });
