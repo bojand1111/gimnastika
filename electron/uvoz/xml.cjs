@@ -8,6 +8,7 @@ const parser = new XMLParser({
   trimValues: false,
   parseTagValue: false,
   processEntities: true,
+  htmlEntities: true, // numericke reference (&#65;, &#x42;) kao nekad u libxml2
 });
 
 // Vraća uređeno stablo ili null ako XML nije ispravan.

@@ -4,6 +4,9 @@ const zip = require('./zip.cjs');
 const xml = require('./xml.cjs');
 
 const DATUMSKI_UGRADJENI = [14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 45, 46, 47, 50, 51, 52, 53, 54, 55, 56, 57, 58];
+const NAJVISE_REDOVA = 1048576;
+const NAJVISE_KOLONA = 16384;
+const NAJVISE_CELIJA = 2_000_000; // ukupno u jednom listu, sa popunjenim praznim
 const GRESKA_XML = 'Excel fajl je oštećen (XML nije ispravan).';
 
 function ucitaj(putanja, lista, ime) {
@@ -18,7 +21,7 @@ function svi(stablo, naziv) {
   for (const n of stablo) {
     if (xml.ime(n) === null) continue;
     if (xml.lokalno(xml.ime(n)) === naziv) izlaz.push(n);
-    izlaz.push(...svi(xml.deca(n), naziv));
+    for (const x of svi(xml.deca(n), naziv)) izlaz.push(x);
   }
   return izlaz;
 }
@@ -32,7 +35,7 @@ function spojiT(cvor) {
 }
 
 function putanjeListova(putanja, lista) {
-  const rels = {};
+  const rels = Object.create(null); // kljucevi su iz fajla
   if (lista['xl/_rels/workbook.xml.rels']) {
     for (const r of svi(ucitaj(putanja, lista, 'xl/_rels/workbook.xml.rels'), 'Relationship')) {
       const cilj = atr(r, 'Target') ?? '';
@@ -85,13 +88,14 @@ function datumIzBroja(broj) {
   let dana = Math.floor(broj);
   if (dana > 59) dana--; // Excelov nepostojeći 29.02.1900.
   const d = new Date(Date.UTC(1900, 0, dana));
+  if (Number.isNaN(d.getTime())) return String(broj);
   const dd = String(d.getUTCDate()).padStart(2, '0');
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   return dd + '.' + mm + '.' + d.getUTCFullYear() + '.';
 }
 
 function jeBroj(s) {
-  return s.trim() !== '' && Number.isFinite(Number(s));
+  return /^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/.test(s) && Number.isFinite(Number(s));
 }
 
 function vrednostCelije(c, deljeni, stilovi) {
@@ -111,21 +115,31 @@ function vrednostCelije(c, deljeni, stilovi) {
   return vrednost;
 }
 
+function sredi(s) {
+  return s.replace(/\s+/g, ' ').trim();
+}
+
 function citajList(stablo, deljeni, stilovi) {
   const redovi = [];
+  let ukupno = 0;
   for (const row of svi(stablo, 'row')) {
     // redovi koji nedostaju u XML-u ostaju prazni da brojevi redova odgovaraju Excelu
     const broj = parseInt(atr(row, 'r'), 10) || 0;
+    if (broj > NAJVISE_REDOVA) throw new Error(GRESKA_XML);
     while (broj > 0 && redovi.length < broj - 1) redovi.push([]);
     const red = [];
     for (const c of xml.deca(row)) {
       if (xml.ime(c) === null || xml.lokalno(xml.ime(c)) !== 'c') continue;
       let kolona = indeksKolone(atr(c, 'r'));
+      if ((parseInt((atr(c, 'r') ?? '').replace(/^[A-Z]+/, ''), 10) || 0) > NAJVISE_REDOVA) throw new Error(GRESKA_XML);
       if (kolona === null) kolona = red.length;
+      if (kolona >= NAJVISE_KOLONA) throw new Error(GRESKA_XML);
       while (red.length < kolona) red.push('');
       red[kolona] = vrednostCelije(c, deljeni, stilovi);
     }
-    redovi.push(red.map((v) => v.replace(/\s+/g, ' ').trim()));
+    ukupno += red.length;
+    if (ukupno > NAJVISE_CELIJA) throw new Error(GRESKA_XML);
+    redovi.push(red.map(sredi));
   }
   return redovi;
 }
@@ -135,7 +149,7 @@ function procitaj(putanja) {
   const lista = zip.lista(putanja);
   if (!lista['xl/workbook.xml']) throw new Error('Fajl nije Excel radna sveska (.xlsx).');
   const deljeni = lista['xl/sharedStrings.xml']
-    ? svi(ucitaj(putanja, lista, 'xl/sharedStrings.xml'), 'si').map(spojiT)
+    ? svi(ucitaj(putanja, lista, 'xl/sharedStrings.xml'), 'si').map((si) => sredi(spojiT(si)))
     : [];
   const stilovi = lista['xl/styles.xml'] ? datumskiStilovi(ucitaj(putanja, lista, 'xl/styles.xml')) : new Set();
   const tabele = [];

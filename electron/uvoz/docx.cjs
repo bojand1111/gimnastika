@@ -22,7 +22,7 @@ function nadjiDecu(cvor, naziv) {
   for (const d of xml.deca(cvor)) {
     const i = xml.ime(d);
     if (i === naziv) izlaz.push(d);
-    else if (OMOTACI.has(i)) izlaz.push(...nadjiDecu(d, naziv));
+    else if (OMOTACI.has(i)) for (const x of nadjiDecu(d, naziv)) izlaz.push(x);
   }
   return izlaz;
 }
@@ -39,7 +39,7 @@ function tabela(tbl, tabele) {
         const i = xml.ime(u);
         if (i === 'w:tcPr') {
           const span = xml.deca(u).find((x) => xml.ime(x) === 'w:gridSpan');
-          if (span) sirina = Math.max(1, parseInt(xml.atribut(span, 'w:val'), 10) || 0);
+          if (span) sirina = Math.min(63, Math.max(1, parseInt(xml.atribut(span, 'w:val'), 10) || 0));
         } else if (i === 'w:p') {
           const t = tekstPasusa(u).trim();
           if (t !== '') delovi.push(t);

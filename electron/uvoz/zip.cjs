@@ -109,7 +109,7 @@ function lista(putanja) {
   const cdDuz = rep.readUInt32LE(poz + 12);
   const cdOfset = rep.readUInt32LE(poz + 16);
   const cd = fajl.subarray(cdOfset, cdOfset + cdDuz);
-  const stavke = {};
+  const stavke = Object.create(null); // imena su iz fajla, pa bez prototipa
   let p = 0;
   for (let i = 0; i < broj; i++) {
     if (p + 46 > cd.length || cd.readUInt32LE(p) !== POTPIS_CENTRALNI) {
@@ -142,14 +142,19 @@ function procitaj(putanja, ime, spisak = null) {
   }
   const pocetak = s.ofset + 30 + fajl.readUInt16LE(s.ofset + 26) + fajl.readUInt16LE(s.ofset + 28);
   const komp = fajl.subarray(pocetak, pocetak + s.kduz);
-  if (s.metoda === 0) return Buffer.from(komp);
+  if (s.metoda === 0) {
+    if (komp.length !== s.kduz || s.kduz !== s.duz) throw new Error('Ostecen zapis u zipu: ' + ime);
+    return Buffer.from(komp);
+  }
   if (s.metoda === 8) {
+    if (komp.length !== s.kduz) throw new Error('Ostecen zapis u zipu: ' + ime);
     if (komp.length === 0) return Buffer.alloc(0);
     let izlaz;
     try {
-      izlaz = zlib.inflateRawSync(komp, { maxOutputLength: s.duz });
-    } catch {
-      throw new Error('Ne mogu da raspakujem ' + ime);
+      // duz 0: dozvoljen izlaz od 1 bajta, pa svaki podatak ostaje primetan kao neslaganje
+      izlaz = zlib.inflateRawSync(komp, { maxOutputLength: Math.max(1, s.duz) });
+    } catch (e) {
+      throw new Error('Ne mogu da raspakujem ' + ime, { cause: e });
     }
     if (izlaz.length !== s.duz) throw new Error('Ostecen zapis u zipu: ' + ime);
     return izlaz;

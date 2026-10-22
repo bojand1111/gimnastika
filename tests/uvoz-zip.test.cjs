@@ -101,3 +101,63 @@ test('zip: ogranicenje velicine stavke i provera deklarisane duzine', () => {
     assert.throws(() => zip.procitaj(t.put, 'b.txt'), { message: 'Ne mogu da raspakujem b.txt' });
   } finally { t.ukloni(); }
 });
+
+// ---- ispravke posle pregleda ----
+const OSTECEN = (ime) => ({ message: 'Ostecen zapis u zipu: ' + ime });
+
+test('zip: deklarisana duzina veca od stvarne i neusaglasena kompresovana duzina', () => {
+  const t = privremeni('a.zip');
+  try {
+    zip.napravi(t.put, { 'a.txt': { sadrzaj: 'x' }, 'b.txt': { sadrzaj: 'abc'.repeat(100) } });
+    const orig = fs.readFileSync(t.put);
+    const cd = orig.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    const cd2 = cd + 46 + 'a.txt'.length;
+    // deflate: duz veca od stvarne (301 umesto 300)
+    const veca = Buffer.from(orig);
+    veca.writeUInt32LE(301, cd2 + 24);
+    fs.writeFileSync(t.put, veca);
+    assert.throws(() => zip.procitaj(t.put, 'b.txt'), OSTECEN('b.txt'));
+    // store: kduz veci od stvarnih podataka (a duz ostaje 1)
+    const kduz = Buffer.from(orig);
+    kduz.writeUInt32LE(5, cd + 20);
+    fs.writeFileSync(t.put, kduz);
+    assert.throws(() => zip.procitaj(t.put, 'a.txt'), OSTECEN('a.txt'));
+    // store: kduz i duz se razlikuju
+    const razlika = Buffer.from(orig);
+    razlika.writeUInt32LE(2, cd + 24);
+    fs.writeFileSync(t.put, razlika);
+    assert.throws(() => zip.procitaj(t.put, 'a.txt'), OSTECEN('a.txt'));
+  } finally { t.ukloni(); }
+});
+
+test('zip: deflate stavka duzine nula cita se kao prazan bafer', () => {
+  const t = privremeni('a.zip');
+  try {
+    zip.napravi(t.put, { 'a.txt': { sadrzaj: 'x' } });
+    const orig = fs.readFileSync(t.put);
+    const cd = orig.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    const prazan = require('node:zlib').deflateRawSync(Buffer.alloc(0));
+    // podaci stavke (1 bajt) su na ofsetu 35; menjamo ih praznim deflate tokom
+    const m = Buffer.from(orig);
+    m.writeUInt16LE(8, cd + 10);
+    m.writeUInt32LE(prazan.length, cd + 20);
+    m.writeUInt32LE(0, cd + 24);
+    const nov = Buffer.concat([m.subarray(0, 35), prazan, m.subarray(36)]);
+    const kraj = nov.length - 22;
+    nov.writeUInt32LE(nov.readUInt32LE(kraj + 16) + prazan.length - 1, kraj + 16);
+    fs.writeFileSync(t.put, nov);
+    const r = zip.procitaj(t.put, 'a.txt');
+    assert.ok(Buffer.isBuffer(r));
+    assert.equal(r.length, 0);
+  } finally { t.ukloni(); }
+});
+
+test('zip: stavka sa imenom __proto__ se lista i cita', () => {
+  const t = privremeni('a.zip');
+  try {
+    zip.napravi(t.put, { ['__proto__']: { sadrzaj: 'tajna' } });
+    const lista = zip.lista(t.put);
+    assert.deepEqual(Object.keys(lista), ['__proto__']);
+    assert.equal(zip.procitaj(t.put, '__proto__', lista).toString('utf8'), 'tajna');
+  } finally { t.ukloni(); }
+});
