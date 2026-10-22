@@ -4,3 +4,5 @@
 *.png binary
 *.woff2 binary
 *.ttf binary
+*.docx binary
+*.xlsx binary
