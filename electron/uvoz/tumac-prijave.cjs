@@ -8,7 +8,8 @@ const velika = (s) => s.toLocaleUpperCase('sr-Latn');
 
 // Mala slova, bez kvačica, navodnika i interpunkcije, jedan razmak.
 function normalizuj(s) {
-  let n = mala(String(s).trim());
+  // NFC: razlozeni znakovi (C + kvacica) postaju jedno slovo pre poredjenja
+  let n = mala(String(s ?? '').normalize('NFC').trim());
   n = n.replace(/[čćšžđñöüéá]/g, (z) => ZAMENE[z]);
   return n.replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -44,7 +45,7 @@ function kolone(red) {
 
 // "NEORČIĆ" => "Neorčić", "laudis nanaši" => "Laudis Nanaši"; mešovita veličina slova ostaje.
 function lepoIme(s) {
-  s = s.replace(/\s+/g, ' ').trim();
+  s = s.normalize('NFC').replace(/\s+/g, ' ').trim();
   if (s === '' || (s !== velika(s) && s !== mala(s))) return s;
   // prvo slovo svakog niza slova veliko (i posle crtice i apostrofa), ostalo malo
   return s.replace(/\p{L}+/gu, (rec) => {

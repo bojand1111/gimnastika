@@ -244,3 +244,29 @@ test('xlsx: redosled listova prema rels, apsolutni Target, rich text i obican br
     assert.deepEqual(d.tabele, [[['drugi', '41640']], [['prvi', '41640']]]);
   } finally { t.ukloni(); }
 });
+
+test('citac: programska greska (TypeError) prolazi netaknuta, ne postaje poruka za korisnika', () => {
+  const t = privremeni('a.docx');
+  const orig = docx.procitaj;
+  try {
+    docxPrimer(t.put);
+    docx.procitaj = () => { throw new TypeError('kvar u citacu'); };
+    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof TypeError && !(e instanceof GreskaKorisnika));
+    docx.procitaj = () => { throw new Error('Poruka citaca.'); };
+    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message === 'Poruka citaca.' && e.cause instanceof Error);
+  } finally { docx.procitaj = orig; t.ukloni(); }
+});
+
+test('docx: ukupan broj celija je ogranicen (spojene celije se rasiruju)', () => {
+  const t = privremeni('a.docx');
+  try {
+    const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+    const tc = '<w:tc><w:tcPr><w:gridSpan w:val="63"/></w:tcPr><w:p><w:r><w:t>x</w:t></w:r></w:p></w:tc>';
+    const dok = (n) => '<w:document ' + W + '><w:body><w:tbl><w:tr>' + tc.repeat(n) + '</w:tr></w:tbl></w:body></w:document>';
+    // 31746 * 63 = 1999998 celija: prolazi; 31747 * 63 = 2000061: odbijeno
+    zip.napravi(t.put, { 'word/document.xml': { sadrzaj: dok(31746) } });
+    assert.equal(docx.procitaj(t.put).tabele[0][0].length, 1999998);
+    zip.napravi(t.put, { 'word/document.xml': { sadrzaj: dok(31747) } });
+    assert.throws(() => docx.procitaj(t.put), { message: 'Word dokument je oštećen (document.xml nije ispravan XML).' });
+  } finally { t.ukloni(); }
+});

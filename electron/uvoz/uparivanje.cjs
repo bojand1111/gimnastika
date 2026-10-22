@@ -23,11 +23,11 @@ function nadjiKlub(tekst, klubovi) {
   if (n === '') return null;
   const jezgro = jezgroKluba(n);
   for (const k of klubovi) {
-    if (normalizuj(String(k.skracenica)) === n) return Number(k.id);
+    if (normalizuj(String(k.skracenica ?? '')) === n) return Number(k.id);
   }
   let delimicno = null;
   for (const k of klubovi) {
-    const jk = jezgroKluba(normalizuj(String(k.puno_ime)));
+    const jk = jezgroKluba(normalizuj(String(k.puno_ime ?? '')));
     if (jk === '' || jezgro === '') continue;
     if (jk === jezgro) return Number(k.id);
     if (delimicno === null && (jk.includes(jezgro) || jezgro.includes(jk))) delimicno = Number(k.id);
@@ -70,11 +70,11 @@ function kljuc(prezime, ime) {
 // Kandidati za red među takmičarima (id, ime, prezime, godina_rodjenja, pol): najbolji prvi.
 // Težina: ista godina 2, isti pol 1 (nepoznat pol ili godina se računaju kao isti).
 function kandidati(r, takmicari, pol) {
-  const k1 = kljuc(String(r.prezime), String(r.ime));
-  const k2 = kljuc(String(r.ime), String(r.prezime));
+  const k1 = kljuc(String(r.prezime ?? ''), String(r.ime ?? ''));
+  const k2 = kljuc(String(r.ime ?? ''), String(r.prezime ?? ''));
   const nadjeni = [];
   for (const t of takmicari) {
-    const kt = kljuc(String(t.prezime), String(t.ime));
+    const kt = kljuc(String(t.prezime ?? ''), String(t.ime ?? ''));
     if (kt !== k1 && kt !== k2) continue;
     const istaGodina = r.godina === null || r.godina === undefined || Number(t.godina_rodjenja) === Number(r.godina);
     const istiPol = pol === null || pol === undefined || t.pol === pol;
@@ -98,7 +98,7 @@ function oceni(r, takmicari, prijavljeni, pol) {
   }
   const najbolji = lista[0];
   const id = Number(najbolji.id);
-  const opis = `${najbolji.prezime} ${najbolji.ime} (${Number(najbolji.godina_rodjenja)}, ${najbolji.klub_skr ?? 'bez kluba'})`;
+  const opis = `${najbolji.prezime} ${najbolji.ime} (${Number(najbolji.godina_rodjenja) || 0}, ${najbolji.klub_skr ?? 'bez kluba'})`;
   if (prijavljeni.some((p) => Number(p) === id)) {
     return { status: PRIJAVLJEN, takmicar_id: id, postupak: 'nista', napomena: 'već prijavljen: ' + opis };
   }

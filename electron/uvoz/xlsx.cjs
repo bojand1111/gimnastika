@@ -122,13 +122,13 @@ function sredi(s) {
 function citajList(stablo, deljeni, stilovi) {
   const redovi = [];
   let ukupno = 0;
-  for (const row of svi(stablo, 'row')) {
+  for (const redEl of svi(stablo, 'row')) {
     // redovi koji nedostaju u XML-u ostaju prazni da brojevi redova odgovaraju Excelu
-    const broj = parseInt(atr(row, 'r'), 10) || 0;
+    const broj = parseInt(atr(redEl, 'r'), 10) || 0;
     if (broj > NAJVISE_REDOVA) throw new Error(GRESKA_XML);
     while (broj > 0 && redovi.length < broj - 1) redovi.push([]);
     const red = [];
-    for (const c of xml.deca(row)) {
+    for (const c of xml.deca(redEl)) {
       if (xml.ime(c) === null || xml.lokalno(xml.ime(c)) !== 'c') continue;
       let kolona = indeksKolone(atr(c, 'r'));
       if ((parseInt((atr(c, 'r') ?? '').replace(/^[A-Z]+/, ''), 10) || 0) > NAJVISE_REDOVA) throw new Error(GRESKA_XML);

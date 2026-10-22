@@ -82,3 +82,22 @@ test('uparivanje: nadjiKlub i nadjiStavku', () => {
   assert.equal(u.nadjiStavku('c', prog), 8);
   assert.equal(u.nadjiStavku('A', prog), null);
 });
+
+test('oceni: jedna greska ide doslovno u napomenu', () => {
+  const o = u.oceni(red('A', 'B', 2012, ['nedostaje ime']), baza, [], null);
+  assert.equal(o.status, u.GRESKA);
+  assert.equal(o.napomena, 'nedostaje ime');
+});
+
+test('uparivanje: null vrednosti iz baze ne postaju tekst "null"', () => {
+  assert.equal(u.nadjiKlub('null', [{ id: 9, puno_ime: 'Neki Klub', skracenica: null }]), null);
+  const sNull = [{ id: 7, prezime: null, ime: null, godina_rodjenja: 2012, pol: 'M', klub_skr: null }];
+  assert.deepEqual(u.kandidati(red('null', 'null', 2012), sNull, null), []);
+  assert.deepEqual(u.kandidati(red(null, undefined, 2012), sNull, null).map((t) => t.id), [7]);
+});
+
+test('oceni: nepoznata godina u bazi daje 0 u opisu, ne NaN', () => {
+  const bezGodine = [{ id: 5, prezime: 'Test', ime: 'Ana', godina_rodjenja: undefined, pol: 'Z', klub_skr: null }];
+  const o = u.oceni(red('Test', 'Ana', null), bezGodine, [], 'Z');
+  assert.equal(o.napomena, 'u bazi: Test Ana (0, bez kluba)');
+});

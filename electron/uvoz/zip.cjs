@@ -6,6 +6,7 @@ const zlib = require('node:zlib');
 const POTPIS_LOKALNI = 0x04034b50;
 const POTPIS_CENTRALNI = 0x02014b50;
 const POTPIS_KRAJ = 0x06054b50;
+const NAJVECI_FAJL = 200 * 1024 * 1024; // bajtova, ceo zip se cita u memoriju
 const NAJVECA_STAVKA = 50 * 1024 * 1024; // bajtova, i kompresovano i raspakovano
 
 const TABELA_CRC = (() => {
@@ -31,10 +32,18 @@ function dosVreme(d) {
 }
 
 function otvoriFajl(putanja) {
+  const ne = () => new Error('Ne mogu da otvorim ' + path.basename(putanja));
+  let velicina;
+  try {
+    velicina = fs.statSync(putanja).size;
+  } catch {
+    throw ne();
+  }
+  if (velicina > NAJVECI_FAJL) throw new Error('Fajl je prevelik.');
   try {
     return fs.readFileSync(putanja);
   } catch {
-    throw new Error('Ne mogu da otvorim ' + path.basename(putanja));
+    throw ne();
   }
 }
 

@@ -3,6 +3,8 @@
 const zip = require('./zip.cjs');
 const xml = require('./xml.cjs');
 
+const NAJVISE_CELIJA = 2_000_000; // ukupno u dokumentu, sa raširenim spojenim ćelijama (kao u xlsx)
+const GRESKA_XML = 'Word dokument je oštećen (document.xml nije ispravan XML).';
 const OMOTACI = new Set(['w:sdt', 'w:sdtContent', 'w:customXml', 'w:ins']);
 
 // Tekst pasusa: svi w:t spojeni, w:tab, w:br i w:cr kao razmak, više razmaka u jedan.
@@ -28,7 +30,7 @@ function nadjiDecu(cvor, naziv) {
 }
 
 // Ugnježdene tabele ulaze u `tabele` ispred roditeljske.
-function tabela(tbl, tabele) {
+function tabela(tbl, tabele, brojac) {
   const redovi = [];
   for (const tr of nadjiDecu(tbl, 'w:tr')) {
     const red = [];
@@ -44,9 +46,11 @@ function tabela(tbl, tabele) {
           const t = tekstPasusa(u).trim();
           if (t !== '') delovi.push(t);
         } else if (i === 'w:tbl') {
-          tabele.push(tabela(u, tabele));
+          tabele.push(tabela(u, tabele, brojac));
         }
       }
+      brojac.n += sirina;
+      if (brojac.n > NAJVISE_CELIJA) throw new Error(GRESKA_XML);
       const celija = delovi.join(' ');
       for (let k = 0; k < sirina; k++) red.push(celija);
     }
@@ -55,17 +59,17 @@ function tabela(tbl, tabele) {
   return redovi;
 }
 
-function prodji(cvor, tabele, tekst) {
+function prodji(cvor, tabele, tekst, brojac) {
   for (const d of xml.deca(cvor)) {
     const i = xml.ime(d);
     if (i === null) continue;
     if (i === 'w:tbl') {
-      tabele.push(tabela(d, tabele));
+      tabele.push(tabela(d, tabele, brojac));
     } else if (i === 'w:p') {
       const t = tekstPasusa(d).trim();
       if (t !== '') tekst.push(t);
     } else {
-      prodji(d, tabele, tekst);
+      prodji(d, tabele, tekst, brojac);
     }
   }
 }
@@ -75,13 +79,13 @@ function procitaj(putanja) {
   const lista = zip.lista(putanja);
   if (!lista['word/document.xml']) throw new Error('Fajl nije Word dokument (.docx).');
   const stablo = xml.razberi(zip.procitaj(putanja, 'word/document.xml', lista));
-  if (stablo === null) throw new Error('Word dokument je oštećen (document.xml nije ispravan XML).');
+  if (stablo === null) throw new Error(GRESKA_XML);
   const koren = stablo.find((n) => xml.ime(n) !== null && !xml.ime(n).startsWith('?'));
   const telo = koren ? xml.potomci(koren).find((n) => xml.ime(n) === 'w:body') : null;
   if (!telo) throw new Error('Word dokument nema sadržaj.');
   const tabele = [];
   const tekst = [];
-  prodji(telo, tabele, tekst);
+  prodji(telo, tabele, tekst, { n: 0 });
   return { tabele, tekst: tekst.join('\n') };
 }
 

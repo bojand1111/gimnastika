@@ -161,3 +161,21 @@ test('zip: stavka sa imenom __proto__ se lista i cita', () => {
     assert.equal(zip.procitaj(t.put, '__proto__', lista).toString('utf8'), 'tajna');
   } finally { t.ukloni(); }
 });
+
+test('zip: prevelik fajl se odbija pre citanja u memoriju', () => {
+  const t = privremeni('veliki.docx');
+  const stat = fs.statSync, cita = fs.readFileSync;
+  try {
+    zip.napravi(t.put, { 'a.txt': { sadrzaj: 'x' } });
+    assert.ok(zip.lista(t.put)['a.txt']);
+    // lazna velicina: 200 MB + 1 bajt, bez pravljenja tolikog fajla
+    fs.statSync = (p, ...r) => (p === t.put ? { size: 200 * 1024 * 1024 + 1 } : stat(p, ...r));
+    fs.readFileSync = (p, ...r) => { if (p === t.put) throw new Error('ne sme da se cita'); return cita(p, ...r); };
+    assert.throws(() => zip.lista(t.put), { message: 'Fajl je prevelik.' });
+    assert.throws(() => zip.procitaj(t.put, 'a.txt'), { message: 'Fajl je prevelik.' });
+  } finally {
+    fs.statSync = stat;
+    fs.readFileSync = cita;
+    t.ukloni();
+  }
+});

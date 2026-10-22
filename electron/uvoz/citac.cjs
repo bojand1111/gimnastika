@@ -18,12 +18,14 @@ function citaj(putanja) {
   throw new GreskaKorisnika('Fajl nije Word (.docx) ni Excel (.xlsx) dokument. Stari .doc i .xls prvo sačuvajte kao .docx ili .xlsx.');
 }
 
-// Vraća {tabele, tekst, vrsta: 'docx'|'xlsx'}. Svaka greška čitanja je poruka za korisnika.
+// Vraća {tabele, tekst, vrsta: 'docx'|'xlsx'}. Greške čitača (zip, docx, xlsx bacaju običan Error
+// sa porukom za korisnika) postaju GreskaKorisnika; programske greške (TypeError i slično) prolaze
+// netaknute, da ih rukovalac zapiše u dnevnik.
 function procitaj(putanja) {
   try {
     return citaj(putanja);
   } catch (err) {
-    if (err instanceof GreskaKorisnika) throw err;
+    if (err.constructor !== Error) throw err;
     throw new GreskaKorisnika(err.message, { cause: err });
   }
 }

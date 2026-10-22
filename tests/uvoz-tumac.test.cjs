@@ -145,3 +145,18 @@ test('tumac: probni fajlovi', () => {
   assert.equal(x.redovi[3].ucesce, 'vk');
   assert.deepEqual(x.redovi[3].greske, ['nedostaje ime']);
 });
+
+test('normalizuj i lepoIme: NFD i NFC unos daju isti rezultat', () => {
+  const nfd = 'ČORIĆ'.normalize('NFD'); // slovo + kombinovani znak
+  assert.equal(tumac.normalizuj(nfd), 'coric');
+  assert.equal(tumac.normalizuj(nfd), tumac.normalizuj('ČORIĆ'));
+  assert.equal(tumac.normalizuj(null), '');
+  assert.equal(tumac.normalizuj(undefined), '');
+});
+
+test('protumaci: ime zapisano razlozeno (NFD) se lepo formatira', () => {
+  const dok = { vrsta: 'docx', tekst: 'MSG', tabele: [[['Klub', 'K']], [['PREZIME', 'IME', 'KATEGORIJA', 'DATUM ROĐENJA', 'FUNKCIJA-EKIPA'], ['ČORIĆ'.normalize('NFD'), 'MARKO', 'I', '01.02.2012.', '']]] };
+  const r = tumac.protumaci(dok).redovi[0];
+  assert.equal(r.prezime, 'Čorić');
+  assert.equal(r.ime, 'Marko');
+});
