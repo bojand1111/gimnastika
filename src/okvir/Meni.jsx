@@ -48,6 +48,7 @@ export function naslovEkrana(ekran) {
   if (ekran === 'takmicenja/izmeni') return 'Takmičenje: podaci';
   const prvi = ekran.split('/')[0];
   if (prvi === 'sistem') return 'Vizuelni sistem';
+  if (prvi === 'uvoz') return 'Uvoz prijava';
   for (const [, stavke] of GRUPE) {
     for (const [ruta, tekst] of stavke) if (ruta === prvi) return tekst;
   }

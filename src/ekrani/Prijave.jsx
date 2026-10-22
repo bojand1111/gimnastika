@@ -170,7 +170,8 @@ export default function Prijave() {
         if (!putanje.length) return;
         const r = await gim.uvoz.pripremi(putanje);
         if (!r.fajlovi.length) { r.greske.forEach((g) => obavesti(g, 'greska')); return; }
-        uvozStanje.postavi(r);
+        r.greske.forEach((g) => obavesti(g, 'greska'));
+        uvozStanje.postavi(r.fajlovi);
         location.hash = '#/uvoz';
       } catch (e) { obavesti(e.message, 'greska'); }
     },
