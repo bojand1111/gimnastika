@@ -44,6 +44,6 @@ export default function Poruke() {
 export function Greske({ greske }) {
   if (!greske || !greske.length) return null;
   return (
-    <div className="poruka poruka-greska"><div>{greske.map((g, i) => <div key={i}>{g}</div>)}</div></div>
+    <div className="poruka poruka-greska" role="alert"><div>{greske.map((g, i) => <div key={i}>{g}</div>)}</div></div>
   );
 }

@@ -24,7 +24,7 @@ export default function TakmicenjeForma() {
   }, []);
   const { parametri } = razlozi(hash);
   const id = parametri.id ? Number(parametri.id) : null;
-  if (!/^#\/takmicenja(\/|\?|$)/.test(hash)) return null; // posle odlaska sa ekrana nema remonta
+  if (!/^#\/takmicenja\/(novo|izmeni)(\?|$)/.test(hash)) return null; // posle odlaska sa ekrana nema remonta
   return <Forma key={id ?? 'novo'} id={id} />;
 }
 
