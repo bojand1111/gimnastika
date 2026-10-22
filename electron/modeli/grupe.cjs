@@ -69,6 +69,20 @@ function napravi(baza) {
     return redovi.map(({ kat_redosled, prog_redosled, ...ostalo }) => ostalo);
   }
 
+  // Kategorija/program parovi iz prijava tog pola; null prvi kao u MySQL-u.
+  function kombinacije(takmicenjeId, pol) {
+    return baza.svi(
+      `SELECT DISTINCT kat.id AS kid, kat.naziv AS kat, pr.id AS pid, pr.naziv AS prog,
+              kat.redosled AS kat_red, pr.redosled AS prog_red
+       FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id
+       LEFT JOIN kategorije kat ON kat.id = p.kategorija_id
+       LEFT JOIN programi pr ON pr.id = p.program_id
+       WHERE p.takmicenje_id = ? AND t.pol = ?`, [takmicenjeId, pol])
+      .sort((x, y) => poredi(x.kat_red, y.kat_red) || poredi(x.prog_red, y.prog_red)
+        || poredi(x.kat, y.kat) || poredi(x.prog, y.prog))
+      .map(({ kid, kat, pid, prog }) => ({ kid, kat, pid, prog }));
+  }
+
   function dodaj(takmicenjeId, pol) {
     if (pol !== 'M' && pol !== 'Z') throw new GreskaKorisnika('Nepoznat pol.');
     const postojece = baza.svi('SELECT naziv FROM grupe WHERE takmicenje_id = ? AND pol = ? ORDER BY redosled', [takmicenjeId, pol])
@@ -90,7 +104,7 @@ function napravi(baza) {
     if (ime === '') throw new GreskaKorisnika('Naziv grupe je obavezan.');
     const n = brojSprava(g.pol);
     const poz = Number(pocetnaPozicija);
-    if (!(poz >= 1 && poz <= n)) throw new GreskaKorisnika(`Početna sprava mora biti između 1 i ${n}.`);
+    if (!(Number.isInteger(poz) && poz >= 1 && poz <= n)) throw new GreskaKorisnika(`Početna sprava mora biti između 1 i ${n}.`);
     baza.izmeni('grupe', { naziv: ime, pocetna_pozicija: poz, izmenjeno: Baza.sad() }, 'id = ?', [id]);
   }
 
@@ -133,7 +147,7 @@ function napravi(baza) {
         throw new GreskaKorisnika('Grupa ne postoji ili nije za taj pol.');
       }
       sprava = brojSprava(g.pol);
-      if (!(rotacija >= 1 && rotacija <= sprava)) throw new GreskaKorisnika(`Rotacija mora biti između 1 i ${sprava}.`);
+      if (!(Number.isInteger(rotacija) && rotacija >= 1 && rotacija <= sprava)) throw new GreskaKorisnika(`Rotacija mora biti između 1 i ${sprava}.`);
     } else {
       grupaId = null;
     }
@@ -188,7 +202,7 @@ function napravi(baza) {
     baza.izvrsi('DELETE FROM grupa_redosled WHERE grupa_id = ? AND rotacija = ?', [grupaId, Number(rotacija)]);
   }
 
-  return { nadji, lista, rucniRedosledi, clanovi, nerasporedjeni, brojSprava, dodaj, izmeni, obrisi, premesti, vratiRedosled };
+  return { nadji, lista, rucniRedosledi, clanovi, nerasporedjeni, kombinacije, brojSprava, dodaj, izmeni, obrisi, premesti, vratiRedosled };
 }
 
 module.exports = { napravi };

@@ -15,7 +15,6 @@ const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
 const { lekarski } = require('./racun/lekarski.mjs');
 const { datumPrikaz } = require('./racun/datum.mjs');
 const { pozicijaURotaciji, redosledURotaciji } = require('./racun/grupe.mjs');
-const { KOLATOR } = require('./modeli/sortiranje.cjs');
 
 const broj = (id) => (id === null || id === undefined || id === '' ? null : Number(id));
 const prazno = (v) => v === null || v === undefined || v === '';
@@ -242,17 +241,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
             rucni_rotacije: Object.keys(g.rucni).map(Number).sort((x, y) => x - y),
           };
         });
-        // Kombinacije koje postoje u prijavama tog pola; null prvi kao u MySQL-u.
-        const kombinacije = baza.svi(
-          `SELECT DISTINCT kat.id AS kid, kat.naziv AS kat, pr.id AS pid, pr.naziv AS prog,
-                  kat.redosled AS kat_red, pr.redosled AS prog_red
-           FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id
-           LEFT JOIN kategorije kat ON kat.id = p.kategorija_id
-           LEFT JOIN programi pr ON pr.id = p.program_id
-           WHERE p.takmicenje_id = ? AND t.pol = ?`, [Number(takm.id), polIzbor])
-          .sort((x, y) => (x.kat_red ?? -Infinity) - (y.kat_red ?? -Infinity) || (x.prog_red ?? -Infinity) - (y.prog_red ?? -Infinity)
-            || KOLATOR.compare(String(x.kat ?? ''), String(y.kat ?? '')) || KOLATOR.compare(String(x.prog ?? ''), String(y.prog ?? '')))
-          .map(({ kid, kat, pid, prog }) => ({ kid, kat, pid, prog }));
+        const kombinacije = gr.kombinacije(Number(takm.id), polIzbor);
         return {
           takm: { id: takm.id, naziv: takm.naziv, pomeraj_redosled: takm.pomeraj_redosled },
           pol: polIzbor,
@@ -274,8 +263,8 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
       obrisi: (id) => gr.obrisi(aktivnoId(), broj(id)),
       // grupaId 0/''/null = neraspoređeni; rotacija najmanje 1.
       premesti: (prijavaId, grupaId, pozicija, rotacija) => gr.premesti(
-        aktivnoId(), broj(prijavaId), Number(grupaId) || null, Number(pozicija) || 0, Math.max(1, Number(rotacija) || 1)),
-      vrati: (id, rotacija) => gr.vratiRedosled(aktivnoId(), broj(id), Number(rotacija) || 0),
+        aktivnoId(), broj(prijavaId), Number(grupaId) || null, Number(pozicija) || 0, Math.max(1, Math.trunc(Number(rotacija)) || 1)),
+      vrati: (id, rotacija) => gr.vratiRedosled(aktivnoId(), broj(id), Math.trunc(Number(rotacija)) || 0),
       // Kao PHP !empty: '0', '', 0, false, null, undefined su ne.
       pomeraj: (vrednost) => {
         const v = istina(vrednost) ? 1 : 0;

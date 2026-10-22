@@ -110,6 +110,18 @@ test('premesti: string id-jevi i neraspoređeni (0, "", null)', () => {
   assert.throws(() => r.premesti(pid.Marko, g.id, 0, 1), (e) => e instanceof GreskaKorisnika);
 });
 
+test('premesti: grupaId "abc" je neraspoređeni, rotacija 2.5 se skraćuje', () => {
+  const { moduli, pid } = sa4();
+  const r = moduli.rotacije;
+  const g = r.dodaj('Z').grupa;
+  r.premesti(pid.Ana, g.id, 0, 1);
+  r.premesti(pid.Ana, 'abc', 0, 1);
+  const d = r.podaci('Z', 1);
+  assert.equal(d.grupe[0].clanovi.length, 0);
+  assert.equal(d.nerasporedjeni.length, 4);
+  assert.doesNotThrow(() => r.premesti(pid.Bea, g.id, 0, 2.5));
+});
+
 test('izmeni, obrisi, vrati', () => {
   const { moduli, pid } = sa4();
   const r = moduli.rotacije;

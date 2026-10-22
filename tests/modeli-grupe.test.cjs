@@ -199,6 +199,7 @@ test('izmeni, obrisi i vratiRedosled: poruke', () => {
   assert.equal(poruka(() => g.izmeni(T, a, '   ', 1)), 'Naziv grupe je obavezan.');
   assert.equal(poruka(() => g.izmeni(T, a, 'X', 0)), 'Početna sprava mora biti između 1 i 2.');
   assert.equal(poruka(() => g.izmeni(T, a, 'X', 3)), 'Početna sprava mora biti između 1 i 2.');
+  assert.equal(poruka(() => g.izmeni(T, a, 'X', 1.5)), 'Početna sprava mora biti između 1 i 2.');
   g.izmeni(T, a, '  Mlade  ', 2);
   assert.equal(g.nadji(a).naziv, 'Mlade');
   assert.equal(g.nadji(a).pocetna_pozicija, 2);
@@ -223,6 +224,7 @@ test('premesti: greske i granice pozicije', () => {
   assert.equal(poruka(() => g.premesti(T, pid.Ana, tudja, 0)), 'Grupa ne postoji ili nije za taj pol.');
   assert.equal(poruka(() => g.premesti(T, pid.Ana, a, 0, 0)), 'Rotacija mora biti između 1 i 2.');
   assert.equal(poruka(() => g.premesti(T, pid.Ana, a, 0, 3)), 'Rotacija mora biti između 1 i 2.');
+  assert.equal(poruka(() => g.premesti(T, pid.Ana, a, 0, 2.5)), 'Rotacija mora biti između 1 i 2.');
   assert.equal(poruka(() => g.premesti(T, pid.Marko, m, 0, 2)), 'Rotacija mora biti između 1 i 1.');
   // za neraspodeljene se rotacija ne proverava
   assert.equal(poruka(() => g.premesti(T, pid.Ana, null, 0, 9)), null);
@@ -315,4 +317,23 @@ test('takmicenja.postaviPomeraj', () => {
   takm.postaviPomeraj(s.takm, 0);
   assert.equal(takm.nadji(s.takm).pomeraj_redosled, 0);
   assert.equal(poruka(() => takm.postaviPomeraj(s.takm + 100, true)), 'Takmičenje ne postoji.');
+});
+
+test('kombinacije: redosled kategorije i programa, null par prvi', () => {
+  const { baza, s, g } = nova();
+  const ubaci = (t, r) => baza.ubaci(t, { ...r, kreirano: S, izmenjeno: S });
+  const kAaa = ubaci('kategorije', { naziv: 'Aaa', redosled: 5 });
+  const pPz = ubaci('programi', { naziv: 'Pz', redosled: 3 });
+  const dodeli = (ime, kat, prog) => baza.izmeni('prijave', { kategorija_id: kat, program_id: prog }, 'takmicar_id = ?', [s.t[ime]]);
+  dodeli('Ana', kAaa, s.prog);
+  dodeli('Bea', s.kat, pPz);
+  dodeli('Ceca', s.kat, s.prog);
+  dodeli('Dona', null, null);
+  const k = g.kombinacije(s.takm, 'Z');
+  assert.deepEqual(k, [
+    { kid: null, kat: null, pid: null, prog: null },
+    { kid: s.kat, kat: 'Kadet', pid: s.prog, prog: 'C' },
+    { kid: s.kat, kat: 'Kadet', pid: pPz, prog: 'Pz' },
+    { kid: kAaa, kat: 'Aaa', pid: s.prog, prog: 'C' },
+  ]);
 });
