@@ -10,7 +10,7 @@ const takmicenjaModel = require('./modeli/takmicenja.cjs');
 const prijaveModel = require('./modeli/prijave.cjs');
 const uvozModel = require('./modeli/uvoz.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
-const { GreskaKorisnika } = require('./greska.cjs');
+const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
 const { lekarski } = require('./racun/lekarski.mjs');
 const { datumPrikaz } = require('./racun/datum.mjs');
 
@@ -61,6 +61,10 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
       return { ...r, lek, lek_ne_vazi: neVazi };
     });
     return { prijave, upozorenja };
+  }
+
+  function postoji(id) {
+    if (tk.nadji(id) === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
   }
 
   function sGrbovima(t) {
@@ -139,10 +143,14 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
         filters: [{ name: 'Slike', extensions: ['png', 'jpg', 'jpeg', 'svg', 'gif'] }],
       }))[0] ?? null,
       sacuvajGrb: (id, polje, putanja) => {
+        postoji(broj(id));
         const vrednost = tk.sacuvajGrb(broj(id), polje, putanja);
         return { vrednost, url: grbUrl(vrednost) };
       },
-      ukloniGrb: (id, polje) => tk.postaviGrb(broj(id), polje, ''),
+      ukloniGrb: (id, polje) => {
+        postoji(broj(id));
+        return tk.postaviGrb(broj(id), polje, '');
+      },
       obrisi: (id) => {
         const tid = broj(id);
         tk.obrisi(tid);
@@ -227,8 +235,12 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
           try {
             fajlovi.push(uv.pripremiFajl(putanja, ime, aid));
           } catch (err) {
-            if (!(err instanceof GreskaKorisnika)) dnevnik.greska(`uvoz ${ime}`, err);
-            greske.push(`${ime}: ${err.message}`);
+            if (err instanceof GreskaKorisnika) {
+              greske.push(`${ime}: ${err.message}`);
+            } else {
+              dnevnik.greska(`uvoz ${ime}`, err);
+              greske.push(`${ime}: ${OPSTA_GRESKA}`);
+            }
           }
         }
         return { fajlovi, greske };

@@ -2,20 +2,30 @@
 const zip = require('./zip.cjs');
 const docx = require('./docx.cjs');
 const xlsx = require('./xlsx.cjs');
+const { GreskaKorisnika } = require('../greska.cjs');
 
 const EKSTENZIJE = ['docx', 'xlsx'];
 
-// Vraća {tabele, tekst, vrsta: 'docx'|'xlsx'}.
-function procitaj(putanja) {
+function citaj(putanja) {
   let lista;
   try {
     lista = zip.lista(putanja);
-  } catch {
-    throw new Error('Fajl nije Word (.docx) ni Excel (.xlsx) dokument. Skeniran PDF ili slika ne mogu da se uvezu.');
+  } catch (cause) {
+    throw new GreskaKorisnika('Fajl nije Word (.docx) ni Excel (.xlsx) dokument. Skeniran PDF ili slika ne mogu da se uvezu.', { cause });
   }
   if (lista['word/document.xml']) return { ...docx.procitaj(putanja), vrsta: 'docx' };
   if (lista['xl/workbook.xml']) return { ...xlsx.procitaj(putanja), vrsta: 'xlsx' };
-  throw new Error('Fajl nije Word (.docx) ni Excel (.xlsx) dokument. Stari .doc i .xls prvo sačuvajte kao .docx ili .xlsx.');
+  throw new GreskaKorisnika('Fajl nije Word (.docx) ni Excel (.xlsx) dokument. Stari .doc i .xls prvo sačuvajte kao .docx ili .xlsx.');
+}
+
+// Vraća {tabele, tekst, vrsta: 'docx'|'xlsx'}. Svaka greška čitanja je poruka za korisnika.
+function procitaj(putanja) {
+  try {
+    return citaj(putanja);
+  } catch (err) {
+    if (err instanceof GreskaKorisnika) throw err;
+    throw new GreskaKorisnika(err.message, { cause: err });
+  }
 }
 
 module.exports = { procitaj, EKSTENZIJE };

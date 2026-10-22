@@ -7,6 +7,7 @@ const zip = require('../electron/uvoz/zip.cjs');
 const docx = require('../electron/uvoz/docx.cjs');
 const xlsx = require('../electron/uvoz/xlsx.cjs');
 const citac = require('../electron/uvoz/citac.cjs');
+const { GreskaKorisnika } = require('../electron/greska.cjs');
 const { docxPrimer, xlsxPrimer } = require('./pomoc/uzorci.cjs');
 
 const FAJLOVI = path.join(__dirname, 'fajlovi');
@@ -58,6 +59,19 @@ test('citac: odbija tudj fajl', () => {
     zip.napravi(t.put, { 'a.txt': { sadrzaj: 'x' } });
     assert.throws(() => citac.procitaj(t.put), (e) => e.message.includes('.doc i .xls'));
     assert.throws(() => citac.procitaj(t.put + '.nema'), (e) => e.message.startsWith(NIJE_WORD));
+  } finally { t.ukloni(); }
+});
+
+test('citac: greske citaca su GreskaKorisnika sa cause', () => {
+  const t = privremeni('a.docx');
+  try {
+    fs.writeFileSync(t.put, 'nije zip');
+    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message.startsWith(NIJE_WORD) && e.cause instanceof Error);
+    zip.napravi(t.put, { 'a.txt': { sadrzaj: 'x' } });
+    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message.includes('.doc i .xls'));
+    // pokvaren docx: greska iz docx citaca
+    zip.napravi(t.put, { 'word/document.xml': { sadrzaj: '<w:document><w:body></w:document>' } });
+    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message.includes('oštećen') && e.cause instanceof Error);
   } finally { t.ukloni(); }
 });
 

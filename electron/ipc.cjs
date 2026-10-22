@@ -1,8 +1,6 @@
 // Registracija IPC kanala: gim:<modul>:<radnja>. Odgovor je uvek {ok, podaci} ili {ok:false, greska}.
-const { GreskaKorisnika } = require('./greska.cjs');
+const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
 const { MODULI } = require('./api.cjs');
-
-const OPSTA_GRESKA = 'Greška u programu. Pogledajte dnevnik.log.';
 
 // spisak: ocekivani kanali (MODULI); nepoklapanje baca odmah pri startu.
 function kanali(m) {

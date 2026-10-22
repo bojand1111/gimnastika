@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { registruj } = require('../electron/ipc.cjs');
-const { GreskaKorisnika } = require('../electron/greska.cjs');
+const { GreskaKorisnika, OPSTA_GRESKA } = require('../electron/greska.cjs');
 const { MODULI } = require('../electron/api.cjs');
 const { otvori } = require('../electron/baza/baza.cjs');
 const { napraviModule } = require('../electron/moduli.cjs');
@@ -91,6 +91,36 @@ test('takmicenja.otvori vraca korak po POPIS 4.5', () => {
   cisti(dir);
 });
 
+test('takmicenja.sacuvajGrb i ukloniGrb: nepostojece takmicenje', () => {
+  const { moduli, dir } = pravi();
+  assert.throws(() => moduli.takmicenja.sacuvajGrb(999, 'grb_levo', 'nema.png'), (e) => e instanceof GreskaKorisnika && e.message === 'Takmičenje ne postoji.');
+  assert.throws(() => moduli.takmicenja.ukloniGrb(999, 'grb_levo'), (e) => e instanceof GreskaKorisnika && e.message === 'Takmičenje ne postoji.');
+  cisti(dir);
+});
+
+test('takmicenja.otvori vraca korak spremno kad su grupe rasporedjene', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.takmicenja.otvori(s.takm);
+  moduli.prijave.dodaj([s.t.Ana]);
+  const pid = moduli.prijave.podaci(null).prijave[0].id;
+  const S = '2026-10-22 10:00:00';
+  const gid = baza.ubaci('grupe', { takmicenje_id: s.takm, pol: 'Z', naziv: 'GZ', redosled: 0, pocetna_pozicija: 1, kreirano: S, izmenjeno: S });
+  baza.ubaci('grupa_clanovi', { grupa_id: gid, prijava_id: pid, redosled: 0 });
+  assert.equal(moduli.takmicenja.otvori(s.takm).korak, 'spremno');
+  cisti(dir);
+});
+
+test('prijave.ucesce: nevazeca vrednost baca GreskaKorisnika', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.takmicenja.otvori(s.takm);
+  moduli.prijave.dodaj([s.t.Ana]);
+  const pid = moduli.prijave.podaci(null).prijave[0].id;
+  assert.throws(() => moduli.prijave.ucesce(pid, 'nesto'), (e) => e instanceof GreskaKorisnika);
+  cisti(dir);
+});
+
 test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
   const { baza, moduli, dir } = pravi();
   const s = tokSeme(baza);
@@ -164,6 +194,23 @@ test('grbovi: sacuvajGrb vraca url, ukloniGrb, nadji i prazno', async () => {
   cisti(dir);
 });
 
+test('uvoz.pripremi: neocekivana greska se loguje i vraca opstu poruku', async () => {
+  const { baza, moduli, dir, dn } = pravi();
+  const s = tokSeme(baza);
+  moduli.takmicenja.otvori(s.takm);
+  // model pripremiFajl baca neocekivani TypeError (nije GreskaKorisnika)
+  const uvozModel = require('../electron/modeli/uvoz.cjs');
+  const orig = uvozModel.napravi;
+  uvozModel.napravi = (...arg) => ({ ...orig(...arg), pripremiFajl: () => { throw new TypeError('kvar'); } });
+  try {
+    const m2 = napraviModule(baza, { dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) }, fasciklaPodataka: () => dir, dnevnik: dn });
+    const r = await m2.uvoz.pripremi([path.join(dir, 'kvar.docx')]);
+    assert.deepEqual(r.greske, ['kvar.docx: ' + OPSTA_GRESKA]);
+    assert.equal(dn.poziva, 1);
+  } finally { uvozModel.napravi = orig; }
+  cisti(dir);
+});
+
 test('uvoz: izaberiFajlove, pripremi (greske po fajlu), upisi', async () => {
   const { baza, moduli, dir, dn } = pravi({ canceled: false, filePaths: ['a.docx', 'b.xlsx'] });
   const s = tokSeme(baza);
@@ -176,7 +223,7 @@ test('uvoz: izaberiFajlove, pripremi (greske po fajlu), upisi', async () => {
   assert.equal(r.fajlovi[0].ime, 'prijava-partizan.docx');
   assert.equal(r.greske.length, 1);
   assert.ok(r.greske[0].startsWith('lose.docx: '));
-  assert.ok(dn.poziva >= 1);
+  assert.equal(dn.poziva, 0);
   structuredClone(r);
   const u = await moduli.uvoz.upisi(r.fajlovi, {});
   assert.equal(typeof u.prijavljeno, 'number');
