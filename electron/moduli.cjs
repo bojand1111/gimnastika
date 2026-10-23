@@ -10,11 +10,14 @@ const takmicenjaModel = require('./modeli/takmicenja.cjs');
 const prijaveModel = require('./modeli/prijave.cjs');
 const uvozModel = require('./modeli/uvoz.cjs');
 const grupeModel = require('./modeli/grupe.cjs');
+const oceneModel = require('./modeli/ocene.cjs');
+const { KOLATOR } = require('./modeli/sortiranje.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
 const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
 const { lekarski } = require('./racun/lekarski.mjs');
 const { datumPrikaz } = require('./racun/datum.mjs');
-const { pozicijaURotaciji, redosledURotaciji } = require('./racun/grupe.mjs');
+const { pozicijaURotaciji, redosledURotaciji, grupaNaSpravi } = require('./racun/grupe.mjs');
+const { prikaz: prikazBroja, izBaze } = require('./racun/broj.mjs');
 
 const broj = (id) => (id === null || id === undefined || id === '' ? null : Number(id));
 const prazno = (v) => v === null || v === undefined || v === '';
@@ -35,6 +38,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
   const pr = prijaveModel.napravi(baza, p);
   const uv = uvozModel.napravi(baza, p, dnevnik);
   const gr = grupeModel.napravi(baza);
+  const oc = oceneModel.napravi(baza, p);
 
   // Id aktivnog takmicenja; bez njega prijave i uvoz ne rade (POPIS 0.1).
   function aktivnoRed() {
@@ -51,7 +55,13 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
     return r.canceled ? [] : r.filePaths;
   }
 
-  const sPolom = (pol) => (pol === 'M' || pol === 'Z' ? pol : null);
+  // Ulaz iz polja ekrana: sve tekst; e je niz po sudijama, nedostajuce je prazno.
+  const ulazOcene = (u) => ({
+    d: String(u?.d ?? ''),
+    e: (Array.isArray(u?.e) ? u.e : []).map((x) => String(x ?? '')),
+    odbitak: String(u?.odbitak ?? ''),
+  });
+  const sPolom =(pol) => (pol === 'M' || pol === 'Z' ? pol : null);
 
   // Prijave sa lek_ne_vazi (stanje nema | istekao na dan takmicenja) i tekstovima upozorenja (POPIS 6.3).
   function prijaveSaLekarskim(takm, pol) {
@@ -282,6 +292,146 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
           : { tekst: 'Priprema je završena: svi prijavljeni su raspoređeni u grupe.', vrsta: 'ok' };
         return { stanje, poruka, ide: 'takmicenje' };
       },
+    },
+    unos: {
+      // Jedan poziv za ceo ekran Unos ocena (POPIS 4).
+      podaci: (polUlaz, spravaUlaz, rotUlaz) => {
+        const takm = aktivnoRed();
+        const tid = Number(takm.id);
+        const pomeraj = Number(takm.pomeraj_redosled) === 1;
+        let pol = polUlaz;
+        if (pol !== 'M' && pol !== 'Z') {
+          const imaZ = Number(baza.vrednost(
+            'SELECT COUNT(*) FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id WHERE p.takmicenje_id = ? AND t.pol = ?', [tid, 'Z']));
+          pol = imaZ > 0 ? 'Z' : 'M';
+        }
+        const sprave = s.sprave(pol);
+        const brojSprava = Math.max(1, sprave.length);
+        const grupe = gr.lista(tid, pol);
+        const napredakPola = oc.napredak(tid, pol, grupe, sprave, pomeraj);
+        let rot = Math.trunc(Number(rotUlaz));
+        if (!Number.isFinite(rot) || rot < 1 || rot > brojSprava) rot = napredakPola.rotacija;
+        const brojSudija = Number(takm.broj_e_sudija);
+        const spravaId = broj(spravaUlaz);
+        let sprava = sprave.find((x) => Number(x.id) === spravaId) ?? null;
+        if (sprava === null) {
+          // Nastavi gde se stalo: prva sprava sa nezavrsenim unosom, inace prva sa grupom.
+          sprava = sprave[0] ?? null;
+          let prvaSaGrupom = null;
+          petlja: for (const [i, sp] of sprave.entries()) {
+            const g = grupaNaSpravi(grupe, i + 1, rot, brojSprava, pomeraj);
+            if (g === null) continue;
+            if (prvaSaGrupom === null) {
+              prvaSaGrupom = sp;
+              sprava = sp;
+            }
+            const ids = g.clanovi.map((c) => Number(c.prijava_id));
+            const ocene = oc.zaSpravu(Number(sp.id), ids);
+            for (const pid of ids) {
+              if ((ocene[pid]?.status ?? 'nacrt') === 'nacrt') {
+                sprava = sp;
+                break petlja;
+              }
+            }
+          }
+        }
+        const osnova = {
+          takm: { id: takm.id, naziv: takm.naziv, broj_e_sudija: takm.broj_e_sudija, pravilo_e: takm.pravilo_e, pomeraj_redosled: takm.pomeraj_redosled },
+          pol,
+          sprave: sprave.map((x) => ({ id: x.id, naziv: x.naziv, skracenica: x.skracenica, ikona: x.ikona ?? '' })),
+          brojSudija,
+          pravilo: takm.pravilo_e,
+          zaokruzivanje: p.daj('e_zaokruzivanje', 'odseci'),
+        };
+        if (sprava === null) {
+          return {
+            ...osnova, sprave: [], sprava: null, rot: 1, brojSprava: 1, grupa: null, redovi: [],
+            napredak: { obradjeno: 0, ukupno: 0, odustalo: 0 }, izmene: [], bezGrupa: true, prvi: null,
+          };
+        }
+        const pozicija = sprave.findIndex((x) => Number(x.id) === Number(sprava.id)) + 1;
+        let grupa = grupaNaSpravi(grupe, pozicija, rot, brojSprava, pomeraj);
+        const bezGrupa = grupe.length === 0;
+        if (grupa === null && bezGrupa) {
+          // Bez grupa: svi prijavljeni tog pola koji rade spravu; startni broj (bez njega na kraju), prezime, ime.
+          const clanovi = baza.svi(
+            `SELECT p.id AS prijava_id, p.startni_broj, p.van_konkurencije, t.ime, t.prezime, t.pol,
+                    k.skracenica AS klub_skr, kat.naziv AS kategorija, pr.naziv AS program
+             FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id
+             JOIN prijava_sprave ps ON ps.prijava_id = p.id AND ps.sprava_id = ?
+             LEFT JOIN klubovi k ON k.id = p.klub_id LEFT JOIN kategorije kat ON kat.id = p.kategorija_id
+             LEFT JOIN programi pr ON pr.id = p.program_id
+             WHERE p.takmicenje_id = ? AND t.pol = ?`, [Number(sprava.id), tid, pol]);
+          clanovi.sort((a, b) => {
+            const sa = a.startni_broj ?? null;
+            const sb = b.startni_broj ?? null;
+            if (sa !== sb) {
+              if (sa === null) return 1;
+              if (sb === null) return -1;
+              return sa - sb;
+            }
+            return KOLATOR.compare(a.prezime, b.prezime) || KOLATOR.compare(a.ime, b.ime) || a.prijava_id - b.prijava_id;
+          });
+          grupa = { id: 0, naziv: 'Svi prijavljeni', clanovi };
+        }
+        const redovi = [];
+        const napredak = { obradjeno: 0, ukupno: 0, odustalo: 0 };
+        if (grupa !== null) {
+          const ids = grupa.clanovi.map((c) => Number(c.prijava_id));
+          const ocene = oc.zaSpravu(Number(sprava.id), ids);
+          const pr = (v) => prikazBroja(izBaze(v ?? null));
+          for (const [i, c] of grupa.clanovi.entries()) {
+            const pid = Number(c.prijava_id);
+            const o = ocene[pid] ?? null;
+            const radi = oc.radiSpravu(pid, Number(sprava.id));
+            const status = o?.status ?? 'nacrt';
+            const eSudije = [];
+            for (let j = 1; j <= brojSudija; j++) eSudije.push(o && o.e_sudije[j] !== undefined ? prikazBroja(o.e_sudije[j]) : '');
+            redovi.push({
+              rb: i + 1,
+              prijava_id: pid,
+              startni_broj: c.startni_broj ?? null,
+              ime: `${c.prezime} ${c.ime}`,
+              pol: c.pol,
+              opis: [c.klub_skr, c.kategorija, c.program].filter((x) => x).join(' · '),
+              vk: Number(c.van_konkurencije) === 1,
+              radi,
+              status,
+              d: pr(o?.d),
+              e_sudije: eSudije,
+              e: pr(o?.e),
+              odbitak: pr(o?.odbitak),
+              konacna: pr(o?.konacna),
+            });
+            if (radi) {
+              napredak.ukupno++;
+              if (status !== 'nacrt') napredak.obradjeno++;
+              if (status === 'odustao') napredak.odustalo++;
+            }
+          }
+        }
+        const prvi = redovi.find((r) => r.radi && r.status === 'nacrt');
+        const izmene = oc.izmeneNaSpravi(tid, Number(sprava.id)).map((r) => ({
+          id: r.id, vreme: r.vreme, razlog: r.razlog, ime: r.ime, prezime: r.prezime, opis: r.opis,
+        }));
+        return {
+          ...osnova,
+          sprava: { id: sprava.id, naziv: sprava.naziv, ikona: sprava.ikona ?? '' },
+          rot,
+          brojSprava,
+          grupa: grupa === null ? null : { id: grupa.id, naziv: grupa.naziv },
+          redovi,
+          napredak,
+          izmene,
+          bezGrupa,
+          prvi: prvi ? prvi.prijava_id : null,
+        };
+      },
+      nacrt: (prijavaId, spravaId, ulaz) => oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), false, ''),
+      potvrdi: (prijavaId, spravaId, ulaz, razlog) =>
+        oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), true, String(razlog ?? '')),
+      odustao: (prijavaId, spravaId) => oc.odustao(aktivnoId(), broj(prijavaId), broj(spravaId)),
+      vrati: (prijavaId, spravaId) => oc.vrati(aktivnoId(), broj(prijavaId), broj(spravaId)),
     },
     uvoz: {
       izaberiFajlove: () => izaberi({
