@@ -205,3 +205,44 @@ test('ulaz bez e i d se tretira kao prazan', () => {
   assert.deepEqual(n.prikaz.e_sudije, ['', '', '', '']);
   assert.equal(moduli.unos.nacrt(pid.Ana, s.pr, null).prikaz.status, 'nacrt');
 });
+
+// Dve grupe: A (Ana, Bea) na pocetnoj poziciji 1, B (Ceca, Dona) na 2.
+function sa2Grupe() {
+  const o = sa4(false);
+  const g = [o.moduli.rotacije.dodaj('Z').grupa, o.moduli.rotacije.dodaj('Z').grupa];
+  [['Ana', 0, 0], ['Bea', 0, 1], ['Ceca', 1, 0], ['Dona', 1, 1]].forEach(([ime, k, i]) => o.moduli.rotacije.premesti(o.pid[ime], g[k].id, i, 1));
+  const unesi = (ime, sprava) => o.moduli.unos.potvrdi(o.pid[ime], sprava, ULAZ, '');
+  return { ...o, unesi };
+}
+
+test('gde se stalo: A zavrsena na PR, B ceka na GR, podrazumevana sprava je GR u rotaciji 1', () => {
+  const { moduli, unesi, s } = sa2Grupe();
+  assert.equal(moduli.unos.podaci().sprava.id, s.pr);
+  unesi('Ana', s.pr);
+  unesi('Bea', s.pr);
+  const d = moduli.unos.podaci();
+  assert.equal(d.rot, 1);
+  assert.equal(d.sprava.id, s.gr);
+  assert.deepEqual(d.redovi.map((r) => r.ime), ['Test Ceca', 'Test Dona']);
+});
+
+test('gde se stalo: rotacija 1 gotova daje rot 2, i kad URL trazi nepostojece vrednosti', () => {
+  const { moduli, unesi, s } = sa2Grupe();
+  unesi('Ana', s.pr); unesi('Bea', s.pr); unesi('Ceca', s.gr); unesi('Dona', s.gr);
+  const d = moduli.unos.podaci('Z', 999, 9);
+  assert.equal(d.rot, 2);
+  assert.equal(d.sprava.id, s.pr);
+  assert.deepEqual(d.redovi.map((r) => r.ime), ['Test Ceca', 'Test Dona']);
+  assert.equal(moduli.unos.podaci('Z', s.pr, 0).rot, 2);
+  assert.equal(moduli.unos.podaci('Z', s.pr, 1).rot, 1);
+});
+
+test('gde se stalo: sve uneto, rot je poslednja, sprava je prva sa grupom', () => {
+  const { moduli, unesi, s } = sa2Grupe();
+  unesi('Ana', s.pr); unesi('Bea', s.pr); unesi('Ceca', s.gr); unesi('Dona', s.gr);
+  unesi('Ceca', s.pr); unesi('Dona', s.pr); unesi('Ana', s.gr); unesi('Bea', s.gr);
+  const d = moduli.unos.podaci();
+  assert.equal(d.rot, 2);
+  assert.equal(d.sprava.id, s.pr);
+  assert.equal(d.napredak.obradjeno, d.napredak.ukupno);
+});

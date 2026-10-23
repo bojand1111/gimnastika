@@ -379,7 +379,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
         if (grupa !== null) {
           const ids = grupa.clanovi.map((c) => Number(c.prijava_id));
           const ocene = oc.zaSpravu(Number(sprava.id), ids);
-          const pr = (v) => prikazBroja(izBaze(v ?? null));
+          const pk = (v) => prikazBroja(izBaze(v ?? null));
           for (const [i, c] of grupa.clanovi.entries()) {
             const pid = Number(c.prijava_id);
             const o = ocene[pid] ?? null;
@@ -397,11 +397,11 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
               vk: Number(c.van_konkurencije) === 1,
               radi,
               status,
-              d: pr(o?.d),
+              d: pk(o?.d),
               e_sudije: eSudije,
-              e: pr(o?.e),
-              odbitak: pr(o?.odbitak),
-              konacna: pr(o?.konacna),
+              e: pk(o?.e),
+              odbitak: pk(o?.odbitak),
+              konacna: pk(o?.konacna),
             });
             if (radi) {
               napredak.ukupno++;
