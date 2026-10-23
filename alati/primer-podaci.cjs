@@ -163,14 +163,18 @@ function unesiOcene(baza, json, takmId, podesavanja, rez) {
         const spravaId = baza.vrednost('SELECT id FROM sprave WHERE pol = ? AND skracenica = ?', [pol, skr]);
         if (spravaId === null || !ocene.radiSpravu(Number(prijava.id), Number(spravaId))) continue;
         if (ocene.nadji(Number(prijava.id), Number(spravaId)) !== null) continue;
-        if (t.odustao) {
-          ocene.odustao(takmId, Number(prijava.id), Number(spravaId));
-        } else {
-          const stvarne = sudije.takmicar === t.prezime_ime ? sudije.po_spravi[skr] : null;
-          const e = stvarne ? stvarne.slice(0, brojE) : Array(brojE).fill(o.e);
-          ocene.sacuvaj(takmId, Number(prijava.id), Number(spravaId), { d: o.d, e, odbitak: o.odbitak }, true);
-        }
+        const stvarne = sudije.takmicar === t.prezime_ime ? sudije.po_spravi[skr] : null;
+        const e = stvarne ? stvarne.slice(0, brojE) : Array(brojE).fill(o.e);
+        ocene.sacuvaj(takmId, Number(prijava.id), Number(spravaId), { d: o.d, e, odbitak: o.odbitak }, true);
         rez.ocena_novih++;
+      }
+      // Odustala: ocene iz JSON-a ostaju, na ostalim spravama prijave je odustala.
+      if (t.odustao) {
+        for (const r of baza.svi('SELECT sprava_id FROM prijava_sprave WHERE prijava_id = ?', [Number(prijava.id)])) {
+          if (ocene.nadji(Number(prijava.id), Number(r.sprava_id)) !== null) continue;
+          ocene.odustao(takmId, Number(prijava.id), Number(r.sprava_id));
+          rez.ocena_novih++;
+        }
       }
     }
   }

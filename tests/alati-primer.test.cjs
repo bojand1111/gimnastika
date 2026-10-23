@@ -218,18 +218,14 @@ test('uvoz primera: ocene iz JSON-a, konacna se poklapa u hiljaditim', async () 
   const rez = uvezi(baza, json);
   const lista = parovi(baza);
   assert.ok(lista.length > 0);
-  assert.equal(broj(baza, 'ocene'), lista.length);
-  assert.equal(rez.ocena, lista.length);
-  assert.equal(rez.ocena_novih, lista.length);
+  const ODUSTALIH = 2; // GR i PA odustale takmicarke nisu u JSON-u
+  assert.equal(broj(baza, 'ocene'), lista.length + ODUSTALIH);
+  assert.equal(rez.ocena, lista.length + ODUSTALIH);
+  assert.equal(rez.ocena_novih, lista.length + ODUSTALIH);
   for (const { t, skr, o, prijavaId, spravaId: sid } of lista) {
     const red = baza.jedan('SELECT * FROM ocene WHERE prijava_id = ? AND sprava_id = ?', [prijavaId, sid]);
-    if (t.odustao) {
-      assert.equal(red.status, 'odustao', `${t.prezime_ime} ${skr}`);
-      assert.equal(red.konacna, null);
-    } else {
-      assert.notEqual(red.status, 'odustao');
-      assert.equal(izBaze(red.konacna), izBaze(o.konacna), `${t.prezime_ime} ${skr}`);
-    }
+    assert.notEqual(red.status, 'odustao', `${t.prezime_ime} ${skr}`);
+    assert.equal(izBaze(red.konacna), izBaze(o.konacna), `${t.prezime_ime} ${skr}`);
   }
   baza.zatvori();
 });
@@ -247,13 +243,11 @@ test('uvoz primera: Petrovic na gredi ima E 8250 iz cetiri sudije', async () => 
   baza.zatvori();
 });
 
-test('uvoz primera: odustali takmicari imaju status odustao, ostali nijedan', () => {
+test('uvoz primera: odustala ima ocene iz JSON-a, a odustao na ostalim spravama', () => {
   const baza = nova();
   uvezi(baza, json);
-  const odustali = svi.filter((t) => t.odustao).map((t) => t.prezime_ime);
-  const redovi = baza.svi("SELECT t.prezime, t.ime FROM ocene o JOIN prijave p ON p.id = o.prijava_id JOIN takmicari t ON t.id = p.takmicar_id WHERE o.status = 'odustao'");
-  assert.ok(redovi.length > 0 || odustali.length === 0);
-  for (const r of redovi) assert.ok(odustali.includes(`${r.prezime} ${r.ime}`));
+  const redovi = baza.svi("SELECT t.prezime, t.ime, s.skracenica FROM ocene o JOIN prijave p ON p.id = o.prijava_id JOIN takmicari t ON t.id = p.takmicar_id JOIN sprave s ON s.id = o.sprava_id WHERE o.status = 'odustao' ORDER BY s.skracenica");
+  assert.deepEqual(redovi.map((r) => `${r.prezime} ${r.ime} ${r.skracenica}`), ['Đorđević Sara GR', 'Đorđević Sara PA']);
   baza.zatvori();
 });
 
