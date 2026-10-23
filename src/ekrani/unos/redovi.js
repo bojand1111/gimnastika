@@ -31,3 +31,10 @@ export function izPodataka(d) {
 
 // Kolone mreze (POPIS 5): #, St. br., Takmicar, D, E1..EN, E, Odb., Konacna, Status.
 export const kolone = (brojSudija) => `36px 44px minmax(0,1fr) 64px ${'60px '.repeat(brojSudija)}66px 60px 104px 118px`;
+
+// "vreme" u bazi je UTC (YYYY-MM-DD HH:MM:SS); prikaz je HH:mm lokalnog vremena racunara.
+export function vremeIzmene(vreme) {
+  const t = new Date(`${String(vreme).replace(' ', 'T')}Z`);
+  if (Number.isNaN(t.getTime())) return '';
+  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+}

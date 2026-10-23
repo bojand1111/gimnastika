@@ -66,7 +66,7 @@ export default function Unos() {
       parRef.current = { pol: podaci.pol, sprava: ima ? String(podaci.sprava.id) : undefined, rot: String(podaci.rot) };
       // Izabrane vrednosti u hash bez novog ucitavanja (replaceState ne okida hashchange).
       const hash = hashUnos(podaci.pol, ima ? podaci.sprava.id : undefined, ima ? podaci.rot : undefined);
-      if (location.hash !== hash) history.replaceState(null, '', hash);
+      if (location.hash.startsWith('#/unos') && location.hash !== hash) history.replaceState(null, '', hash);
       const z = opc.drzi ?? pocetni(novi, opc.pamti ?? null, podaci.brojSudija);
       if (z) { postaviTrenutni(z.id); zatrazi(z); }
       else if (!novi.some((r) => r.prijava_id === trenutniRef.current)) postaviTrenutni(null);
@@ -98,6 +98,7 @@ export default function Unos() {
     ziv.current = true;
     ucitaj();
     const naHash = () => {
+      akcije.izlazAktivnog(); // kucani unos se snima pre odlaska ili ponovnog ucitavanja
       if (!location.hash.startsWith('#/unos')) return;
       const n = izHasha();
       if (istiPar(n, parRef.current)) return;
@@ -110,6 +111,7 @@ export default function Unos() {
     return () => {
       window.removeEventListener('hashchange', naHash);
       document.removeEventListener('keydown', akcije.globalniTaster);
+      akcije.izlazAktivnog();
       akcije.isprazniNacrte(); // nacrt na cekanju se salje i pri odlasku sa ekrana
       ziv.current = false;
     };

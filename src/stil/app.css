@@ -389,7 +389,7 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 #zavrsi { flex-shrink: 0; }
 
 /* Unos ocena: traka, zaglavlje kartice, napredak, prečice i izmene (POPIS 5.1 do 5.3) */
-.unos-traka { flex-direction: row; align-items: center; gap: 16px; padding: 10px 12px; flex-shrink: 0; }
+.unos-traka { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 16px; padding: 10px 12px; flex-shrink: 0; }
 .unos-traka-grupa { display: flex; align-items: center; gap: 8px; }
 .unos-rot-link { min-width: 40px; justify-content: center; }
 .unos-razmak { flex-grow: 1; }
@@ -421,3 +421,8 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .unos-razlog-greska { margin-top: 4px; }
 .unos-izmena-ime { font-weight: 600; }
 .unos-pruga-rec { font-weight: 600; }
+.unos-ime, .unos-ime-kolona .mali { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.unos-ime-red { min-width: 0; }
+.unos-red .ocena.greska { border: 2px solid var(--bad); }
+.unos-red .ocena:focus { border: 2px solid var(--ink); }
+.unos-red:focus { outline: none; }

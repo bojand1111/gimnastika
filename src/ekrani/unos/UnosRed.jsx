@@ -63,7 +63,7 @@ function UnosRed({ red, brojSudija, trenutni, kolone, h }) {
   const pruga = red.status === 'ne_radi' || red.status === 'odustao';
   return (
     <div className={klase} role="row" style={{ gridTemplateColumns: kolone }} data-prijava={id} data-status={red.status}
-      data-pol={red.pol} data-ime={red.ime} onFocus={() => h.fokus(id)}>
+      data-pol={red.pol} data-ime={red.ime} tabIndex={-1} onFocus={() => h.fokus(id)}>
       <span className="unos-rb broj centar">{red.rb}</span>
       <span className="broj unos-startni">{red.startni_broj ?? ''}</span>
       <span className="unos-ime-kolona">

@@ -43,7 +43,7 @@ export function napraviAkcije(ctx) {
       await gim.unos.nacrt(id, spravaId(), podaciReda(red, brojSudija()));
       if (ctx.ziv()) postaviRed(id, (r) => (r.greskaCuvanja ? { ...r, greskaCuvanja: false } : r));
     } catch (e) {
-      if (ctx.ziv()) postaviRed(id, (r) => ({ ...r, greskaCuvanja: true }));
+      if (ctx.ziv()) postaviRed(id, (r) => (r.status === 'nacrt' ? { ...r, greskaCuvanja: true } : r));
       obavesti(`Nije sačuvano: ${e.message}`, 'greska');
     }
   }
@@ -139,6 +139,14 @@ export function napraviAkcije(ctx) {
     if (ctx.ziv()) await ctx.ucitaj({ pamti: id });
   }
 
+  // Polje u fokusu se snima kao da je izgubilo fokus (F2/F4 ili meni dok se jos kuca).
+  function izlazAktivnog() {
+    const el = document.activeElement;
+    const red = el && el.closest ? el.closest('#unos .unos-red[data-prijava]') : null;
+    if (!red || !el.dataset || !el.dataset.polje) return;
+    izlaz(Number(red.dataset.prijava), el.dataset.polje);
+  }
+
   const tasterCtx = { redovi: ctx.redovi, brojSudija, oznaciGresku, normalizuj: (id, ime, tekst) => postaviVrednost(id, ime, tekst, bezGreske(nadji(id), ime)), potvrdi };
 
   // F8, F9 i Escape (ispravka) nad poslednjim fokusiranim redom, kao PHP (POPIS 10.12).
@@ -163,9 +171,14 @@ export function napraviAkcije(ctx) {
       ispravi,
       odustao,
       vrati,
-      ponovo: (id) => posaljiNacrt(id),
+      ponovo: (id) => {
+        const r = nadji(id);
+        if (r && r.status !== 'nacrt') postaviRed(id, (x) => ({ ...x, greskaCuvanja: false }));
+        else posaljiNacrt(id);
+      },
     },
     globalniTaster,
     isprazniNacrte,
+    izlazAktivnog,
   };
 }

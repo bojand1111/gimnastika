@@ -1,11 +1,6 @@
-// Dve kartice ispod unosa (POPIS 5.3): prečice i poslednje izmene na spravi.
-// "vreme" u bazi je UTC (YYYY-MM-DD HH:MM:SS); prikaz je HH:mm lokalnog vremena računara.
-export function vremeIzmene(vreme) {
-  const t = new Date(`${String(vreme).replace(' ', 'T')}Z`);
-  if (Number.isNaN(t.getTime())) return '';
-  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
-}
+import { vremeIzmene } from './redovi.js';
 
+// Dve kartice ispod unosa (POPIS 5.3): precice i poslednje izmene na spravi.
 export default function UnosIzmene({ izmene }) {
   return (
     <div className="unos-dole">

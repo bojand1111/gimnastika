@@ -12,7 +12,7 @@ export function obradiTaster(ev, id, ime, ctx) {
   if (!red || !otvoren(red)) return;
   const lista = polja(ctx.brojSudija());
   const taster = ev.key;
-  if ((taster === 'Enter' || taster === 'Tab') && !ev.shiftKey) {
+  if (taster === 'Enter' || (taster === 'Tab' && !ev.shiftKey)) {
     const pf = proveriPolje(red.vrednosti[ime]);
     if (!pf.ok) { ev.preventDefault(); ctx.oznaciGresku(id, ime); ev.target.select(); return; }
     ctx.normalizuj(id, ime, pf.prikaz);
