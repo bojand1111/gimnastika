@@ -15,11 +15,12 @@ import TakmicenjeForma from './ekrani/TakmicenjeForma.jsx';
 import Prijave from './ekrani/Prijave.jsx';
 import Uvoz from './ekrani/Uvoz.jsx';
 import Rotacije from './ekrani/Rotacije.jsx';
+import Unos from './ekrani/Unos.jsx';
 
-const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, uvoz: Uvoz,
+const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz,
   'takmicenja/novo': TakmicenjeForma, 'takmicenja/izmeni': TakmicenjeForma };
 // Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
-const FIKSNO = new Set(['klubovi', 'takmicari', 'takmicenja', 'prijave', 'rotacije']);
+const FIKSNO = new Set(['klubovi', 'takmicari', 'takmicenja', 'prijave', 'rotacije', 'unos']);
 
 // Globalne precice: radnja(ev) -> hash ili dogadjaj na documentu.
 function izvrsi(ev) {

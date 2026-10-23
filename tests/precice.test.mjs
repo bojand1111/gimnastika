@@ -9,12 +9,18 @@ test('F2 i F4 van polja', () => {
   assert.equal(radnja(ev('F4')), 'rang');
 });
 
-test('F2 i F4 ne rade u poljima', () => {
+test('F2 i F4 rade i u poljima', () => {
   for (const tag of ['INPUT', 'SELECT', 'TEXTAREA']) {
-    assert.equal(radnja(ev('F2', {}, tag)), null);
-    assert.equal(radnja(ev('F4', {}, tag)), null);
+    assert.equal(radnja(ev('F2', {}, tag)), 'unos');
+    assert.equal(radnja(ev('F4', {}, tag)), 'rang');
   }
-  assert.equal(radnja({ ...ev('F2'), target: { tagName: 'DIV', isContentEditable: true } }), null);
+  assert.equal(radnja({ ...ev('F2'), target: { tagName: 'DIV', isContentEditable: true } }), 'unos');
+});
+
+test('obicna slova u poljima ne okidaju precice', () => {
+  assert.equal(radnja(ev('n', {}, 'INPUT')), null);
+  assert.equal(radnja(ev('F8', {}, 'INPUT')), null);
+  assert.equal(radnja(ev('F9', {}, 'INPUT')), null);
 });
 
 test('Alt+N i Esc rade i u poljima', () => {

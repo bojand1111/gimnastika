@@ -387,3 +387,37 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .rot-legenda { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 18px; font-size: 13px; flex: 1 1 0; min-width: 0; }
 .rot-legenda > span.rot-stavka { display: inline-flex; align-items: center; gap: 6px; }
 #zavrsi { flex-shrink: 0; }
+
+/* Unos ocena: traka, zaglavlje kartice, napredak, prečice i izmene (POPIS 5.1 do 5.3) */
+.unos-traka { flex-direction: row; align-items: center; gap: 16px; padding: 10px 12px; flex-shrink: 0; }
+.unos-traka-grupa { display: flex; align-items: center; gap: 8px; }
+.unos-rot-link { min-width: 40px; justify-content: center; }
+.unos-razmak { flex-grow: 1; }
+.napredak { display: flex; align-items: center; gap: 10px; }
+.napredak-traka { display: flex; width: 120px; height: 8px; border-radius: 6px; background: var(--ground); overflow: hidden; }
+.napredak-punjenje { background: var(--ok); }
+.napredak-broj { font-size: 15px; font-weight: 600; }
+.napredak-tekst { font-size: 13px; }
+.unos-kartica { overflow: hidden; min-height: 0; }
+.unos-naslov-red { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; padding: 0 12px 0 16px; flex-shrink: 0; }
+.unos-naslov { display: flex; align-items: center; gap: 10px; font-size: 18px; line-height: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.unos-red.ceka.trenutni { background: var(--primary-soft); }
+.unos-ime-kolona { display: flex; flex-direction: column; min-width: 0; line-height: 18px; }
+.unos-ime-red { display: inline-flex; align-items: center; gap: 8px; }
+.unos-ime { font-size: 15px; font-weight: 600; }
+.unos-startni { font-size: 15px; font-weight: 600; }
+.unos-e { font-size: 16px; color: var(--ink-2); }
+.unos-red .vrati { padding: 0 6px; height: 28px; }
+.unos-red .ispravi { width: 28px; height: 28px; color: var(--link); }
+.unos-red .odustao-dugme kbd { margin-left: 2px; }
+.unos-dole { display: flex; gap: var(--gap); align-items: stretch; flex-shrink: 0; }
+.unos-precice { padding: 10px 14px; gap: 8px; }
+.unos-izmene { width: 470px; flex-shrink: 0; padding: 10px 14px; gap: 6px; }
+.unos-oznaka { letter-spacing: 0.06em; text-transform: uppercase; }
+.unos-precice-lista { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.unos-precica { display: inline-flex; align-items: center; gap: 5px; }
+.unos-izmena { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.unos-izmena-tekst { display: flex; flex-direction: column; line-height: 18px; }
+.unos-razlog-greska { margin-top: 4px; }
+.unos-izmena-ime { font-weight: 600; }
+.unos-pruga-rec { font-weight: 600; }
