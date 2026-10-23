@@ -43,6 +43,18 @@ test('preracunaj: nepotpune E, bez D, neispravan odbitak, ne ispod nule', () => 
   assert.equal(preracunaj(neg, 4, 'prosek_svih', 'odseci').konacna, '0,000');
 });
 
+test('preracunaj: pravilo E se razlikuje (odbaci_krajnje vs prosek_svih)', () => {
+  const r = { vrednosti: unos('4,8', ['8,0', '9,0', '7,0', '8,4']) };
+  assert.deepEqual(preracunaj(r, 4, 'odbaci_krajnje', 'odseci'), { e: '8,200', konacna: '13,000' });
+  assert.deepEqual(preracunaj(r, 4, 'prosek_svih', 'odseci'), { e: '8,100', konacna: '12,900' });
+});
+
+test('preracunaj: zaokruzivanje se razlikuje (odseci vs zaokruzi)', () => {
+  const r = { vrednosti: unos('4,8', ['8,001', '8,002', '8,002']) };
+  assert.equal(preracunaj(r, 3, 'prosek_svih', 'odseci').e, '8,001');
+  assert.equal(preracunaj(r, 3, 'prosek_svih', 'zaokruzi').e, '8,002');
+});
+
 test('podaciReda: trim', () => {
   const r = { vrednosti: unos(' 4,8 ', [' 8,3', '8,1 ', '', '8,2'], ' ') };
   assert.deepEqual(podaciReda(r, 4), { d: '4,8', e: ['8,3', '8,1', '', '8,2'], odbitak: '' });
@@ -111,6 +123,11 @@ test('tekstOdustalo, procenat, odustaoRec', () => {
 
 test('hashUnos', () => {
   assert.equal(hashUnos('Z', 3, 2), '#/unos?pol=Z&sprava=3&rot=2');
+});
+
+test('hashUnos: nezadati parametri se izostavljaju', () => {
+  assert.equal(hashUnos('M'), '#/unos?pol=M');
+  assert.equal(hashUnos('M', 4), '#/unos?pol=M&sprava=4');
 });
 
 test('primeniPrikaz: upis vrednosti, status, ciscenje oznaka', () => {

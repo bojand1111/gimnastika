@@ -70,7 +70,8 @@ export function sledecePolje(lista, ime, smer) {
 }
 
 // Sledeci red u smeru ciji je red otvoren (polje nije zakljucano); ne_radi, odustao i zakljucani se preskacu.
-export function sledeciRedSaPoljem(redovi, i, ime, smer) {
+// Zakljucavanje je po redu, pa se ime polja ne koristi.
+export function sledeciRedSaPoljem(redovi, i, _ime, smer) {
   for (let j = i + smer; j >= 0 && j < redovi.length; j += smer) {
     if (otvoren(redovi[j])) return j;
   }
@@ -108,7 +109,12 @@ export const tekstOdustalo = (n, pol) => (n > 0 ? ` · ${n} ${pol === 'Z' ? 'odu
 
 export const procenat = (obradjeno, ukupno) => (ukupno > 0 ? Math.round((obradjeno * 100) / ukupno) : 0);
 
-export const hashUnos = (pol, spravaId, rot) => url('unos', { pol, sprava: spravaId, rot });
+// Parametri koji nisu zadati (undefined/null) ne ulaze u hash.
+export function hashUnos(pol, spravaId, rot) {
+  const p = { pol, sprava: spravaId, rot };
+  for (const k of Object.keys(p)) if (p[k] === undefined || p[k] === null) delete p[k];
+  return url('unos', p);
+}
 
 // Novi red iz odgovora IPC-a (prikaz ocene); ciste oznake ispravke i gresaka.
 export function primeniPrikaz(red, p) {
