@@ -192,3 +192,80 @@ test('uvoz primera: drugi put ne dira grupe', () => {
   assert.equal(JSON.stringify(grupeStanje(baza).Z) + JSON.stringify(grupeStanje(baza).M), pre);
   baza.zatvori();
 });
+
+// Ocene primera: iz JSON-a, samo na spravama koje prijava radi.
+const spravaId = (baza, pol, skr) => Number(baza.vrednost('SELECT id FROM sprave WHERE pol = ? AND skracenica = ?', [pol, skr]));
+
+function parovi(baza) {
+  const poImenu = Object.fromEntries(prijaveSa(baza).map((p) => [`${p.prezime} ${p.ime}`, p]));
+  const lista = [];
+  for (const [pol, kljuc] of [['Z', 'zsg_kadet_c'], ['M', 'msg_kadet_c']]) {
+    for (const t of json[kljuc].takmicari) {
+      for (const [skr, o] of Object.entries(t.ocene)) {
+        const sid = spravaId(baza, pol, skr);
+        const p = poImenu[t.prezime_ime];
+        if (Number(baza.vrednost('SELECT COUNT(*) FROM prijava_sprave WHERE prijava_id = ? AND sprava_id = ?', [p.id, sid])) === 0) continue;
+        lista.push({ t, skr, o, prijavaId: Number(p.id), spravaId: sid });
+      }
+    }
+  }
+  return lista;
+}
+
+test('uvoz primera: ocene iz JSON-a, konacna se poklapa u hiljaditim', async () => {
+  const { izBaze } = await import('../electron/racun/broj.mjs');
+  const baza = nova();
+  const rez = uvezi(baza, json);
+  const lista = parovi(baza);
+  assert.ok(lista.length > 0);
+  assert.equal(broj(baza, 'ocene'), lista.length);
+  assert.equal(rez.ocena, lista.length);
+  assert.equal(rez.ocena_novih, lista.length);
+  for (const { t, skr, o, prijavaId, spravaId: sid } of lista) {
+    const red = baza.jedan('SELECT * FROM ocene WHERE prijava_id = ? AND sprava_id = ?', [prijavaId, sid]);
+    if (t.odustao) {
+      assert.equal(red.status, 'odustao', `${t.prezime_ime} ${skr}`);
+      assert.equal(red.konacna, null);
+    } else {
+      assert.notEqual(red.status, 'odustao');
+      assert.equal(izBaze(red.konacna), izBaze(o.konacna), `${t.prezime_ime} ${skr}`);
+    }
+  }
+  baza.zatvori();
+});
+
+test('uvoz primera: Petrovic na gredi ima E 8250 iz cetiri sudije', async () => {
+  const { izBaze } = await import('../electron/racun/broj.mjs');
+  const baza = nova();
+  uvezi(baza, json);
+  const p = prijaveSa(baza).find((r) => r.prezime === 'Petrović' && r.ime === 'Ana');
+  const o = baza.jedan('SELECT * FROM ocene WHERE prijava_id = ? AND sprava_id = ?', [p.id, spravaId(baza, 'Z', 'GR')]);
+  assert.equal(izBaze(o.e), 8250);
+  const sudije = baza.svi('SELECT vrednost FROM ocene_e WHERE ocena_id = ? ORDER BY sudija', [o.id]).map((r) => izBaze(r.vrednost));
+  assert.deepEqual(sudije, [8300, 8100, 8400, 8200]);
+  assert.equal(baza.vrednost("SELECT pravilo_e FROM takmicenja"), 'odbaci_krajnje');
+  baza.zatvori();
+});
+
+test('uvoz primera: odustali takmicari imaju status odustao, ostali nijedan', () => {
+  const baza = nova();
+  uvezi(baza, json);
+  const odustali = svi.filter((t) => t.odustao).map((t) => t.prezime_ime);
+  const redovi = baza.svi("SELECT t.prezime, t.ime FROM ocene o JOIN prijave p ON p.id = o.prijava_id JOIN takmicari t ON t.id = p.takmicar_id WHERE o.status = 'odustao'");
+  assert.ok(redovi.length > 0 || odustali.length === 0);
+  for (const r of redovi) assert.ok(odustali.includes(`${r.prezime} ${r.ime}`));
+  baza.zatvori();
+});
+
+test('uvoz primera: drugi put ne menja ocene', () => {
+  const baza = nova();
+  uvezi(baza, json);
+  const pre = JSON.stringify(baza.svi('SELECT * FROM ocene ORDER BY id'));
+  const preE = broj(baza, 'ocene_e');
+  const rez = uvezi(baza, json);
+  assert.equal(rez.ocena_novih, 0);
+  assert.equal(rez.ocena, broj(baza, 'ocene'));
+  assert.equal(JSON.stringify(baza.svi('SELECT * FROM ocene ORDER BY id')), pre);
+  assert.equal(broj(baza, 'ocene_e'), preE);
+  baza.zatvori();
+});

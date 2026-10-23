@@ -1,6 +1,6 @@
 // Upisuje primer podatke u bazu: klubovi, sprave, kategorija Kadet, program C program, takmicari.
 // Pokretanje: node alati/primer-podaci.cjs (GIM_PODACI bira fasciklu podataka).
-// Dodaje i takmicenje iz JSON-a sa prijavama svih takmicara; ocene dolaze tek u fazi 5.
+// Dodaje i takmicenje iz JSON-a sa prijavama svih takmicara; ocene iz JSON-a (Petrović sa pravim E sudijama).
 const fs = require('node:fs');
 const path = require('node:path');
 const { otvori } = require('../electron/baza/baza.cjs');
@@ -12,6 +12,7 @@ const { napravi: napraviSifarnike } = require('../electron/modeli/sifarnici.cjs'
 const { napravi: napraviTakmicenja } = require('../electron/modeli/takmicenja.cjs');
 const { napravi: napraviPrijave } = require('../electron/modeli/prijave.cjs');
 const { napravi: napraviGrupe } = require('../electron/modeli/grupe.cjs');
+const { napravi: napraviOcene } = require('../electron/modeli/ocene.cjs');
 const { napravi: napraviPodesavanja } = require('../electron/modeli/podesavanja.cjs');
 const { istiTekst } = require('../electron/modeli/sortiranje.cjs');
 
@@ -31,7 +32,7 @@ function uvezi(baza, json) {
   const klubovi = napraviKlubove(baza);
   const takmicari = napraviTakmicare(baza);
   const sifarnici = napraviSifarnike(baza);
-  const rez = { klubovi: 0, klubovi_novih: 0, takmicara: 0, takmicara_novih: 0, sprave: 0, kategorija: 'Kadet', program: 'C program', takmicenje: json.takmicenje.naziv, takmicenje_novo: false, prijava: 0, prijava_novih: 0, grupe: 0, grupe_novih: 0, preskoceno: [] };
+  const rez = { klubovi: 0, klubovi_novih: 0, takmicara: 0, takmicara_novih: 0, sprave: 0, kategorija: 'Kadet', program: 'C program', takmicenje: json.takmicenje.naziv, takmicenje_novo: false, prijava: 0, prijava_novih: 0, grupe: 0, grupe_novih: 0, ocena: 0, ocena_novih: 0, preskoceno: [] };
 
   // Sprave ako fale (tabela prazna).
   pocetniPodaci(baza);
@@ -124,6 +125,7 @@ function prijavi(baza, json, rez) {
     }
   }
   napraviGrupeZaPrimer(baza, takmId, rez);
+  unesiOcene(baza, json, takmId, podesavanja, rez);
 }
 
 // Po polu Grupa A i B, prijave po startnom broju naizmenicno; preskace pol koji vec ima grupe.
@@ -146,8 +148,38 @@ function napraviGrupeZaPrimer(baza, takmId, rez) {
   }
 }
 
+// Ocene iz JSON-a za parove (prijava, sprava) koje prijava radi i koji nemaju red u ocenama.
+function unesiOcene(baza, json, takmId, podesavanja, rez) {
+  const ocene = napraviOcene(baza, podesavanja);
+  const brojE = Number(baza.vrednost('SELECT broj_e_sudija FROM takmicenja WHERE id = ?', [takmId]));
+  const sudije = json.e_sudije_primer;
+  for (const [pol, kljuc] of [['Z', 'zsg_kadet_c'], ['M', 'msg_kadet_c']]) {
+    for (const t of json[kljuc].takmicari) {
+      const idBroj = String(100 + t.startni_broj).padStart(5, '0');
+      const prijava = baza.jedan(
+        'SELECT p.id FROM prijave p JOIN takmicari k ON k.id = p.takmicar_id WHERE p.takmicenje_id = ? AND k.id_broj = ?', [takmId, idBroj]);
+      if (!prijava) continue;
+      for (const [skr, o] of Object.entries(t.ocene)) {
+        const spravaId = baza.vrednost('SELECT id FROM sprave WHERE pol = ? AND skracenica = ?', [pol, skr]);
+        if (spravaId === null || !ocene.radiSpravu(Number(prijava.id), Number(spravaId))) continue;
+        if (ocene.nadji(Number(prijava.id), Number(spravaId)) !== null) continue;
+        if (t.odustao) {
+          ocene.odustao(takmId, Number(prijava.id), Number(spravaId));
+        } else {
+          const stvarne = sudije.takmicar === t.prezime_ime ? sudije.po_spravi[skr] : null;
+          const e = stvarne ? stvarne.slice(0, brojE) : Array(brojE).fill(o.e);
+          ocene.sacuvaj(takmId, Number(prijava.id), Number(spravaId), { d: o.d, e, odbitak: o.odbitak }, true);
+        }
+        rez.ocena_novih++;
+      }
+    }
+  }
+  rez.ocena = Number(baza.vrednost(
+    'SELECT COUNT(*) FROM ocene o JOIN prijave p ON p.id = o.prijava_id WHERE p.takmicenje_id = ?', [takmId]));
+}
+
 function poruka(r) {
-  return `Primer podaci: klubova ${r.klubovi} (novih ${r.klubovi_novih}), takmičara ${r.takmicara} (novih ${r.takmicara_novih}), kategorija ${r.kategorija}, program ${r.program}, sprave ${r.sprave}, takmičenje ${r.takmicenje} (novo: ${r.takmicenje_novo ? 'da' : 'ne'}), prijava ${r.prijava} (novih ${r.prijava_novih}), grupa ${r.grupe} (novih ${r.grupe_novih})${r.preskoceno.length ? ', preskočeno: ' + r.preskoceno.join('; ') : ''}`;
+  return `Primer podaci: klubova ${r.klubovi} (novih ${r.klubovi_novih}), takmičara ${r.takmicara} (novih ${r.takmicara_novih}), kategorija ${r.kategorija}, program ${r.program}, sprave ${r.sprave}, takmičenje ${r.takmicenje} (novo: ${r.takmicenje_novo ? 'da' : 'ne'}), prijava ${r.prijava} (novih ${r.prijava_novih}), grupa ${r.grupe} (novih ${r.grupe_novih}), ocena ${r.ocena} (novih ${r.ocena_novih})${r.preskoceno.length ? ', preskočeno: ' + r.preskoceno.join('; ') : ''}`;
 }
 
 function pokreni() {
