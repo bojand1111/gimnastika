@@ -61,7 +61,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
     e: (Array.isArray(u?.e) ? u.e : []).map((x) => String(x ?? '')),
     odbitak: String(u?.odbitak ?? ''),
   });
-  const sPolom =(pol) => (pol === 'M' || pol === 'Z' ? pol : null);
+  const sPolom = (pol) => (pol === 'M' || pol === 'Z' ? pol : null);
 
   // Prijave sa lek_ne_vazi (stanje nema | istekao na dan takmicenja) i tekstovima upozorenja (POPIS 6.3).
   function prijaveSaLekarskim(takm, pol) {
@@ -346,7 +346,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
         if (sprava === null) {
           return {
             ...osnova, sprave: [], sprava: null, rot: 1, brojSprava: 1, grupa: null, redovi: [],
-            napredak: { obradjeno: 0, ukupno: 0, odustalo: 0 }, izmene: [], bezGrupa: true, prvi: null,
+            napredak: { obradjeno: 0, ukupno: 0, odustalo: 0 }, izmene: [], bezGrupa: true,
           };
         }
         const pozicija = sprave.findIndex((x) => Number(x.id) === Number(sprava.id)) + 1;
@@ -410,7 +410,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
             }
           }
         }
-        const prvi = redovi.find((r) => r.radi && r.status === 'nacrt');
+        // prvi otvoreni red racuna renderer sam (pocetniFokus), zato ga ovde nema.
         const izmene = oc.izmeneNaSpravi(tid, Number(sprava.id)).map((r) => ({
           id: r.id, vreme: r.vreme, razlog: r.razlog, ime: r.ime, prezime: r.prezime, opis: r.opis,
         }));
@@ -424,12 +424,11 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
           napredak,
           izmene,
           bezGrupa,
-          prvi: prvi ? prvi.prijava_id : null,
         };
       },
       nacrt: (prijavaId, spravaId, ulaz) => oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), false, ''),
       potvrdi: (prijavaId, spravaId, ulaz, razlog) =>
-        oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), true, String(razlog ?? '')),
+        oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), true, typeof razlog === 'string' ? razlog : ''),
       odustao: (prijavaId, spravaId) => oc.odustao(aktivnoId(), broj(prijavaId), broj(spravaId)),
       vrati: (prijavaId, spravaId) => oc.vrati(aktivnoId(), broj(prijavaId), broj(spravaId)),
     },

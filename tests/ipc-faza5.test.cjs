@@ -54,7 +54,7 @@ test('bez aktivnog takmicenja svaka radnja baca poruku', () => {
   for (const f of pozivi) assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === NEMA_AKTIVNOG);
 });
 
-test('podaci() bez parametara: pol Z, rotacija 1, prva sprava sa grupom, redovi i prvi', () => {
+test('podaci() bez parametara: pol Z, rotacija 1, prva sprava sa grupom i redovi', () => {
   const { moduli, pid, s } = sa4();
   const d = moduli.unos.podaci();
   assert.equal(d.pol, 'Z');
@@ -83,7 +83,6 @@ test('podaci() bez parametara: pol Z, rotacija 1, prva sprava sa grupom, redovi 
   assert.equal(d.redovi[0].ime, 'Test Ana');
   assert.deepEqual(d.napredak, { obradjeno: 0, ukupno: 3, odustalo: 0 });
   assert.deepEqual(d.izmene, []);
-  assert.equal(d.prvi, pid.Ana);
   assert.doesNotThrow(() => structuredClone(d));
 });
 
@@ -98,7 +97,6 @@ test('posle unosa svih na PR podaci() bira GR; izmene i napredak', () => {
   const pr = u.podaci('Z', s.pr, 1);
   assert.equal(pr.sprava.id, s.pr);
   assert.equal(pr.napredak.obradjeno, 3);
-  assert.equal(pr.prvi, null);
   assert.equal(pr.redovi[0].status, 'uneto');
   assert.equal(pr.redovi[0].konacna, '13,050');
   assert.equal(pr.redovi[0].e, '8,250');
@@ -154,7 +152,6 @@ test('pol bez prijava zena je M; pol bez sprava je prazan prikaz', () => {
   assert.deepEqual(d.napredak, { obradjeno: 0, ukupno: 0, odustalo: 0 });
   assert.deepEqual(d.izmene, []);
   assert.equal(d.bezGrupa, true);
-  assert.equal(d.prvi, null);
   assert.doesNotThrow(() => structuredClone(d));
 });
 
@@ -167,7 +164,6 @@ test('clan koji ne radi spravu: radi false, status nacrt, ne ulazi u napredak', 
   assert.equal(bea.radi, false);
   assert.equal(bea.status, 'nacrt');
   assert.equal(d.napredak.ukupno, 2);
-  assert.equal(d.prvi, pid.Ana);
   assert.throws(() => moduli.unos.nacrt(pid.Bea, s.pr, ULAZ), (e) => e instanceof GreskaKorisnika && /nije prijavljen/.test(e.message));
 });
 
@@ -187,6 +183,7 @@ test('nacrt, potvrdi, odustao, vrati: string id-jevi i prikaz', () => {
   assert.equal(p.prikaz.status, 'uneto');
   assert.equal(p.prikaz.konacna, '13,050');
   assert.throws(() => u.potvrdi(a, sp, ULAZ, ' '), (e) => e instanceof GreskaKorisnika && /obavezan je razlog/.test(e.message));
+  assert.throws(() => u.potvrdi(a, sp, ULAZ, { x: 1 }), (e) => e instanceof GreskaKorisnika && e.message === 'Za ispravku unete ocene obavezan je razlog.');
   assert.equal(u.potvrdi(a, sp, { d: '4,8', e: ['8,3', '7,9', '8,4', '8,2'], odbitak: '0,1' }, 'ispravka').prikaz.status, 'ispravljeno');
   assert.equal(u.odustao(String(pid.Bea), sp).prikaz.status, 'odustao');
   assert.equal(u.vrati(String(pid.Bea), sp).prikaz.status, 'nacrt');
