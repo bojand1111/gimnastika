@@ -94,3 +94,11 @@ test('bilten: ekipa moze da se podeli izmedju strana', () => {
   assert.equal(s.flat().length, 50);
   assert.ok(s.slice(1).every((st) => st[0].sekcija === 'ekipno'));
 });
+
+test('straneBilten: tacno popunjena strana se ne prelama, jedna stavka vise prelama', () => {
+  // prva strana uspravno: 1027 - 96 - 80 = 851; zaglavlje sekcije viseboj 86
+  const opc = { polozeno: false, organizator: '', zaglavlje: '', domacin: '' };
+  const st = (...v) => v.map((x) => ({ tip: 'red', sekcija: 'viseboj', v: x, podaci: {} }));
+  assert.equal(straneBilten(st(764, 1), opc).length, 1, '86 + 764 + 1 = 851 staje tacno');
+  assert.deepEqual(straneBilten(st(765, 1), opc).map((x) => x.length), [1, 1], '852 ne staje');
+});

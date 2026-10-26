@@ -1,7 +1,7 @@
 import gim from '../gim.js';
 import { hashRang } from './rangStanje.js';
 import { gdeKada, imePdf, legendaBiltena } from './stampaStanje.js';
-import useStampaPodaci from './stampa/koristiStampu.js';
+import useStampaPodaci, { izHasha } from './stampa/koristiStampu.js';
 import StampaAlat, { useStampanje } from './stampa/StampaAlat.jsx';
 import BiltenZaglavlje from './stampa/BiltenZaglavlje.jsx';
 import BiltenTabele from './stampa/BiltenTabele.jsx';
@@ -12,8 +12,8 @@ export default function Bilten() {
   const d = useStampaPodaci('bilten', (p) => gim.rang.bilten(p.pol, p.kat, p.prog));
   const polozeno = d ? d.polozeno : false;
   // Nazad bez taba (kao PHP)
-  const nazad = d ? hashRang(d.izbor.pol, d.izbor.kat, d.izbor.prog) : '#/rang';
-  const st = useStampanje({ polozeno, ime: d ? imePdf('bilten', d.takm.naziv, d.izbor.pol) : '', nazad });
+  const nazad = d ? hashRang(d.izbor.pol, d.izbor.kat, d.izbor.prog) : hashRang(izHasha().pol, izHasha().kat, izHasha().prog);
+  const st = useStampanje({ polozeno, ime: d ? imePdf('bilten', d.takm.naziv, d.izbor.pol) : '', nazad, spremno: !!d });
   if (!d) return <div className="stampa-ekran" aria-busy="true" />;
 
   const { takm, izbor, rez, strane, disciplina, organizator, grbLevo, grbDesno } = d;

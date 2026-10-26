@@ -239,3 +239,26 @@ test('stampaj: razni zapisi otkazivanja i pad dijaloga za PDF', async () => {
   const st = napraviStampu({ prozor: stubProzor({}).prozor, dialog: { showSaveDialog: async () => { throw new Error('dijalog'); } }, fs, dokumenti: os.tmpdir() });
   await assert.rejects(st.pdf({ ime: 'x' }), (e) => e instanceof GreskaKorisnika && e.message === 'PDF nije sačuvan: dijalog');
 });
+
+test('rezultati(): prijava u kojoj je takmicar odustao na svim spravama', () => {
+  const { baza, moduli } = sPrimerom();
+  const tid = Number(baza.vrednost('SELECT id FROM takmicari WHERE prezime = ?', ['Petrović']));
+  baza.izvrsi(
+    `UPDATE ocene SET status = 'odustao', d = NULL, e = NULL, odbitak = NULL, konacna = NULL
+     WHERE prijava_id IN (SELECT id FROM prijave WHERE takmicar_id = ?)`, [tid]);
+  const r = moduli.rang.rezultati(tid);
+  assert.equal(r.sva.length, 1);
+  assert.equal(r.sva[0].red.odustao, true);
+  assert.equal(r.sva[0].red.zbir, null);
+  assert.equal(r.sva[0].red.oznaka, '');
+  assert.ok(Object.values(r.sva[0].red.detalji).every((d) => d.status === 'odustao'));
+  structuredClone(r);
+});
+
+test('cistoIme: prazno, same tacke i samo .pdf daju Stampa.pdf', () => {
+  const { cistoIme } = require('../electron/stampa.cjs');
+  assert.equal(cistoIme(''), 'Stampa.pdf');
+  assert.equal(cistoIme('..'), 'Stampa.pdf');
+  assert.equal(cistoIme('.pdf'), 'Stampa.pdf');
+  assert.equal(cistoIme(undefined), 'Stampa.pdf');
+});

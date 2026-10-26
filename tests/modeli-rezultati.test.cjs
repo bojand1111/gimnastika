@@ -330,3 +330,24 @@ function proveriPrimer(kljuc, pol) {
 
 test('primer podaci kroz model: ZSG kadet C', () => proveriPrimer('zsg_kadet_c', 'Z'));
 test('primer podaci kroz model: MSG kadet C', () => proveriPrimer('msg_kadet_c', 'M'));
+
+test('VK koji je odustao na jednoj spravi: oznaka prazna, bez mesta, na dnu; VK ostaje na drugoj spravi', () => {
+  const n = nova();
+  const { s, pid, o, unos, r } = n;
+  unos('Ana', s.pr, '4,0', '8,0');
+  unos('Ana', s.gr, '4,0', '8,5');
+  unos('Bea', s.pr, '4,0', '7,0');
+  unos('Bea', s.gr, '4,0', '7,0');
+  unos('Ceca', s.pr, '5,0', '8,0');
+  o.odustao(s.takm, pid.Ceca, s.gr);
+  const rez = r.izracunaj(n.takm(), 'Z', s.kat, s.prog);
+  const v = rez.viseboj.map((x) => x.prijava);
+  assert.deepEqual(v, [pid.Ana, pid.Bea, pid.Ceca], 'Ceca je poslednja iza rangiranih');
+  const ceca = rez.viseboj[2];
+  assert.equal(ceca.oznaka, '');
+  assert.equal(ceca.mesto, null);
+  assert.equal(ceca.odustao, true);
+  assert.equal(oznake(rez.po_spravi[s.pr])[pid.Ceca], 'VK', 'na PR ostaje VK');
+  for (const e of rez.ekipno) assert.ok(!e.clanovi.some((c) => c.prijava === pid.Ceca), 'VK nije u ekipnom');
+  n.baza.zatvori();
+});

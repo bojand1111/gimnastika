@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import gim from '../gim.js';
-import { hashRang } from './rangStanje.js';
+import { hashEkrana, hashRang } from './rangStanje.js';
 import { imePdf, legendaStampe, vremeStampe } from './stampaStanje.js';
-import useStampaPodaci from './stampa/koristiStampu.js';
+import useStampaPodaci, { izHasha } from './stampa/koristiStampu.js';
 import StampaAlat, { useStampanje } from './stampa/StampaAlat.jsx';
 import ListZaglavlje from './stampa/ListZaglavlje.jsx';
 import ListSprava from './stampa/ListSprava.jsx';
@@ -16,9 +16,10 @@ export default function Stampa() {
   // Vreme se uzima jednom, pri prikazu podataka (POPIS 9.3)
   const vreme = useMemo(() => vremeStampe(new Date()), [d]);
   const polozeno = d ? d.polozeno : false;
-  const nazad = d ? hashRang(d.izbor.pol, d.izbor.kat, d.izbor.prog, d.tab) : '#/rang';
+  // Dok podaci stizu, Esc vraca sa parametrima iz hasha
+  const nazad = d ? hashRang(d.izbor.pol, d.izbor.kat, d.izbor.prog, d.tab) : hashEkrana('rang', izHasha());
   const vrsta = d ? (d.sprava ? d.sprava.naziv : (d.tab === 'ekipno' ? 'Ekipno' : 'Višeboj')) : '';
-  const st = useStampanje({ polozeno, ime: d ? imePdf(vrsta, d.takm.naziv, d.izbor.pol) : '', nazad });
+  const st = useStampanje({ polozeno, ime: d ? imePdf(vrsta, d.takm.naziv, d.izbor.pol) : '', nazad, spremno: !!d });
   if (!d) return <div className="stampa-ekran" aria-busy="true" />;
 
   const { takm, izbor, rez, tab, strane, naziv, grb } = d;

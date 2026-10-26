@@ -5,12 +5,13 @@ import Ikona from '../../komponente/Ikona.jsx';
 
 // Traka alata ekrana cele strane (POPIS 4.2): Nazad, naslov, napomena, Sacuvaj PDF i Stampaj.
 // Ne stampa se (stampa.css @media print). Stampaj i Ctrl+P (app:stampa) zovu isti IPC.
-export function useStampanje({ polozeno, ime, nazad }) {
+// spremno: podaci su stigli; pre toga Stampaj, PDF i Ctrl+P ne rade (inace bi isao prazan list).
+export function useStampanje({ polozeno, ime, nazad, spremno }) {
   const [zauzeto, postaviZauzeto] = useState(false);
   const radi = useRef(false);
 
   const obavi = async (posao) => {
-    if (radi.current) return;
+    if (radi.current || !spremno) return;
     radi.current = true;
     postaviZauzeto(true);
     try {
