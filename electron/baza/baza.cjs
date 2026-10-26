@@ -6,8 +6,10 @@ const { DatabaseSync } = require('node:sqlite');
 const FASCIKLA_MIGRACIJA = path.join(__dirname, 'migracije');
 
 class Baza {
-  constructor(db) {
+  constructor(db, putanja = null) {
     this.db = db;
+    this.putanja = putanja; // pamti se da bi otvoriPonovo znao koji fajl
+    this.otvorena = true;
     this.uTransakciji = false;
   }
 
@@ -98,16 +100,33 @@ class Baza {
     return primenjene;
   }
 
+  // Dvaput zatvaranje je dozvoljeno (vracanje kopije zatvara pa otvara ponovo).
   zatvori() {
+    if (!this.otvorena) return;
+    this.otvorena = false;
     this.db.close();
+  }
+
+  // Ista instanca, novi DatabaseSync: moduli koji drze ovu Bazu rade dalje bez izmene.
+  otvoriPonovo(putanja = this.putanja) {
+    if (putanja === null || putanja === undefined) throw new Error('Baza nema putanju za ponovno otvaranje.');
+    this.zatvori();
+    this.db = otvoriDb(putanja);
+    this.putanja = putanja;
+    this.otvorena = true;
+    this.uTransakciji = false;
   }
 }
 
-function otvori(putanja) {
+function otvoriDb(putanja) {
   const db = new DatabaseSync(putanja);
   if (putanja !== ':memory:') db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA foreign_keys = ON');
-  return new Baza(db);
+  return db;
+}
+
+function otvori(putanja) {
+  return new Baza(otvoriDb(putanja), putanja);
 }
 
 module.exports = { otvori, Baza };

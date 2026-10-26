@@ -1,0 +1,395 @@
+// Rezervna kopija (SQLite). Kopija je jedan .sqlite fajl (VACUUM INTO) sa tabelom kopija_opis; PHP zip kopije
+// se prikazuju i uvoze u novu bazu. Pravila su u docs/superpowers/specs/2026-10-26-faza-7-popis-php.md, odeljci 3, 4 i 6.
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { DatabaseSync } = require('node:sqlite');
+const { otvori } = require('../baza/baza.cjs');
+const { pocetniPodaci } = require('../baza/seme.cjs');
+const { GreskaKorisnika } = require('../greska.cjs');
+const zip = require('../uvoz/zip.cjs');
+const { podeli } = require('../racun/sql-delilac.mjs');
+const { razlozi, pretvori, preskociRed, PRESKOCENE_TABELE } = require('../racun/mysql-uvoz.mjs');
+
+const VRSTE = {
+  rucna: 'Ručna',
+  pre_vracanja: 'Pre vraćanja',
+  pre_azuriranja: 'Pre ažuriranja',
+  pre_migracije: 'Pre migracije',
+  uvoz: 'Uvezena',
+};
+// Najnovija PHP verzija iz koje se kopija uvozi (POPIS 4).
+const NAJNOVIJA_PHP = '1.2.0';
+const OPIS_KLJUCEVI = ['aplikacija', 'verzija', 'baza_verzija', 'vreme', 'vrsta'];
+
+// Poredjenje a.b.c brojno (1.10.0 > 1.9.0); prazno ili nebrojno se racuna kao 0.
+function uporediVerzije(a, b) {
+  const delovi = (v) => String(v ?? '').split('.').map((x) => parseInt(x, 10) || 0);
+  const x = delovi(a);
+  const y = delovi(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0);
+    if (d !== 0) return d > 0 ? 1 : -1;
+  }
+  return 0;
+}
+
+function dvaMesta(n) {
+  return String(n).padStart(2, '0');
+}
+
+// Lokalno vreme: {datum: 'GGGG-MM-DD', sat: 'HHMM', puno: 'GGGG-MM-DD HH:MM:SS'}
+function lokalnoVreme(d = new Date()) {
+  const datum = `${d.getFullYear()}-${dvaMesta(d.getMonth() + 1)}-${dvaMesta(d.getDate())}`;
+  const sat = `${dvaMesta(d.getHours())}${dvaMesta(d.getMinutes())}`;
+  return { datum, sat, puno: `${datum} ${dvaMesta(d.getHours())}:${dvaMesta(d.getMinutes())}:${dvaMesta(d.getSeconds())}` };
+}
+
+function brisi(p) {
+  fs.rmSync(p, { force: true });
+}
+
+function brisiSaPratecim(p) {
+  brisi(p);
+  brisi(`${p}-wal`);
+  brisi(`${p}-shm`);
+}
+
+function bezZavrsnihKosih(p) {
+  const t = String(p ?? '').trim().replace(/[\\/]+$/, '');
+  return /^[A-Za-z]:$/.test(t) ? t + path.sep : t; // "E:" bez kose crte bi bio relativan
+}
+
+function napravi(baza, opcije) {
+  const { fasciklaPodrazumevana, podesavanja, verzija, dnevnik } = opcije;
+  const posleVracanja = opcije.posleVracanja ?? (() => { baza.migriraj(); pocetniPodaci(baza); });
+
+  function fasciklaStanje() {
+    const izabrana = bezZavrsnihKosih(podesavanja.daj('kopije_fascikla'));
+    const postoji = izabrana !== '' && fs.existsSync(izabrana) && fs.statSync(izabrana).isDirectory();
+    // Izabrana fascikla koja ne postoji (USB izvucen, baza sa drugog racunara) se zaobilazi, kao u PHP-u.
+    return {
+      putanja: postoji ? izabrana : fasciklaPodrazumevana,
+      podrazumevana: !postoji,
+      izabrana,
+      nedostupna: izabrana !== '' && !postoji,
+    };
+  }
+
+  function fascikla() {
+    return fasciklaStanje().putanja;
+  }
+
+  function bazaVerzija() {
+    if (!baza.tabele().includes('migracije')) return '';
+    return baza.vrednost('SELECT MAX(ime) FROM migracije') ?? '';
+  }
+
+  function napraviFasciklu(f) {
+    try {
+      fs.mkdirSync(f, { recursive: true });
+    } catch (err) {
+      throw new GreskaKorisnika(`Ne mogu da napravim fasciklu ${f}`, { cause: err });
+    }
+  }
+
+  // Ime koje jos ne postoji: kopija_GGGG-MM-DD_HHMM.sqlite, pa _2, _3...
+  function slobodnoIme(f, vreme) {
+    const osnova = `kopija_${vreme.datum}_${vreme.sat}`;
+    let ime = `${osnova}.sqlite`;
+    for (let n = 2; fs.existsSync(path.join(f, ime)); n++) ime = `${osnova}_${n}.sqlite`;
+    return ime;
+  }
+
+  // vrsta: kljuc iz VRSTE. Vraca {putanja, ime, velicina}.
+  function napraviKopiju(vrsta = 'rucna') {
+    if (!Object.hasOwn(VRSTE, vrsta)) throw new Error(`Nepoznata vrsta kopije: ${vrsta}`);
+    const f = fascikla();
+    napraviFasciklu(f);
+    const vreme = lokalnoVreme();
+    const ime = slobodnoIme(f, vreme);
+    const cilj = path.join(f, ime);
+    const privremeno = `${cilj}.tmp`; // lista() ga ne vidi dok kopija nije cela
+    brisi(privremeno);
+    try {
+      baza.db.prepare('VACUUM INTO ?').run(privremeno);
+      const kopija = new DatabaseSync(privremeno);
+      try {
+        kopija.exec('PRAGMA journal_mode = DELETE');
+        kopija.exec('CREATE TABLE kopija_opis (kljuc TEXT PRIMARY KEY, vrednost TEXT)');
+        const upis = kopija.prepare('INSERT INTO kopija_opis (kljuc, vrednost) VALUES (?, ?)');
+        const opis = {
+          aplikacija: 'gimnastika', verzija, baza_verzija: bazaVerzija(), vreme: vreme.puno, vrsta,
+        };
+        for (const k of OPIS_KLJUCEVI) upis.run(k, String(opis[k]));
+      } finally {
+        kopija.close();
+      }
+      fs.renameSync(privremeno, cilj);
+    } catch (err) {
+      brisiSaPratecim(privremeno);
+      if (err instanceof GreskaKorisnika) throw err;
+      throw new GreskaKorisnika(`Kopija nije napravljena: ${err.message}`, { cause: err });
+    }
+    return { putanja: cilj, ime, velicina: fs.statSync(cilj).size };
+  }
+
+  const NIJE_KOPIJA = 'Fajl nije rezervna kopija ove aplikacije';
+
+  function opisSqlite(putanja) {
+    let db;
+    try {
+      db = new DatabaseSync(putanja, { readOnly: true });
+      const tabela = db.prepare("SELECT 1 AS ima FROM sqlite_master WHERE type = 'table' AND name = 'kopija_opis'").get();
+      if (!tabela) throw new GreskaKorisnika(`${NIJE_KOPIJA} (nedostaje kopija_opis).`);
+      const o = Object.fromEntries(db.prepare('SELECT kljuc, vrednost FROM kopija_opis').all().map((r) => [r.kljuc, r.vrednost]));
+      if (o.aplikacija !== 'gimnastika') throw new GreskaKorisnika('Opis kopije nije ispravan.');
+      return {
+        verzija: String(o.verzija ?? ''), baza_verzija: String(o.baza_verzija ?? ''),
+        vreme: String(o.vreme ?? ''), vrsta: String(o.vrsta ?? ''), format: 'sqlite',
+      };
+    } catch (err) {
+      if (err instanceof GreskaKorisnika) throw err;
+      throw new GreskaKorisnika(`${NIJE_KOPIJA} (${err.message}).`, { cause: err });
+    } finally {
+      if (db) db.close();
+    }
+  }
+
+  function opisZip(putanja) {
+    let spisak;
+    try {
+      spisak = zip.lista(putanja);
+    } catch (err) {
+      throw new GreskaKorisnika(err.message, { cause: err });
+    }
+    if (!spisak['opis.json'] || !spisak['baza.sql']) {
+      throw new GreskaKorisnika(`${NIJE_KOPIJA} (nedostaje opis.json ili baza.sql).`);
+    }
+    let o;
+    try {
+      o = JSON.parse(zip.procitaj(putanja, 'opis.json', spisak).toString('utf8'));
+    } catch {
+      throw new GreskaKorisnika('Opis kopije nije ispravan.');
+    }
+    if (!o || typeof o !== 'object' || o.aplikacija !== 'gimnastika') throw new GreskaKorisnika('Opis kopije nije ispravan.');
+    return {
+      verzija: String(o.verzija ?? ''), baza_verzija: parseInt(o.baza_verzija, 10) || 0,
+      vreme: String(o.vreme ?? ''), vrsta: String(o.vrsta ?? ''), format: 'zip',
+    };
+  }
+
+  // Baca GreskaKorisnika kad fajl nije ispravna kopija.
+  function opis(putanja) {
+    return path.extname(putanja).toLowerCase() === '.zip' ? opisZip(putanja) : opisSqlite(putanja);
+  }
+
+  function lista() {
+    const f = fascikla();
+    let imena;
+    try {
+      imena = fs.readdirSync(f);
+    } catch {
+      return []; // fascikla jos ne postoji: nema kopija
+    }
+    const redovi = [];
+    for (const ime of imena) {
+      if (!/\.(sqlite|zip)$/i.test(ime)) continue;
+      const p = path.join(f, ime);
+      let st;
+      try {
+        st = fs.statSync(p);
+      } catch {
+        continue; // nestao izmedju citanja fascikle i provere
+      }
+      if (!st.isFile()) continue;
+      let o = null;
+      try {
+        o = opis(p);
+      } catch {
+        o = null; // "neispravan fajl" u listi, ostali fajlovi se prikazuju
+      }
+      redovi.push({ putanja: p, ime, velicina: st.size, vreme: Math.round(st.mtimeMs), opis: o, _mt: st.mtimeMs });
+    }
+    redovi.sort((a, b) => (b._mt - a._mt) || (a.ime < b.ime ? 1 : -1));
+    return redovi.map(({ _mt, ...r }) => r);
+  }
+
+  function putanjaImena(ime) {
+    if (!/^[A-Za-z0-9_.-]+\.(sqlite|zip)$/i.test(String(ime)) || String(ime).includes('..')) {
+      throw new GreskaKorisnika('Nevažeće ime fajla.');
+    }
+    const p = path.join(fascikla(), ime);
+    if (!fs.existsSync(p) || !fs.statSync(p).isFile()) throw new GreskaKorisnika(`Fajl ne postoji: ${ime}`);
+    return p;
+  }
+
+  function proveriVerziju(o) {
+    const granica = o.format === 'zip' ? NAJNOVIJA_PHP : verzija;
+    if (uporediVerzije(o.verzija, granica) <= 0) return;
+    if (o.format === 'zip') {
+      throw new GreskaKorisnika(`Kopija je iz novije verzije PHP aplikacije (${o.verzija}) nego što može da se uveze (najviše ${NAJNOVIJA_PHP}).`);
+    }
+    throw new GreskaKorisnika(`Kopija je iz novije verzije aplikacije (${o.verzija}) nego što je instalirana (${verzija}). Prvo ažurirajte aplikaciju.`);
+  }
+
+  // Zamena fajla baze pripremljenim fajlom. Ziva baza se zatvara pre svake izmene fajlova (Windows),
+  // staro stanje se cuva pored dok se ne potvrdi da novo radi; sigurnosna je poslednja odbrana.
+  function zameni(pripremljen, sigurnosnaPutanja) {
+    const cilj = baza.putanja;
+    const staro = `${cilj}.staro`;
+    baza.zatvori(); // zatvaranje poslednje veze upisuje WAL u glavni fajl
+    let odneto = false; // cilj je preimenovan u staro
+    try {
+      brisiSaPratecim(staro);
+      brisi(`${cilj}-wal`);
+      brisi(`${cilj}-shm`);
+      fs.renameSync(cilj, staro);
+      odneto = true;
+      fs.renameSync(pripremljen, cilj);
+      baza.otvoriPonovo(cilj);
+      baza.vrednost('SELECT COUNT(*) FROM sqlite_master');
+    } catch (err) {
+      dnevnik.greska('Vracanje: zamena baze nije uspela, vraca se prethodno stanje', err);
+      try {
+        baza.zatvori();
+        if (odneto) {
+          brisiSaPratecim(cilj);
+          if (fs.existsSync(staro)) fs.renameSync(staro, cilj);
+          else fs.copyFileSync(sigurnosnaPutanja, cilj);
+        }
+        baza.otvoriPonovo(cilj);
+      } catch (err2) {
+        dnevnik.greska('Vracanje: ni povratak na prethodno stanje nije uspeo', err2);
+        throw new GreskaKorisnika(`Baza nije otvorena. Prethodno stanje je u fajlu ${path.basename(sigurnosnaPutanja)}.`, { cause: err2 });
+      }
+      throw err;
+    }
+    brisiSaPratecim(staro);
+  }
+
+  // Ceo tok posle provere opisa: sigurnosna kopija, priprema fajla, zamena, migracije.
+  function izvrsiVracanje(putanja, o, pripremi) {
+    proveriVerziju(o);
+    const sigurnosna = napraviKopiju('pre_vracanja');
+    const pripremljen = `${baza.putanja}.${o.format === 'zip' ? 'uvoz' : 'vracanje'}`;
+    brisiSaPratecim(pripremljen);
+    let dodatak;
+    try {
+      dodatak = pripremi(pripremljen);
+      zameni(pripremljen, sigurnosna.putanja);
+    } finally {
+      brisiSaPratecim(pripremljen);
+    }
+    posleVracanja();
+    return { ime: path.basename(putanja), opis: o, sigurnosna: sigurnosna.ime, uvoz: o.format === 'zip', ...dodatak };
+  }
+
+  // SQLite kopija se prvo kopira pored zive baze i proverava; tek onda se zamenjuje.
+  function pripremiSqlite(izvor) {
+    return (pripremljen) => {
+      if (!baza.putanja || baza.putanja === ':memory:') throw new GreskaKorisnika('Baza nije u fajlu, pa se ne može vratiti.');
+      fs.copyFileSync(izvor, pripremljen);
+      const db = new DatabaseSync(pripremljen);
+      try {
+        const provera = db.prepare('PRAGMA quick_check').all().map((r) => Object.values(r)[0]);
+        if (provera.length !== 1 || provera[0] !== 'ok') throw new GreskaKorisnika('Kopija je oštećena.');
+        db.exec('DROP TABLE IF EXISTS kopija_opis');
+      } catch (err) {
+        if (err instanceof GreskaKorisnika) throw err;
+        throw new GreskaKorisnika(`${NIJE_KOPIJA} (${err.message}).`, { cause: err });
+      } finally {
+        db.close();
+      }
+    };
+  }
+
+  // PHP zip: INSERT naredbe iz baza.sql idu u novu bazu sa migracijama; vraca {redovi: {tabela: broj}}.
+  function pripremiUvoz(zipPutanja) {
+    return (pripremljen) => {
+      let sql;
+      try {
+        sql = zip.procitaj(zipPutanja, 'baza.sql').toString('utf8');
+      } catch (err) {
+        throw new GreskaKorisnika(err.message, { cause: err });
+      }
+      const naredbe = podeli(sql);
+      const nova = otvori(pripremljen);
+      const redovi = {};
+      try {
+        nova.migriraj();
+        const tabele = new Set(nova.tabele());
+        nova.db.exec('PRAGMA foreign_keys = OFF'); // ne sme u transakciji, a redosled tabela u izvozu je abecedni
+        nova.transakcija((b) => {
+          naredbe.forEach((naredba, i) => {
+            try {
+              const r = razlozi(naredba);
+              if (!r || PRESKOCENE_TABELE.includes(r.tabela) || !tabele.has(r.tabela)) return;
+              const upit = b.db.prepare(
+                `INSERT INTO ${r.tabela} (${r.kolone.join(', ')}) VALUES (${r.kolone.map(() => '?').join(', ')})`);
+              for (const red of r.redovi) {
+                if (preskociRed(r.tabela, r.kolone, red)) continue;
+                upit.run(...red.map((v, k) => pretvori(r.tabela, r.kolone[k], v)));
+                redovi[r.tabela] = (redovi[r.tabela] ?? 0) + 1;
+              }
+            } catch (err) {
+              throw new GreskaKorisnika(`Uvoz prekinut na naredbi ${i + 1} od ${naredbe.length}: ${err.message}`, { cause: err });
+            }
+          });
+        });
+        nova.db.exec('PRAGMA foreign_keys = ON');
+        const loseVeze = nova.svi('PRAGMA foreign_key_check');
+        if (loseVeze.length) {
+          throw new GreskaKorisnika(`Uvoz prekinut: kopija ima veze ka podacima kojih nema (tabela ${loseVeze[0].table}).`);
+        }
+        nova.db.exec('PRAGMA journal_mode = DELETE');
+      } finally {
+        nova.zatvori();
+      }
+      return { redovi };
+    };
+  }
+
+  function uveziPhpZip(zipPutanja) {
+    const o = opisZip(zipPutanja);
+    return izvrsiVracanje(zipPutanja, o, pripremiUvoz(zipPutanja));
+  }
+
+  // Vraca bazu iz kopije (.sqlite ili PHP .zip). Pozivalac prikazuje poruke POPIS 3.2.
+  function vrati(putanja) {
+    const o = opis(putanja);
+    if (o.format === 'zip') return izvrsiVracanje(putanja, o, pripremiUvoz(putanja));
+    return izvrsiVracanje(putanja, o, pripremiSqlite(putanja));
+  }
+
+  // nova: putanja ili '' (podrazumevana). Vraca poruku za korisnika.
+  function postaviFasciklu(nova) {
+    const f = bezZavrsnihKosih(nova);
+    if (f === '') {
+      podesavanja.postavi('kopije_fascikla', '');
+      return 'Kopije se ponovo čuvaju u podrazumevanoj fascikli.';
+    }
+    try {
+      fs.mkdirSync(f, { recursive: true });
+      if (!fs.statSync(f).isDirectory()) throw new Error('nije fascikla');
+    } catch (err) {
+      throw new GreskaKorisnika(`Fascikla ne postoji i ne može da se napravi: ${f}`, { cause: err });
+    }
+    const proba = path.join(f, `.proba_${crypto.randomBytes(3).toString('hex')}`);
+    try {
+      fs.writeFileSync(proba, 'x');
+      fs.rmSync(proba);
+    } catch (err) {
+      brisi(proba);
+      throw new GreskaKorisnika(`U fasciklu ne može da se upisuje: ${f}`, { cause: err });
+    }
+    podesavanja.postavi('kopije_fascikla', f);
+    return `Fascikla za kopije je promenjena: ${f}`;
+  }
+
+  return {
+    VRSTE, fascikla, fasciklaStanje, napravi: napraviKopiju, opis, lista, putanja: putanjaImena, vrati, uveziPhpZip, postaviFasciklu,
+  };
+}
+
+module.exports = { VRSTE, NAJNOVIJA_PHP, napravi, uporediVerzije };
