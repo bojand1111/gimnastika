@@ -63,7 +63,7 @@ test('rezultati(): Petrovic ima jednu stavku, zbir 50300, izabrano je aktivno', 
   const r = moduli.rang.rezultati(String(tid), undefined);
   assert.equal(r.sva.length, 1);
   assert.equal(r.sva[0].red.zbir, 50300);
-  assert.equal(r.takmicar.klub_ime !== undefined, true);
+  assert.equal(r.takmicar.klub_ime, 'SD „Vojvodina“');
   assert.equal(r.izabranoId, Number(baza.vrednost('SELECT id FROM takmicenja')));
   assert.equal(r.izabranoId, r.sva[0].takm.id);
   structuredClone(r);
@@ -154,4 +154,88 @@ test('moduli.stampa koristi roditelj() kao prozor', async () => {
   const s = stubProzor({});
   const { moduli } = pravi({ roditelj: s.prozor });
   assert.deepEqual(await moduli.stampa.stampaj({ polozeno: false }), { ok: true });
+});
+
+// Drugo takmicenje (novije) sa prijavom Petrovica: kopija prvog reda takmicenja i prijave.
+function drugoTakmicenje(baza) {
+  const tak = baza.jedan('SELECT * FROM takmicenja');
+  const { id: _t, ...t2 } = tak;
+  const novo = Number(baza.ubaci('takmicenja', { ...t2, naziv: 'Novije takmicenje', datum: '2099-05-05' }));
+  const tid = Number(baza.vrednost('SELECT id FROM takmicari WHERE prezime = ?', ['Petrović']));
+  const { id: _p, ...pr } = baza.jedan('SELECT * FROM prijave WHERE takmicar_id = ?', [tid]);
+  baza.ubaci('prijave', { ...pr, takmicenje_id: novo, startni_broj: null });
+  return { stari: Number(tak.id), novo, tid };
+}
+
+test('rezultati(): vise takmicenja, izbor i fallback', () => {
+  const { baza, moduli } = sPrimerom();
+  const { stari, novo, tid } = drugoTakmicenje(baza);
+  const r = moduli.rang.rezultati(tid);
+  assert.deepEqual(r.sva.map((x) => x.takm.id), [novo, stari]);
+  assert.equal(r.izabranoId, stari);
+  assert.equal(moduli.rang.rezultati(tid, String(novo)).izabranoId, novo);
+  assert.equal(moduli.rang.rezultati(tid, 'smece').izabranoId, stari);
+  assert.equal(moduli.rang.rezultati(tid, 987654).izabranoId, novo);
+  assert.equal(r.sva[0].red, null);
+  baza.izvrsi("UPDATE podesavanja SET vrednost = '' WHERE kljuc = 'aktivno_takmicenje'");
+  assert.equal(moduli.rang.rezultati(tid).izabranoId, novo);
+  assert.throws(() => moduli.rang.podaci(), (e) => e instanceof GreskaKorisnika && /Nema aktivnog/.test(e.message));
+  assert.throws(() => moduli.rang.stampa('Z'), (e) => /Nema aktivnog/.test(e.message));
+  assert.throws(() => moduli.rang.bilten('Z'), (e) => /Nema aktivnog/.test(e.message));
+});
+
+test('rezultati(): takmicar bez prijava', () => {
+  const { baza, moduli } = sPrimerom();
+  const id = Number(baza.ubaci('takmicari', {
+    id_broj: '99999', ime: 'Nova', prezime: 'Bez', godina_rodjenja: 2012, pol: 'Z', kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00',
+  }));
+  const r = moduli.rang.rezultati(id);
+  assert.deepEqual(r.sva, []);
+  assert.equal(r.izabranoId, null);
+});
+
+test('stampa(): strane za spravu i ekipno', () => {
+  const { moduli } = sPrimerom();
+  const z = moduli.rang.stampa('Z', '', '', 'viseboj');
+  const sid = z.rez.sprave[0].id;
+  const sp = moduli.rang.stampa('Z', '', '', sid);
+  assert.equal(sp.strane.length, 1);
+  assert.equal(sp.strane[0].length, z.rez.po_spravi[sid].length);
+  const ek = moduli.rang.stampa('Z', '', '', 'ekipno');
+  assert.equal(ek.strane.flat().length, z.rez.ekipno.length);
+  for (const s of ek.strane) assert.ok(s.reduce((n, e) => n + 1 + e.clanovi.length, 0) <= 30);
+});
+
+test('organizator i grb: rezervno iz podesavanja', () => {
+  const { baza, moduli } = sPrimerom();
+  const dir = os.tmpdir();
+  const levo = `grb-f6-levo-${process.pid}.png`;
+  const desno = `grb-f6-desno-${process.pid}.png`;
+  fs.writeFileSync(path.join(dir, levo), 'x');
+  fs.writeFileSync(path.join(dir, desno), 'x');
+  try {
+    baza.izvrsi("UPDATE takmicenja SET organizator = '', grb_levo = '', grb_desno = ''");
+    for (const [k, v] of [['organizator', 'Savez'], ['grb_levo', levo], ['grb_desno', desno]]) {
+      baza.izvrsi('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost', [k, v]);
+    }
+    const b = moduli.rang.bilten('Z', '', '');
+    assert.equal(b.organizator, 'Savez');
+    assert.match(b.grbLevo, new RegExp(`${levo}[?]v=`));
+    assert.match(b.grbDesno, new RegExp(`${desno}[?]v=`));
+    assert.match(moduli.rang.stampa('Z', '', '', 'viseboj').grb, new RegExp(levo));
+    baza.izvrsi("UPDATE takmicenja SET organizator = 'Klub X'");
+    assert.equal(moduli.rang.bilten('Z', '', '').organizator, 'Klub X');
+  } finally {
+    fs.rmSync(path.join(dir, levo), { force: true });
+    fs.rmSync(path.join(dir, desno), { force: true });
+  }
+});
+
+test('stampaj: razni zapisi otkazivanja i pad dijaloga za PDF', async () => {
+  for (const razlog of ['canceled', 'Print job canceled', 'CANCELLED']) {
+    const st = napraviStampu({ prozor: stubProzor({ print: false, razlog }).prozor, dialog: {}, fs, dokumenti: os.tmpdir() });
+    assert.deepEqual(await st.stampaj({}), { ok: false, otkazano: true });
+  }
+  const st = napraviStampu({ prozor: stubProzor({}).prozor, dialog: { showSaveDialog: async () => { throw new Error('dijalog'); } }, fs, dokumenti: os.tmpdir() });
+  await assert.rejects(st.pdf({ ime: 'x' }), (e) => e instanceof GreskaKorisnika && e.message === 'PDF nije sačuvan: dijalog');
 });

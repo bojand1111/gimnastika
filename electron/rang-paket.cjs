@@ -2,7 +2,11 @@
 const { GreskaKorisnika } = require('./greska.cjs');
 const { straneSprava, straneEkipno, straneViseboj, stavkeBiltena, straneBilten } = require('./racun/prelom.mjs');
 
-const broj = (id) => (id === null || id === undefined || id === '' ? null : Number(id));
+const broj = (id) => {
+  if (id === null || id === undefined || id === '') return null;
+  const n = Number(id);
+  return Number.isFinite(n) ? n : null;
+};
 const polNaziv = (pol) => (pol === 'M' ? 'MSG' : 'ŽSG');
 
 // aktivnoRed: () => red aktivnog takmicenja (baca bez njega); model: modeli/rezultati; p: podesavanja; t: takmicari.
@@ -65,7 +69,7 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
       const sprava = typeof tabIzabran === 'number' ? rez.sprave.find((x) => Number(x.id) === tabIzabran) : null;
       const polozeno = tabIzabran !== 'ekipno' && sprava === null && rez.sprave.length > 4;
       let strane;
-      if (sprava) strane = straneSprava(rez.po_spravi[sprava.id]);
+      if (sprava) strane = straneSprava(rez.po_spravi[sprava.id] ?? []);
       else if (tabIzabran === 'ekipno') strane = straneEkipno(rez.ekipno);
       else strane = straneViseboj(rez.viseboj, polozeno);
       const vrsta = sprava ? sprava.naziv : (tabIzabran === 'ekipno' ? 'Ekipno' : 'Višeboj');

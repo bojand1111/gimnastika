@@ -26,7 +26,7 @@ function napravi({ prozor, dialog, fs, dokumenti }) {
         try {
           wc.print({ silent: false, printBackground: true, ...opcijeStrane(polozeno) }, (uspeh, razlog) => {
             if (uspeh) resolve({ ok: true });
-            else if (razlog === 'cancelled') resolve({ ok: false, otkazano: true });
+            else if (/cancel/i.test(String(razlog))) resolve({ ok: false, otkazano: true });
             else reject(new GreskaKorisnika(`Štampa nije uspela: ${razlog}`));
           });
         } catch (err) {
@@ -39,10 +39,15 @@ function napravi({ prozor, dialog, fs, dokumenti }) {
       const w = prozor();
       const wc = sadrzaj();
       const polozeno = !!ulaz?.polozeno;
-      const izbor = await dialog.showSaveDialog(w, {
-        defaultPath: path.join(dokumenti, cistoIme(ulaz?.ime)),
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
-      });
+      let izbor;
+      try {
+        izbor = await dialog.showSaveDialog(w, {
+          defaultPath: path.join(dokumenti, cistoIme(ulaz?.ime)),
+          filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        });
+      } catch (err) {
+        throw new GreskaKorisnika(`PDF nije sačuvan: ${err.message}`);
+      }
       if (izbor.canceled || !izbor.filePath) return null;
       try {
         const podaci = await wc.printToPDF({ ...opcijeStrane(polozeno), printBackground: true });
