@@ -6,6 +6,7 @@ const DijalogRazlog = forwardRef(function DijalogRazlog(_, ref) {
   const dijalog = useRef(null);
   const polje = useRef(null);
   const odgovor = useRef(null); // resolve funkcija obecanja koje je u toku
+  const sesija = useRef(0); // brojac pitaj() poziva; kasni "close" iz stare sesije se ignorise
   const [tekst, postaviTekst] = useState('');
   const [greska, postaviGresku] = useState('');
   const [otvorenoBr, postaviOtvoreno] = useState(0);
@@ -18,6 +19,7 @@ const DijalogRazlog = forwardRef(function DijalogRazlog(_, ref) {
     otvoren: () => Boolean(dijalog.current && dijalog.current.open),
     pitaj() {
       return new Promise((resolve) => {
+        sesija.current += 1;
         odgovor.current = resolve;
         postaviTekst('');
         postaviGresku('');
@@ -27,11 +29,13 @@ const DijalogRazlog = forwardRef(function DijalogRazlog(_, ref) {
     },
   }));
 
-  const zavrsi = (vrednost) => {
+  // Razresava samo ako sesija odgovara tekucoj i obecanje jos nije razreseno (nikad dvaput).
+  const zavrsi = (vrednost, s = sesija.current) => {
+    if (s !== sesija.current || !odgovor.current) return;
     const r = odgovor.current;
     odgovor.current = null;
     if (dijalog.current.open) dijalog.current.close();
-    if (r) r(vrednost);
+    r(vrednost);
   };
 
   function posalji(ev) {
@@ -41,10 +45,11 @@ const DijalogRazlog = forwardRef(function DijalogRazlog(_, ref) {
     zavrsi(t);
   }
 
-  // Esc zatvara dijalog sam; obecanje se razresava u "close".
+  // Esc se razresava odmah u "cancel" (sinhrono); "close" stize kasno u redu zadataka pa se stari ignorise.
   return (
     <dialog ref={dijalog} id="dijalog-razlog" className="dijalog" aria-labelledby="dijalog-razlog-naslov"
-      onClose={() => zavrsi(null)}>
+      onCancel={(ev) => { ev.preventDefault(); zavrsi(null); }}
+      onClose={() => { if (!dijalog.current.open) zavrsi(null); }}>
       <form className="forma" onSubmit={posalji}>
         <h2 className="kartica-naslov" id="dijalog-razlog-naslov">Razlog ispravke (obavezno):</h2>
         <input ref={polje} type="text" className="unos" name="razlog" aria-label="Razlog ispravke" autoComplete="off"

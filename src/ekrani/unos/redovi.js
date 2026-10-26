@@ -1,7 +1,5 @@
 // Redovi ekrana Unos ocena iz odgovora IPC-a (oblik reda: vidi zaglavlje ../unosStanje.js).
-import { preracunaj } from '../unosStanje.js';
-
-const NEMA = '–';
+import { NEMA, preracunaj } from '../unosStanje.js';
 
 export function izPodataka(d) {
   return d.redovi.map((r) => {

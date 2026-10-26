@@ -425,4 +425,5 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .unos-ime-red { min-width: 0; }
 .unos-red .ocena.greska { border: 2px solid var(--bad); }
 .unos-red .ocena:focus { border: 2px solid var(--ink); }
+.unos-red .ocena.greska:focus { border-color: var(--bad); }
 .unos-red:focus { outline: none; }

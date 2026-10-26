@@ -7,7 +7,7 @@ import { izUnosa, prikaz } from '../../electron/racun/broj.mjs';
 import { konacnaE, konacna } from '../../electron/racun/ocena.mjs';
 import { url } from '../ruter.js';
 
-const NEMA = '–';
+export const NEMA = '–';
 
 export const otvoren = (red) => red.status === 'nacrt' || !!red.ispravlja;
 
