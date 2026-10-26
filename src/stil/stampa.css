@@ -1,0 +1,91 @@
+/* Stampa: listovi A4 (794x1123 px pri 96 dpi), crn tekst, linije najmanje 1 px, bez pozadina osim sive za red ekipe. */
+body.stampa { background: #8A8890; margin: 0; color: #111; font-family: 'Manrope', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 20px; font-weight: 500; }
+.stampa-alat { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #E4E2DD; }
+.stampa-alat .naslov { font-weight: 800; font-size: 15px; margin-right: auto; }
+.list { box-sizing: border-box; width: 794px; height: 1123px; padding: 48px; background: #fff; color: #111; margin: 16px auto; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+.list.polozeno { width: 1123px; height: 794px; }
+.list .num, .list .broj { font-variant-numeric: tabular-nums; }
+.list .sivo { color: #4A4A4A; }
+
+.st-zaglavlje { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.st-grb { width: 84px; height: 72px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.st-grb img { max-width: 84px; max-height: 72px; }
+.st-sredina { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+.st-sredina h1 { margin: 0; font-size: 20px; line-height: 26px; font-weight: 800; letter-spacing: -0.01em; }
+.st-zvanicno span { white-space: nowrap; }
+.st-zvanicno { width: 96px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding: 6px 4px; border: 2px solid #111; }
+.st-zvanicno b { font-size: 12px; line-height: 16px; font-weight: 800; letter-spacing: 0.04em; }
+.st-zvanicno span { font-size: 12px; line-height: 16px; }
+.st-h2 { margin: 18px 0 14px; text-align: center; font-size: 18px; line-height: 24px; font-weight: 800; }
+
+/* Rang lista: blok po takmicaru */
+.st-tabela { border: 1px solid #111; }
+.st-red { display: grid; border-bottom: 1px solid #111; }
+.st-red:last-child { border-bottom: 0; }
+.st-red.st-glava { border-bottom: 2px solid #111; }
+.st-glava > span { font-size: 12px; line-height: 14px; font-weight: 700; padding: 6px 4px; align-self: end; }
+.st-glava .st-sprava { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-left: 1px solid #111; font-size: 12px; line-height: 14px; }
+.st-glava .st-sprava b { font-weight: 700; }
+.st-glava .st-ukupno { border-left: 1px solid #111; align-self: stretch; display: flex; align-items: flex-end; justify-content: flex-end; padding-right: 6px; }
+.st-mesto { padding: 6px 4px; font-size: 14px; line-height: 18px; font-weight: 800; }
+.st-br { padding: 6px 0; font-size: 13px; line-height: 18px; }
+.st-ime { display: flex; flex-direction: column; padding: 6px 6px 6px 4px; min-width: 0; }
+.st-ime b { font-size: 14px; line-height: 18px; font-weight: 800; }
+.st-ime span { font-size: 12px; line-height: 16px; color: #4A4A4A; }
+.st-ime i { font-size: 12px; line-height: 16px; color: #4A4A4A; }
+.st-ocena { display: flex; flex-direction: column; padding: 5px 8px; border-left: 1px solid #9A9A9A; }
+.st-ocena .glavna { display: flex; justify-content: space-between; align-items: baseline; line-height: 18px; }
+.st-ocena .glavna b { font-size: 14px; font-weight: 800; }
+.st-ocena .glavna span { font-size: 12px; }
+.st-ocena .deo { display: flex; justify-content: space-between; font-size: 12px; line-height: 16px; }
+.st-ocena .deo span:first-child { color: #4A4A4A; }
+.st-ocena.prazno { align-items: center; color: #4A4A4A; font-size: 13px; }
+.st-zbir { padding: 6px; border-left: 1px solid #111; text-align: right; font-size: 15px; line-height: 18px; font-weight: 800; }
+
+/* Obicne tabele na listu (sprava, ekipno, bilten) */
+.st-tab { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 16px; }
+.st-tab th, .st-tab td { border: 1px solid #111; padding: 3px 5px; text-align: right; font-variant-numeric: tabular-nums; }
+.st-tab th { font-weight: 700; text-align: center; vertical-align: bottom; }
+.st-tab th.levo, .st-tab td.levo { text-align: left; }
+.st-tab td.centar { text-align: center; }
+.st-tab td.levo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-tab.uska { table-layout: fixed; font-size: 11px; }
+.st-tab.uska th, .st-tab.uska td { padding: 3px 3px; }
+.st-tab.uska td.levo b { font-size: 12px; }
+.st-tab tr.ekipa td { background: #E6E6E6; font-weight: 800; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.st-tab td.jako { font-weight: 800; }
+.st-tab .klub { display: block; color: #4A4A4A; font-size: 11px; line-height: 13px; }
+.st-tab .tanko { border-left-color: #9A9A9A; border-right-color: #9A9A9A; }
+.st-sekcija { display: flex; align-items: baseline; justify-content: space-between; margin: 14px 0 6px; }
+.st-sekcija b { font-size: 15px; font-weight: 800; }
+.st-sekcija span { font-size: 12px; color: #4A4A4A; }
+
+.st-dno { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.st-legenda { font-size: 12px; line-height: 16px; color: #4A4A4A; }
+.st-potpisi { display: flex; justify-content: space-between; gap: 48px; padding: 28px 24px 0; }
+.st-potpisi div { flex: 1 1 0; border-top: 1px solid #111; padding-top: 4px; text-align: center; font-size: 12px; }
+.st-podnozje { display: flex; justify-content: space-between; font-size: 12px; color: #4A4A4A; border-top: 1px solid #111; padding-top: 6px; }
+
+/* Bilten */
+.bi-zaglavlje { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 10px; border-bottom: 2px solid #111; }
+.bi-sredina { flex: 1 1 0; text-align: center; display: flex; flex-direction: column; gap: 1px; }
+.bi-sredina .mali { font-size: 12px; line-height: 16px; font-weight: 600; }
+.bi-sredina .org { font-size: 13px; line-height: 18px; font-weight: 700; text-transform: uppercase; }
+.bi-sredina .bilten { font-size: 24px; line-height: 30px; font-weight: 800; letter-spacing: 0.12em; margin-top: 4px; }
+.bi-sredina .naziv { font-size: 17px; line-height: 22px; font-weight: 800; text-transform: uppercase; }
+.bi-sredina .disc { font-size: 12px; line-height: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.bi-sredina .gde { font-size: 12px; line-height: 16px; }
+.bi-mala-glava { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 1px solid #111; font-size: 12px; font-weight: 700; }
+
+@page { size: A4 portrait; margin: 0; }
+@media print {
+  body.stampa { background: #fff; }
+  .stampa-alat { display: none !important; }
+  .list { margin: 0; box-shadow: none; height: 1122px; page-break-after: always; break-after: page; }
+  .list.polozeno { height: 793px; }
+  .list:last-child { page-break-after: auto; break-after: auto; }
+}
+
+/* Dopuna za Electron: body je u app.css visok 100%, a ekrani stampe skroluju celu stranu */
+body.stampa { height: auto; min-height: 100%; }
+@media print { #obavestenja { display: none !important; } }

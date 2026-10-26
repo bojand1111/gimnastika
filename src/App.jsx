@@ -18,10 +18,14 @@ import Rotacije from './ekrani/Rotacije.jsx';
 import Unos from './ekrani/Unos.jsx';
 import Rang from './ekrani/Rang.jsx';
 import Rezultati from './ekrani/Rezultati.jsx';
+import Stampa from './ekrani/Stampa.jsx';
+import Bilten from './ekrani/Bilten.jsx';
 
-const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz, rang: Rang, rezultati: Rezultati,
+const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz, rang: Rang, rezultati: Rezultati, stampa: Stampa, bilten: Bilten,
   'takmicenja/novo': TakmicenjeForma, 'takmicenja/izmeni': TakmicenjeForma };
 // Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
+// Ekrani cele strane (POPIS 9.1): bez menija i trake, body.stampa dok su otvoreni.
+const CELA_STRANA = new Set(['stampa', 'bilten']);
 const FIKSNO = new Set(['klubovi', 'takmicari', 'takmicenja', 'prijave', 'rotacije', 'unos', 'rang']);
 
 // Globalne precice: radnja(ev) -> hash ili dogadjaj na documentu.
@@ -33,8 +37,9 @@ function izvrsi(ev) {
   else if (r === 'otkazi') document.dispatchEvent(new CustomEvent('app:otkazi'));
   else if (r === 'stampa') {
     ev.preventDefault();
-    // Rang liste hvata app:stampa i otvara pregled za stampu; ostali ekrani stampaju sami
-    if (razlozi(location.hash).ekran === 'rang') document.dispatchEvent(new CustomEvent('app:stampa'));
+    // Rang liste hvataju app:stampa i otvaraju pregled za stampu, ekrani cele strane stampaju kroz IPC; ostali stampaju sami
+    const { ekran } = razlozi(location.hash);
+    if (ekran === 'rang' || CELA_STRANA.has(ekran)) document.dispatchEvent(new CustomEvent('app:stampa'));
     else window.print();
   }
   else if (r === 'kopija') { ev.preventDefault(); document.dispatchEvent(new CustomEvent('app:kopija')); }
@@ -62,10 +67,25 @@ export default function App() {
   }, []);
 
   const { ekran } = razlozi(hash);
-  const naslov = naslovEkrana(ekran);
+  const celaStrana = CELA_STRANA.has(ekran);
+  const naslov = celaStrana ? (ekran === 'bilten' ? 'Bilten' : 'Štampa') : naslovEkrana(ekran);
   useEffect(() => { document.title = `${naslov} · Gimnastika`; }, [naslov]);
 
+  useEffect(() => {
+    if (!celaStrana) return undefined;
+    document.body.classList.add('stampa');
+    return () => document.body.classList.remove('stampa');
+  }, [celaStrana]);
+
   const Ekran = EKRANI[ekran];
+  if (celaStrana) {
+    return (
+      <>
+        <Ekran />
+        <Poruke />
+      </>
+    );
+  }
   return (
     <div className="app">
       <Meni ekran={ekran} verzija={verzija} />

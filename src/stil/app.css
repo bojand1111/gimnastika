@@ -276,10 +276,10 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .rang-ime.sivo { color: var(--muted); font-weight: 600; }
 .precrtano { text-decoration: line-through; color: var(--muted); }
 .rang-kartica { overflow: hidden; min-height: 0; }
-.rang-zaglavlje { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px 0 4px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.rang-zaglavlje { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px 0 4px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
 .rang-tabovi, .rang-dugmad { display: flex; align-items: center; }
 .rang-tabovi { gap: 2px; }
-.rang-dugmad { gap: 8px; }
+.rang-dugmad { gap: 8px; margin-left: auto; }
 .rang-filter { display: flex; align-items: center; gap: 12px; padding: 10px 16px; flex-shrink: 0; }
 .rang-polje { display: flex; align-items: center; gap: 8px; }
 .rang-kat { width: 140px; }
