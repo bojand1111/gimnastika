@@ -95,7 +95,10 @@ export default function Takmicari() {
   const obradjenId = useRef('');
   useEffect(() => {
     const naHash = () => {
-      if (location.hash.startsWith('#/takmicari')) postaviHashId(razlozi(location.hash).parametri.id ?? '');
+      if (!location.hash.startsWith('#/takmicari')) return;
+      const id = razlozi(location.hash).parametri.id ?? '';
+      if (id === '') obradjenId.current = ''; // sledeci ?id se ponovo obradjuje
+      postaviHashId(id);
     };
     window.addEventListener('hashchange', naHash);
     return () => window.removeEventListener('hashchange', naHash);

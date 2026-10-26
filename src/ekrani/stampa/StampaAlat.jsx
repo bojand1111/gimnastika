@@ -55,8 +55,8 @@ export default function StampaAlat({ naslov, polozeno, nazad, zauzeto, naStampaj
       <a href={nazad} className="dugme"><Ikona ime="strelica-levo" velicina={16} /><span>Nazad</span><kbd>Esc</kbd></a>
       <span className="naslov">{naslov}</span>
       <span className="sivo mali">A4 {polozeno ? 'položeno' : 'uspravno'} · u dijalogu za štampu isključite zaglavlja i podnožja browsera</span>
-      <button type="button" className="dugme" onClick={naPdf} disabled={zauzeto}>Sačuvaj PDF</button>
-      <button type="button" className="dugme dugme-glavno" onClick={naStampaj} disabled={zauzeto} autoFocus>
+      <button type="button" className="dugme" onClick={naPdf} aria-disabled={zauzeto || undefined}>Sačuvaj PDF</button>
+      <button type="button" className="dugme dugme-glavno" onClick={naStampaj} aria-disabled={zauzeto || undefined} autoFocus>
         <Ikona ime="stampac" velicina={16} /><span>Štampaj</span><kbd>Ctrl+P</kbd>
       </button>
     </div>

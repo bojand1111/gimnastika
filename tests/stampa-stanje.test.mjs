@@ -81,3 +81,8 @@ test('odustalaRec: mala slova po polu', () => {
   assert.equal(odustalaRec('Z'), 'odustala');
   assert.equal(odustalaRec('M'), 'odustao');
 });
+
+test('gdeKada: bez mesta i bez datuma je prazan tekst', () => {
+  assert.equal(gdeKada({ datum: '' }), '');
+  assert.equal(gdeKada({ mesto: undefined, datum: null }), '');
+});

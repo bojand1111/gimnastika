@@ -71,7 +71,7 @@ function RedViseboj({ p, rez, pol }) {
       <td className="levo">
         <b>{`${pr.prezime} ${pr.ime}`}</b>
         {/* Oznaka odustajanja ide u red kluba kao na slici 09d: u redu sa imenom bi je kolona isekla */}
-        <span className="klub">{pr.klub_ime ?? ''}{p.odustao && <> · <i>{odustalaRec(pol)}</i></>}</span>
+        <span className="klub">{pr.klub_ime ?? ''}{p.odustao && <>{(pr.klub_ime ?? '') !== '' && ' · '}<i>{odustalaRec(pol)}</i></>}</span>
       </td>
       {rez.sprave.map((s) => {
         const d = p.detalji[s.id] ?? null;

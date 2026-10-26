@@ -61,3 +61,14 @@ test('odustaoRec i mnozina po polu', () => {
   assert.equal(mnozina('Z'), 'takmičarki');
   assert.equal(mnozina('M'), 'takmičara');
 });
+
+test('granica od 5 sprava: sirinaKolone i nazivKolone', () => {
+  assert.equal(sirinaKolone(5, 'viseboj'), 92);
+  assert.equal(sirinaKolone(5, 'ekipno'), 100);
+  assert.equal(nazivKolone({ naziv: 'Greda', skracenica: 'GR' }, 5), 'GR');
+});
+
+test('tekstPodnozja: 0 prijava se prikazuje, null ne', () => {
+  const o = { tabNaziv: 'Višeboj', pol: 'M', katNaziv: 'Kadet', progNaziv: 'C program' };
+  assert.equal(tekstPodnozja({ ...o, brojPrijava: 0 }), 'Višeboj · MSG · Kadet · C program · 0 takmičara');
+});

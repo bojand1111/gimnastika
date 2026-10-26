@@ -48,8 +48,10 @@ export default function Rang() {
     // Ctrl+P (App salje app:stampa): pregled za stampu sa tekucim izborom (POPIS 2.2, 9.6).
     const naStampu = () => {
       const t = dRef.current;
-      if (!t) return;
-      location.hash = hashEkrana('stampa', { pol: t.izbor.pol, kat: t.izbor.kat, prog: t.izbor.prog, tab: t.tab });
+      // Pre prvog odgovora IPC-a koristi parametre iz hasha, da Ctrl+P uvek otvori pregled
+      location.hash = t
+        ? hashEkrana('stampa', { pol: t.izbor.pol, kat: t.izbor.kat, prog: t.izbor.prog, tab: t.tab })
+        : hashEkrana('stampa', izHasha());
     };
     window.addEventListener('hashchange', naHash);
     document.addEventListener('app:stampa', naStampu);
