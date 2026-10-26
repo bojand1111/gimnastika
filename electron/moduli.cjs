@@ -11,6 +11,9 @@ const prijaveModel = require('./modeli/prijave.cjs');
 const uvozModel = require('./modeli/uvoz.cjs');
 const grupeModel = require('./modeli/grupe.cjs');
 const oceneModel = require('./modeli/ocene.cjs');
+const rezultatiModel = require('./modeli/rezultati.cjs');
+const napraviRang = require('./rang-paket.cjs').napravi;
+const napraviStampu = require('./stampa.cjs').napravi;
 const { KOLATOR } = require('./modeli/sortiranje.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
 const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
@@ -29,7 +32,7 @@ const GRB_DIJALOG = {
 };
 const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.';
 
-function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul }) {
+function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir() }) {
   const k = klubovi.napravi(baza);
   const t = takmicari.napravi(baza);
   const s = sifarnici.napravi(baza);
@@ -432,6 +435,8 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
       odustao: (prijavaId, spravaId) => oc.odustao(aktivnoId(), broj(prijavaId), broj(spravaId)),
       vrati: (prijavaId, spravaId) => oc.vrati(aktivnoId(), broj(prijavaId), broj(spravaId)),
     },
+    rang: napraviRang({ baza, model: rezultatiModel.napravi(baza, p), p, t, aktivnoRed, grbUrl }),
+    stampa: napraviStampu({ prozor: roditelj, dialog, fs, dokumenti }),
     uvoz: {
       izaberiFajlove: () => izaberi({
         properties: ['openFile', 'multiSelections'],

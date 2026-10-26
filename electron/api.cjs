@@ -9,6 +9,8 @@ const MODULI = {
   prijave: ['lista', 'podaci', 'dodaj', 'izmeni', 'sprava', 'ucesce', 'obrisi', 'potvrda', 'startni', 'noviTakmicar', 'stanje'],
   rotacije: ['podaci', 'dodaj', 'izmeni', 'obrisi', 'premesti', 'vrati', 'pomeraj', 'zavrsi'],
   unos: ['podaci', 'nacrt', 'potvrdi', 'odustao', 'vrati'],
+  rang: ['podaci', 'rezultati', 'stampa', 'bilten'],
+  stampa: ['stampaj', 'pdf'],
   uvoz: ['izaberiFajlove', 'pripremi', 'upisi'],
   azuriranje: ['stanje', 'proveri', 'preuzmi', 'instaliraj'],
 };
