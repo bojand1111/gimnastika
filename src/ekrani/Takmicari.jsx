@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gim from '../gim.js';
+import { razlozi } from '../ruter.js';
 import Ikona from '../komponente/Ikona.jsx';
 import Polje from '../komponente/Polje.jsx';
 import DatumPolje from '../komponente/DatumPolje.jsx';
@@ -88,6 +89,24 @@ export default function Takmicari() {
       document.removeEventListener('app:otkazi', naOtkazi);
     };
   }, [novi]);
+
+  // #/takmicari?id=N (Otvori karton sa Rezultata): izaberi tog takmicara kao klik na red.
+  const [hashId, postaviHashId] = useState(() => razlozi(location.hash).parametri.id ?? '');
+  const obradjenId = useRef('');
+  useEffect(() => {
+    const naHash = () => {
+      if (location.hash.startsWith('#/takmicari')) postaviHashId(razlozi(location.hash).parametri.id ?? '');
+    };
+    window.addEventListener('hashchange', naHash);
+    return () => window.removeEventListener('hashchange', naHash);
+  }, []);
+  useEffect(() => {
+    if (hashId === '' || hashId === obradjenId.current) return;
+    const r = takmicari.find((x) => String(x.id) === hashId);
+    if (!r) return; // lista se jos ucitava (ili takmicar ne postoji)
+    obradjenId.current = hashId;
+    izaberi(r);
+  }, [hashId, takmicari, izaberi]);
 
   const vidljivi = useMemo(() => takmicari.filter((r) => vidljiv(r, filter)), [takmicari, filter]);
   const godista = useMemo(

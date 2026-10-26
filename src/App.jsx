@@ -16,11 +16,13 @@ import Prijave from './ekrani/Prijave.jsx';
 import Uvoz from './ekrani/Uvoz.jsx';
 import Rotacije from './ekrani/Rotacije.jsx';
 import Unos from './ekrani/Unos.jsx';
+import Rang from './ekrani/Rang.jsx';
+import Rezultati from './ekrani/Rezultati.jsx';
 
-const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz,
+const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz, rang: Rang, rezultati: Rezultati,
   'takmicenja/novo': TakmicenjeForma, 'takmicenja/izmeni': TakmicenjeForma };
 // Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
-const FIKSNO = new Set(['klubovi', 'takmicari', 'takmicenja', 'prijave', 'rotacije', 'unos']);
+const FIKSNO = new Set(['klubovi', 'takmicari', 'takmicenja', 'prijave', 'rotacije', 'unos', 'rang']);
 
 // Globalne precice: radnja(ev) -> hash ili dogadjaj na documentu.
 function izvrsi(ev) {
@@ -29,7 +31,12 @@ function izvrsi(ev) {
   else if (r === 'rang') { ev.preventDefault(); location.hash = '#/rang'; }
   else if (r === 'novi') { ev.preventDefault(); document.dispatchEvent(new CustomEvent('app:novi')); }
   else if (r === 'otkazi') document.dispatchEvent(new CustomEvent('app:otkazi'));
-  else if (r === 'stampa') { ev.preventDefault(); window.print(); }
+  else if (r === 'stampa') {
+    ev.preventDefault();
+    // Rang liste hvata app:stampa i otvara pregled za stampu; ostali ekrani stampaju sami
+    if (razlozi(location.hash).ekran === 'rang') document.dispatchEvent(new CustomEvent('app:stampa'));
+    else window.print();
+  }
   else if (r === 'kopija') { ev.preventDefault(); document.dispatchEvent(new CustomEvent('app:kopija')); }
 }
 
