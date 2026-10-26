@@ -61,6 +61,11 @@ test('izracunaj iz baze (POPIS 8.1)', () => {
   // redom po mestu: Ceca 13000 (VK) prva, pa Ana i Bea, pa Dona
   assert.deepEqual(rez.po_spravi[s.pr].map((x) => x.prijava), [pid.Ceca, pid.Ana, pid.Bea, pid.Dona]);
 
+  const gr = rez.po_spravi[s.gr];
+  assert.equal(gr[gr.length - 1].prijava, pid.Dona);
+  assert.equal(gr[gr.length - 1].status, 'odustao');
+  assert.equal(gr[gr.length - 1].mesto, null);
+
   const v = Object.fromEntries(rez.viseboj.map((x, i) => [x.prijava, { ...x, poz: i }]));
   assert.equal(v[pid.Ceca].poz, 0, 'VK je na mestu koje joj po oceni pripada');
   assert.equal(v[pid.Ceca].oznaka, 'VK');
@@ -130,6 +135,10 @@ test('izbor: podrazumevane vrednosti i nepostojeci kat', () => {
   assert.deepEqual(iz.programi, [{ id: s.prog, naziv: 'C' }]);
   assert.equal(iz.kat_naziv, 'Kadet');
   assert.equal(iz.prog_naziv, 'C');
+
+  // objekat takmicenja i id daju isto
+  assert.deepEqual(r.izbor(n.takm(), undefined, undefined, undefined), iz);
+  assert.equal(r.izbor({ id: s.takm }, 'M').pol, 'M');
 
   // nepostojeci kat i prog, nepoznat pol
   iz = r.izbor(s.takm, 'X', '999', '999');

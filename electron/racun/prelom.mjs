@@ -5,6 +5,7 @@ const praznoJeJedna = (strane) => (strane.length === 0 ? [[]] : strane);
 
 // Isecanje niza na delove od `n` stavki.
 function iseci(niz, n) {
+  if (!(n > 0)) throw new Error('Broj redova po strani mora biti veci od nule.');
   const strane = [];
   for (let i = 0; i < niz.length; i += n) strane.push(niz.slice(i, i + n));
   return praznoJeJedna(strane);

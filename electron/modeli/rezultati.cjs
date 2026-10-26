@@ -55,7 +55,7 @@ function napravi(baza, podesavanja) {
 
   // Izbor pola, kategorije i programa iz URL vrednosti (stringovi ili undefined), sa podrazumevanim iz prijava.
   function izbor(takm, pol, kat, prog) {
-    const sve = kombinacije(takm);
+    const sve = kombinacije(Number(takm?.id ?? takm)); // objekat takmicenja ili njegov id
     if (pol !== 'M' && pol !== 'Z') pol = sve.length > 0 ? sve[0].pol : 'Z';
     const komb = sve.filter((k) => k.pol === pol);
     let katId = kat === undefined || kat === null || kat === '' ? null : celo(kat);
@@ -188,7 +188,7 @@ function napravi(baza, podesavanja) {
       }
     }
     const ekipe = [];
-    for (const ek of ekipno(clanovi, sids, Number(takm.ekipno_broji), isti)) {
+    for (const ek of ekipno(clanovi, sids, Number(takm.ekipno_broji) || 1, isti)) {
       const klub = baza.jedan('SELECT * FROM klubovi WHERE id = ?', [Number(ek.klub)]);
       const cl = ek.clanovi.map((pid) => {
         let zbir = 0;
