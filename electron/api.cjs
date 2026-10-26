@@ -11,6 +11,8 @@ const MODULI = {
   unos: ['podaci', 'nacrt', 'potvrdi', 'odustao', 'vrati'],
   rang: ['podaci', 'rezultati', 'stampa', 'bilten'],
   stampa: ['stampaj', 'pdf'],
+  pocetna: ['podaci'],
+  takmicenje: ['podaci'],
   uvoz: ['izaberiFajlove', 'pripremi', 'upisi'],
   azuriranje: ['stanje', 'proveri', 'preuzmi', 'instaliraj'],
 };

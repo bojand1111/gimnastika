@@ -14,6 +14,7 @@ const oceneModel = require('./modeli/ocene.cjs');
 const rezultatiModel = require('./modeli/rezultati.cjs');
 const napraviRang = require('./rang-paket.cjs').napravi;
 const napraviStampu = require('./stampa.cjs').napravi;
+const napraviPregled = require('./pregled-paket.cjs').napravi;
 const { KOLATOR } = require('./modeli/sortiranje.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
 const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
@@ -32,7 +33,7 @@ const GRB_DIJALOG = {
 };
 const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.';
 
-function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir() }) {
+function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir(), kopijaLista = () => [] }) {
   const k = klubovi.napravi(baza);
   const t = takmicari.napravi(baza);
   const s = sifarnici.napravi(baza);
@@ -100,6 +101,8 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
     // ?v= (vreme izmene) da Chromium ne prikazuje staru sliku posle zamene grba
     return fs.existsSync(fajl) ? `${pathToFileURL(fajl).href}?v=${Math.round(fs.statSync(fajl).mtimeMs)}` : '';
   }
+
+  const pregled = napraviPregled({ p, pr, tk, g: gr, o: oc, s, aktivnoRed, kopijaLista });
 
   return {
     klubovi: {
@@ -437,6 +440,8 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
     },
     rang: napraviRang({ baza, model: rezultatiModel.napravi(baza, p), p, t, aktivnoRed, grbUrl }),
     stampa: napraviStampu({ prozor: roditelj, dialog, fs, dokumenti }),
+    pocetna: pregled.pocetna,
+    takmicenje: pregled.takmicenje,
     uvoz: {
       izaberiFajlove: () => izaberi({
         properties: ['openFile', 'multiSelections'],

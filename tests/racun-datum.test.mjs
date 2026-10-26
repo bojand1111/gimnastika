@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { datumParsiraj, datumPrikaz, danas, razlikaDana } from '../electron/racun/datum.mjs';
+import { datumParsiraj, datumPrikaz, danas, razlikaDana, danUNedelji } from '../electron/racun/datum.mjs';
 
 test('datumParsiraj: podrzani formati', () => {
   assert.equal(datumParsiraj('17.10.2026.'), '2026-10-17');
@@ -47,4 +47,16 @@ test('razlikaDana: kalendarski dani, bez letnjeg vremena', () => {
   assert.equal(razlikaDana('2026-10-24', '2026-10-26'), 2);
   assert.equal(razlikaDana('2026-10-25', '2026-10-17'), -8);
   assert.equal(razlikaDana('2026-10-17', '2026-10-17'), 0);
+});
+
+test('danUNedelji: nazivi dana, neispravno je prazno', () => {
+  assert.equal(danUNedelji('2026-10-17'), 'Subota');
+  assert.equal(danUNedelji('2026-10-19'), 'Ponedeljak');
+  assert.equal(danUNedelji('2026-10-18'), 'Nedelja');
+  assert.equal(danUNedelji('2026-10-21'), 'Sreda');
+  assert.equal(danUNedelji('2026-10-22'), 'Četvrtak');
+  assert.equal(danUNedelji(''), '');
+  assert.equal(danUNedelji(null), '');
+  assert.equal(danUNedelji('2026-02-30'), '');
+  assert.equal(danUNedelji('0000-00-00'), '');
 });

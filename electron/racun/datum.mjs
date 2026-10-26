@@ -43,3 +43,12 @@ function utc(ymd) {
 export function razlikaDana(odYmd, doYmd) {
   return Math.round((utc(doYmd) - utc(odYmd)) / 86400000);
 }
+
+const DANI = ['Nedelja', 'Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota'];
+
+// gggg-mm-dd => ime dana; neispravan datum => ''.
+export function danUNedelji(ymd) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd ?? ''));
+  if (!m || !ispravan(Number(m[1]), Number(m[2]), Number(m[3]))) return '';
+  return DANI[new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay()];
+}
