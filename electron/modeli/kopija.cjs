@@ -129,6 +129,7 @@ function napravi(baza, opcije) {
       const kopija = new DatabaseSync(privremeno);
       try {
         kopija.exec('PRAGMA journal_mode = DELETE');
+        kopija.exec('DROP TABLE IF EXISTS kopija_opis'); // ziva baza moze da ga nosi iz ranijeg vracanja
         kopija.exec('CREATE TABLE kopija_opis (kljuc TEXT PRIMARY KEY, vrednost TEXT)');
         const upis = kopija.prepare('INSERT INTO kopija_opis (kljuc, vrednost) VALUES (?, ?)');
         const opis = {
@@ -255,7 +256,12 @@ function napravi(baza, opcije) {
     baza.zatvori(); // zatvaranje poslednje veze upisuje WAL u glavni fajl
     let odneto = false; // cilj je preimenovan u staro
     try {
-      brisi(`${cilj}-wal`);
+      const wal = `${cilj}-wal`;
+      if (fs.existsSync(wal) && fs.statSync(wal).size > 0) {
+        // zatvaranje nije upisalo WAL u fajl: neko drugi drzi bazu
+        throw new GreskaKorisnika('Baza je zauzeta u drugom programu. Zatvorite ga i pokušajte ponovo.');
+      }
+      brisi(wal);
       brisi(`${cilj}-shm`);
       if (fs.existsSync(staro)) {
         try {
@@ -358,7 +364,7 @@ function napravi(baza, opcije) {
           b.izvrsi('DELETE FROM main.sqlite_sequence');
           const imaSekvence = b.jedan("SELECT 1 AS ima FROM kopija.sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'");
           if (imaSekvence) {
-            for (const r of b.svi('SELECT name, seq FROM kopija.sqlite_sequence')) {
+            for (const r of b.svi("SELECT name, seq FROM kopija.sqlite_sequence WHERE typeof(seq) = 'integer' AND seq >= 0 AND seq < 9223372036854775807")) {
               if (tabele.includes(r.name)) b.izvrsi('INSERT INTO main.sqlite_sequence (name, seq) VALUES (?, ?)', [r.name, r.seq]);
             }
           }
@@ -418,6 +424,7 @@ function napravi(baza, opcije) {
   // PHP zip: INSERT naredbe iz baza.sql idu u novu bazu sa migracijama; vraca {redovi: {tabela: broj}}.
   function pripremiUvoz(zipPutanja) {
     return (pripremljen) => {
+      const fasciklaKopija = podesavanja.daj('kopije_fascikla');
       let sql;
       try {
         sql = zip.procitaj(zipPutanja, 'baza.sql').toString('utf8');
@@ -452,6 +459,8 @@ function napravi(baza, opcije) {
           });
           // Pojas i naramenice: putanje sa drugog racunara se ne prenose ni ako je pravilo gore zaobidjeno.
           b.izvrsi("DELETE FROM podesavanja WHERE kljuc IN ('kopije_fascikla', 'grb_levo', 'grb_desno')");
+          // izbor fascikle je ovog racunara: ostaje, da pre_vracanja kopija bude u istoj listi
+          b.izvrsi('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?)', ['kopije_fascikla', fasciklaKopija]);
           b.izvrsi("UPDATE takmicenja SET grb_levo = '', grb_desno = ''");
         });
         nova.db.exec('PRAGMA foreign_keys = ON');

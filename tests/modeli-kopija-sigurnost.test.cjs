@@ -149,24 +149,43 @@ test('vrati sqlite: ostecen a otvoriv fajl hvata quick_check, bez sigurnosne kop
   } finally { t.ukloni(); }
 });
 
-test('vrati sqlite: zaostali -wal pored cilja se brise pre zamene', () => {
+function posleZatvaranja(t, upis) {
+  const stvarna = t.baza.zatvori.bind(t.baza);
+  t.baza.zatvori = () => {
+    delete t.baza.zatvori; // samo prvo zatvaranje (u zameni)
+    stvarna();
+    upis();
+  };
+}
+
+test('vrati sqlite: prazan zaostali -wal i -shm se brisu pre zamene', () => {
   const t = nova();
   try {
     klub(t.baza, 'Prvi', 'PRV');
     const kopija = t.k.napravi('rucna');
     klub(t.baza, 'Drugi', 'DRG');
-    const stvarna = t.baza.zatvori.bind(t.baza);
-    t.baza.zatvori = () => {
-      delete t.baza.zatvori; // samo prvo zatvaranje (u zameni)
-      stvarna();
-      fs.writeFileSync(`${t.zivi}-wal`, Buffer.alloc(4152, 7)); // kao da je ostao od pada
-      fs.writeFileSync(`${t.zivi}-shm`, Buffer.alloc(32768, 7));
-    };
+    posleZatvaranja(t, () => {
+      fs.writeFileSync(`${t.zivi}-wal`, Buffer.alloc(0));
+      fs.writeFileSync(`${t.zivi}-shm`, Buffer.alloc(0));
+    });
     t.k.vrati(kopija.putanja);
-    const wal = `${t.zivi}-wal`;
-    assert.ok(!fs.existsSync(wal) || fs.readFileSync(wal)[0] !== 7, 'zaostali wal nije ostao');
     assert.equal(brojKlubova(t.baza), 1);
     klub(t.baza, 'Novi', 'NOV');
+    assert.equal(brojKlubova(t.baza), 2);
+  } finally { t.ukloni(); }
+});
+
+test('vrati sqlite: neprazan -wal posle zatvaranja prekida vracanje, podaci ostaju', () => {
+  const t = nova();
+  try {
+    klub(t.baza, 'Prvi', 'PRV');
+    const kopija = t.k.napravi('rucna');
+    klub(t.baza, 'Drugi', 'DRG');
+    // zatvaranje ostavlja WAL sa sadrzajem (drugi proces drzi fajl)
+    posleZatvaranja(t, () => fs.writeFileSync(`${t.zivi}-wal`, Buffer.alloc(4152, 7)));
+    assert.throws(() => t.k.vrati(kopija.putanja), (e) => e instanceof GreskaKorisnika &&
+      e.message === 'Baza je zauzeta u drugom programu. Zatvorite ga i pokušajte ponovo.');
+    assert.equal(fs.existsSync(`${t.zivi}.staro`), false);
     assert.equal(brojKlubova(t.baza), 2);
   } finally { t.ukloni(); }
 });
@@ -307,5 +326,43 @@ test('vrati sqlite: kopija starije seme (bez takmicenja.domacin) dobija podrazum
     const r = t.baza.jedan('SELECT naziv, domacin FROM takmicenja');
     assert.deepEqual({ ...r }, { naziv: 'Kup', domacin: '' });
     assert.equal(brojKlubova(t.baza), 2);
+  } finally { t.ukloni(); }
+});
+
+test('napravi: kopija_opis u zivoj bazi ne smeta, kopija ima jedan sveze popunjen', () => {
+  const t = nova();
+  try {
+    t.baza.db.exec("CREATE TABLE kopija_opis (kljuc TEXT PRIMARY KEY, vrednost TEXT)");
+    t.baza.db.exec("INSERT INTO kopija_opis VALUES ('aplikacija', 'gimnastika'), ('vrsta', 'stara')");
+    const r = t.k.napravi('rucna');
+    const c = new DatabaseSync(r.putanja, { readOnly: true });
+    const redovi = c.prepare('SELECT kljuc, vrednost FROM kopija_opis').all().map((x) => ({ ...x }));
+    const brojTabela = c.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'kopija_opis'").get().n;
+    c.close();
+    assert.equal(brojTabela, 1);
+    assert.equal(redovi.length, 5);
+    assert.equal(redovi.find((x) => x.kljuc === 'vrsta').vrednost, 'rucna');
+    assert.equal(t.k.opis(r.putanja).vrsta, 'rucna');
+  } finally { t.ukloni(); }
+});
+
+test('vrati sqlite: nevazeci brojaci iz kopije se preskacu', () => {
+  const t = nova();
+  try {
+    klub(t.baza, 'Prvi', 'PRV');
+    const kopija = t.k.napravi('rucna');
+    izmeniKopiju(kopija.putanja, (db) => {
+      db.exec('PRAGMA writable_schema = ON');
+      db.exec("INSERT INTO sqlite_sequence (name, seq) VALUES ('kategorije', 'tekst')");
+      db.exec("INSERT INTO sqlite_sequence (name, seq) VALUES ('programi', -5)");
+      db.exec('PRAGMA writable_schema = OFF');
+    });
+    t.k.vrati(kopija.putanja);
+    const seq = Object.fromEntries(t.baza.svi('SELECT name, seq FROM sqlite_sequence').map((r) => [r.name, r.seq]));
+    assert.equal(seq.klubovi, 1);
+    assert.equal(seq.kategorije, undefined);
+    assert.equal(seq.programi, undefined);
+    t.baza.ubaci('kategorije', { naziv: 'K', kreirano: SAD, izmenjeno: SAD });
+    assert.equal(t.baza.vrednost('SELECT id FROM kategorije'), 1);
   } finally { t.ukloni(); }
 });

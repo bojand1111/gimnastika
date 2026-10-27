@@ -87,7 +87,7 @@ test('uvoz PHP zip-a: vrednosti, apostrof, NULL, hiljaditi delovi, preskocena po
     assert.equal(t.podesavanja.daj('organizator'), 'Savez');
     assert.equal(t.podesavanja.daj('kopije_fascikla'), '');
     assert.equal(t.podesavanja.daj('grb_levo'), '');
-    assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc IN ('kopije_fascikla', 'grb_levo')")), 0);
+    assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc = 'grb_levo'")), 0);
     // migracije tabela je SQLite-ova, sa svim migracijama (migriraj posle uvoza)
     assert.equal(t.baza.svi('SELECT ime FROM migracije').length, 4);
     // sprave su iz kopije (pocetniPodaci nije zvan pre uvoza), pa ih je tacno jedna
@@ -211,5 +211,18 @@ test('uvoz PHP zip-a: nepoznata kolona prekida uvoz', () => {
     assert.throws(() => t.k.vrati(napraviZip(t, OPIS, nepoznata, 'kolona.zip')),
       (e) => e instanceof GreskaKorisnika && /Vraćanje prekinuto na naredbi \d+ od \d+: tabela klubovi nema kolonu tudja_kolona/.test(e.message));
     assert.equal(t.baza.vrednost("SELECT COUNT(*) FROM klubovi WHERE puno_ime = 'Drugi'"), 1);
+  } finally { t.ukloni(); }
+});
+
+test('uvoz PHP zip-a: izabrana fascikla kopija ostaje, sigurnosna kopija je na listi', () => {
+  const t = nova('1.0.0');
+  try {
+    const usb = path.join(t.dir, 'usb');
+    t.k.postaviFasciklu(usb);
+    const r = t.k.vrati(napraviZip(t, OPIS));
+    assert.equal(t.podesavanja.daj('kopije_fascikla'), usb);
+    assert.equal(t.k.fascikla(), usb);
+    assert.ok(t.k.lista().some((x) => x.ime === r.sigurnosna && x.opis.vrsta === 'pre_vracanja'));
+    assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc = 'kopije_fascikla'")), 1);
   } finally { t.ukloni(); }
 });
