@@ -313,31 +313,72 @@ function napravi(baza, opcije) {
     return { ime: path.basename(putanja), opis: o, sigurnosna: sigurnosna.ime, uvoz: o.format === 'zip', ...dodatak };
   }
 
-  // SQLite kopija se prvo kopira pored zive baze i proverava; tek onda se zamenjuje.
-  // Podesavanja ovog racunara (fascikla kopija, putanje grbova) ne dolaze iz kopije.
+  // SQLite kopija se NE koristi kao baza: podaci se prepisuju u svezu bazu (migracije, bez okidaca i pogleda),
+  // pa se ona proverava i zamenjuje. Nepoznate tabele, okidaci i pogledi iz kopije tako ne prelaze.
+  const MESNI_KLJUCEVI = ['kopije_fascikla', 'grb_levo', 'grb_desno'];
+
   function pripremiSqlite(izvor) {
     return (pripremljen) => {
       const fasciklaKopija = podesavanja.daj('kopije_fascikla');
-      fs.copyFileSync(izvor, pripremljen);
-      const db = new DatabaseSync(pripremljen);
+      const kopijaFajl = `${pripremljen}.izvor`; // ATTACH ne sme da dira originalnu kopiju
+      let nova = null;
       try {
-        const provera = db.prepare('PRAGMA quick_check').all().map((r) => Object.values(r)[0]);
-        if (provera.length !== 1 || provera[0] !== 'ok') throw new GreskaKorisnika('Kopija je oštećena.');
-        // Sema aplikacije nema okidace ni poglede; tudji bi mogli da ponište čišćenje ispod.
-        for (const o of db.prepare("SELECT type, name FROM sqlite_master WHERE type IN ('trigger', 'view')").all()) {
-          db.exec(`DROP ${o.type === 'trigger' ? 'TRIGGER' : 'VIEW'} "${o.name.replaceAll('"', '""')}"`);
+        const ro = new DatabaseSync(izvor, { readOnly: true });
+        try {
+          const provera = ro.prepare('PRAGMA quick_check').all().map((r) => Object.values(r)[0]);
+          if (provera.length !== 1 || provera[0] !== 'ok') throw new GreskaKorisnika('Kopija je oštećena.');
+        } finally {
+          ro.close();
         }
-        db.exec('DROP TABLE IF EXISTS kopija_opis');
-        db.prepare('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost')
+        fs.copyFileSync(izvor, kopijaFajl);
+        nova = otvori(pripremljen);
+        nova.migriraj();
+        nova.db.exec('PRAGMA foreign_keys = OFF');
+        nova.db.prepare('ATTACH DATABASE ? AS kopija').run(kopijaFajl);
+        const tabele = nova.tabele().filter((t) => t !== 'migracije');
+        nova.transakcija((b) => {
+          for (const t of tabele) {
+            const glavne = b.svi(`PRAGMA main.table_info("${t}")`).map((c) => c.name);
+            const izKopije = new Set(b.svi(`PRAGMA kopija.table_info("${t}")`).map((c) => c.name));
+            const kolone = glavne.filter((c) => izKopije.has(c)).map((c) => `"${c}"`).join(', ');
+            if (!kolone) continue; // tabele nema u starijoj kopiji
+            const uslov = t === 'podesavanja'
+              ? ` WHERE kljuc NOT IN (${MESNI_KLJUCEVI.map((k) => `'${k}'`).join(', ')})` : '';
+            b.db.exec(`INSERT INTO main."${t}" (${kolone}) SELECT ${kolone} FROM kopija."${t}"${uslov}`);
+          }
+          // Grbovi iz podesavanja prelaze samo ako su oblika grb/<ime>
+          if (tabele.includes('podesavanja')) {
+            const grb = b.svi("SELECT kljuc, vrednost FROM kopija.podesavanja WHERE kljuc IN ('grb_levo', 'grb_desno')");
+            for (const r of grb) {
+              if (r.vrednost !== '' && grbOk(r.vrednost)) b.izvrsi('INSERT INTO main.podesavanja (kljuc, vrednost) VALUES (?, ?)', [r.kljuc, r.vrednost]);
+            }
+          }
+          // AUTOINCREMENT brojaci se prepisuju tacno kakvi su bili (i posle brisanja poslednjih redova);
+          // INSERT ... SELECT je u svezoj bazi napravio nulte brojace i za prazne tabele, pa se prvo brisu.
+          b.izvrsi('DELETE FROM main.sqlite_sequence');
+          const imaSekvence = b.jedan("SELECT 1 AS ima FROM kopija.sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'");
+          if (imaSekvence) {
+            for (const r of b.svi('SELECT name, seq FROM kopija.sqlite_sequence')) {
+              if (tabele.includes(r.name)) b.izvrsi('INSERT INTO main.sqlite_sequence (name, seq) VALUES (?, ?)', [r.name, r.seq]);
+            }
+          }
+        });
+        nova.db.exec('DETACH DATABASE kopija');
+        nova.db.prepare('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost')
           .run('kopije_fascikla', fasciklaKopija);
-        ocistiGrbove(db);
-        proveriOciscenje(db, fasciklaKopija);
-        db.exec('PRAGMA journal_mode = DELETE');
+        ocistiGrbove(nova.db);
+        proveriOciscenje(nova.db, fasciklaKopija);
+        nova.db.exec('PRAGMA foreign_keys = ON');
+        if (nova.svi('PRAGMA foreign_key_check').length) throw new GreskaKorisnika('Kopija je oštećena.');
+        const cela = nova.svi('PRAGMA integrity_check').map((r) => Object.values(r)[0]);
+        if (cela.length !== 1 || cela[0] !== 'ok') throw new GreskaKorisnika('Kopija je oštećena.');
+        nova.db.exec('PRAGMA journal_mode = DELETE');
       } catch (err) {
         if (err instanceof GreskaKorisnika) throw err;
         throw new GreskaKorisnika(`${NIJE_KOPIJA} (${err.message}).`, { cause: err });
       } finally {
-        db.close();
+        if (nova) nova.zatvori();
+        brisi(kopijaFajl);
       }
     };
   }

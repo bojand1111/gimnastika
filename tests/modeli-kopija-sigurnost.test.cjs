@@ -228,3 +228,84 @@ test('vrati sqlite: grb sa samo tackama ili ".." se prazni', () => {
     assert.equal(t.podesavanja.daj('grb_desno'), 'grb/ok-1_a.png');
   } finally { t.ukloni(); }
 });
+
+function stanjeTabela(baza) {
+  const rez = {};
+  for (const t of baza.tabele().filter((x) => x !== 'migracije').sort()) {
+    // kopije_fascikla je podesavanje ovog racuna i uvek se upisuje posle vracanja
+    const uslov = t === 'podesavanja' ? " WHERE kljuc <> 'kopije_fascikla'" : '';
+    rez[t] = baza.svi(`SELECT * FROM ${t}${uslov}`).map((r) => ({ ...r }));
+  }
+  return rez;
+}
+
+function napuni(t) {
+  klub(t.baza, 'Prvi', 'PRV');
+  const zadnji = klub(t.baza, 'Drugi', 'DRG');
+  t.baza.izvrsi('DELETE FROM klubovi WHERE id = ?', [zadnji]); // brojac ostaje ispred poslednjeg reda
+  klub(t.baza, 'Treci', 'TRC');
+  t.baza.ubaci('takmicenja', { naziv: 'Kup', datum: '2026-10-17', kreirano: SAD, izmenjeno: SAD });
+  t.baza.ubaci('takmicari', { id_broj: 'A1', ime: 'Ana', prezime: 'Anic', godina_rodjenja: 2012, pol: 'Z', klub_id: 1, kreirano: SAD, izmenjeno: SAD });
+}
+
+test('vrati sqlite: svi redovi i sqlite_sequence su isti, tudji okidac i tabela ne prelaze', () => {
+  const t = nova();
+  try {
+    napuni(t);
+    const pre = stanjeTabela(t.baza);
+    const seqPre = t.baza.svi('SELECT name, seq FROM sqlite_sequence ORDER BY name').map((r) => ({ ...r }));
+    assert.ok(seqPre.some((r) => r.name === 'klubovi' && r.seq === 3));
+    const kopija = t.k.napravi('rucna');
+    klub(t.baza, 'Posle', 'POS');
+    izmeniKopiju(kopija.putanja, (db) => {
+      db.exec('CREATE TABLE tudja (a TEXT)');
+      db.exec("INSERT INTO tudja VALUES ('x')");
+      db.exec("CREATE TRIGGER okidac AFTER INSERT ON klubovi BEGIN DELETE FROM klubovi; END");
+    });
+    t.k.vrati(kopija.putanja);
+    assert.deepEqual(stanjeTabela(t.baza), pre);
+    assert.deepEqual(t.baza.svi('SELECT name, seq FROM sqlite_sequence ORDER BY name').map((r) => ({ ...r })), seqPre);
+    assert.equal(t.baza.vrednost("SELECT COUNT(*) FROM sqlite_master WHERE name IN ('tudja', 'okidac')"), 0);
+    klub(t.baza, 'Novi', 'NOV'); // okidac ne radi
+    assert.equal(brojKlubova(t.baza), 3);
+  } finally { t.ukloni(); }
+});
+
+test('vrati sqlite: lazirani tip u sqlite_master se odbija ili se ne prenosi', () => {
+  const t = nova();
+  try {
+    napuni(t);
+    const kopija = t.k.napravi('rucna');
+    izmeniKopiju(kopija.putanja, (db) => {
+      db.exec("CREATE TRIGGER okidac AFTER INSERT ON klubovi BEGIN DELETE FROM klubovi; END");
+      db.exec('PRAGMA writable_schema = ON');
+      db.exec("UPDATE sqlite_master SET type = 'table' WHERE name = 'okidac'");
+      db.exec('PRAGMA writable_schema = OFF');
+    });
+    const pre = stanjeTabela(t.baza);
+    try {
+      t.k.vrati(kopija.putanja);
+    } catch (e) {
+      assert.ok(e instanceof GreskaKorisnika, e.message);
+      assert.deepEqual(stanjeTabela(t.baza), pre);
+      return;
+    }
+    assert.equal(t.baza.vrednost("SELECT COUNT(*) FROM sqlite_master WHERE name = 'okidac' OR type = 'trigger'"), 0);
+    klub(t.baza, 'Novi', 'NOV');
+    assert.equal(brojKlubova(t.baza), 3);
+  } finally { t.ukloni(); }
+});
+
+test('vrati sqlite: kopija starije seme (bez takmicenja.domacin) dobija podrazumevane vrednosti', () => {
+  const t = nova();
+  try {
+    napuni(t);
+    const kopija = t.k.napravi('rucna');
+    izmeniKopiju(kopija.putanja, (db) => { db.exec('ALTER TABLE takmicenja DROP COLUMN domacin'); });
+    t.baza.izvrsi("UPDATE takmicenja SET domacin = 'Tudji'");
+    t.k.vrati(kopija.putanja);
+    const r = t.baza.jedan('SELECT naziv, domacin FROM takmicenja');
+    assert.deepEqual({ ...r }, { naziv: 'Kup', domacin: '' });
+    assert.equal(brojKlubova(t.baza), 2);
+  } finally { t.ukloni(); }
+});
