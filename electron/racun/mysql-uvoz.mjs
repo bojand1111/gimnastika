@@ -39,8 +39,11 @@ export function literal(tekst) {
   throw new Error(`Nepoznat SQL izraz u vrednosti: ${t.slice(0, 40)}`);
 }
 
+// Identifikatori su u MySQL-u i SQLite-u neosetljivi na velika slova: svode se na mala i proveravaju.
 function imeIzTokena(t) {
-  return t.trim().replace(/^`|`$/g, '');
+  const ime = t.trim().replace(/^`|`$/g, '').toLowerCase();
+  if (!/^[a-z_][a-z0-9_]*$/.test(ime)) throw new Error(`Neispravan naziv u INSERT naredbi: ${ime.slice(0, 40)}`);
+  return ime;
 }
 
 // INSERT INTO `t` (`a`, `b`) VALUES (..), (..) => {tabela, kolone, redovi}; sve drugo => null.

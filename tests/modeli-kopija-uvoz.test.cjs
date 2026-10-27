@@ -186,3 +186,30 @@ test('putanja(ime): provera imena i postojanja', () => {
     assert.throws(() => t.k.putanja('nema.sqlite'), /Fajl ne postoji: nema\.sqlite/);
   } finally { t.ukloni(); }
 });
+
+test('uvoz PHP zip-a: identifikatori sa mesovitim velikim slovima ne zaobilaze pravila za grbove', () => {
+  const t = nova('1.0.0');
+  try {
+    const sql = bazaSql()
+      .replace('INSERT INTO `takmicenja` (`id`, `naziv`, `datum`, `grb_levo`, `grb_desno`,',
+        'INSERT INTO `TAKMICENJA` (`Id`, `Naziv`, `Datum`, `Grb_Levo`, `GRB_DESNO`,')
+      .replace("(1, 'Kup', '2026-10-17', 'grb/levo.png', '',", "(1, 'Kup', '2026-10-17', '//server/x/levo.png', 'C:/tudje.png',");
+    assert.ok(sql.includes('Grb_Levo'));
+    t.k.vrati(napraviZip(t, OPIS, sql, 'velika.zip'));
+    assert.equal(t.baza.vrednost('SELECT naziv FROM takmicenja'), 'Kup', 'red je uvezen');
+    assert.equal(t.baza.vrednost('SELECT grb_levo FROM takmicenja'), '');
+    assert.equal(t.baza.vrednost('SELECT grb_desno FROM takmicenja'), '');
+  } finally { t.ukloni(); }
+});
+
+test('uvoz PHP zip-a: nepoznata kolona prekida uvoz', () => {
+  const t = nova('1.0.0');
+  try {
+    t.baza.ubaci('klubovi', { puno_ime: 'Ostaje', skracenica: 'OST', grad: '', kreirano: 'x', izmenjeno: 'x' });
+    const nepoznata = bazaSql().replace('(`id`, `puno_ime`, `skracenica`,', '(`id`, `puno_ime`, `tudja_kolona`,');
+    t.baza.ubaci('klubovi', { puno_ime: 'Drugi', skracenica: 'DRG', grad: '', kreirano: 'x', izmenjeno: 'x' });
+    assert.throws(() => t.k.vrati(napraviZip(t, OPIS, nepoznata, 'kolona.zip')),
+      (e) => e instanceof GreskaKorisnika && /Vraćanje prekinuto na naredbi \d+ od \d+: tabela klubovi nema kolonu tudja_kolona/.test(e.message));
+    assert.equal(t.baza.vrednost("SELECT COUNT(*) FROM klubovi WHERE puno_ime = 'Drugi'"), 1);
+  } finally { t.ukloni(); }
+});

@@ -20,6 +20,7 @@ const VRSTE = {
 };
 // Najnovija PHP verzija iz koje se kopija uvozi (POPIS 4).
 const NAJNOVIJA_PHP = '1.2.0';
+const GRB_OBLIK = new RegExp('^grb/[A-Za-z0-9_.-]+$');
 const OPIS_KLJUCEVI = ['aplikacija', 'verzija', 'baza_verzija', 'vreme', 'vrsta'];
 
 // Poredjenje a.b.c brojno (1.10.0 > 1.9.0); prazno ili nebrojno se racuna kao 0.
@@ -58,6 +59,17 @@ function brisiSaPratecim(p) {
 function bezZavrsnihKosih(p) {
   const t = String(p ?? '').trim().replace(/[\\/]+$/, '');
   return /^[A-Za-z]:$/.test(t) ? t + path.sep : t; // "E:" bez kose crte bi bio relativan
+}
+
+// Posle prekinutog vracanja (pad izmedju dva preimenovanja) nema zive baze, a postoji .staro: vrati ga.
+// Cist fs, poziva se pre otvaranja baze. Vraca true kad je nesto vraceno.
+function oporaviStaro(putanjaBaze) {
+  const staro = `${putanjaBaze}.staro`;
+  if (fs.existsSync(putanjaBaze) || !fs.existsSync(staro)) return false;
+  brisi(`${putanjaBaze}-wal`);
+  brisi(`${putanjaBaze}-shm`);
+  fs.renameSync(staro, putanjaBaze);
+  return true;
 }
 
 function napravi(baza, opcije) {
@@ -235,15 +247,22 @@ function napravi(baza, opcije) {
 
   // Zamena fajla baze pripremljenim fajlom. Ziva baza se zatvara pre svake izmene fajlova (Windows),
   // staro stanje se cuva pored dok se ne potvrdi da novo radi; sigurnosna je poslednja odbrana.
+  // Vec postojeci .staro (ostatak prekinutog vracanja) se nikad ne brise, nego dobija vremenski sufiks.
   function zameni(pripremljen, sigurnosnaPutanja) {
     const cilj = baza.putanja;
     const staro = `${cilj}.staro`;
     baza.zatvori(); // zatvaranje poslednje veze upisuje WAL u glavni fajl
     let odneto = false; // cilj je preimenovan u staro
     try {
-      brisiSaPratecim(staro);
       brisi(`${cilj}-wal`);
       brisi(`${cilj}-shm`);
+      if (fs.existsSync(staro)) {
+        try {
+          fs.renameSync(staro, `${staro}.${Date.now()}`);
+        } catch (err) {
+          throw new GreskaKorisnika(`Ne mogu da sačuvam raniji fajl ${path.basename(staro)}.`, { cause: err });
+        }
+      }
       fs.renameSync(cilj, staro);
       odneto = true;
       fs.renameSync(pripremljen, cilj);
@@ -265,36 +284,49 @@ function napravi(baza, opcije) {
       }
       throw err;
     }
-    brisiSaPratecim(staro);
+    brisiSaPratecim(staro); // samo ono sto je napravljeno u ovom prolazu
   }
 
-  // Ceo tok posle provere opisa: sigurnosna kopija, priprema fajla, zamena, migracije.
+  // Ceo tok: provera verzije, priprema i provera izvora (bez izmene zive baze i bez sigurnosne kopije),
+  // pa sigurnosna kopija, zamena i migracije.
   function izvrsiVracanje(putanja, o, pripremi) {
     proveriVerziju(o);
-    const sigurnosna = napraviKopiju('pre_vracanja');
+    if (!baza.putanja || baza.putanja === ':memory:') throw new GreskaKorisnika('Baza nije u fajlu, pa se ne može vratiti.');
     const pripremljen = `${baza.putanja}.${o.format === 'zip' ? 'uvoz' : 'vracanje'}`;
     brisiSaPratecim(pripremljen);
     let dodatak;
+    let sigurnosna;
     try {
       dodatak = pripremi(pripremljen);
+      sigurnosna = napraviKopiju('pre_vracanja');
       zameni(pripremljen, sigurnosna.putanja);
     } finally {
       brisiSaPratecim(pripremljen);
     }
-    posleVracanja();
+    try {
+      posleVracanja();
+    } catch (err) {
+      dnevnik.greska('Vracanje: migracije posle zamene nisu uspele', err);
+      throw new GreskaKorisnika(`Vraćanje nije dovršeno: ${err.message}. Stanje pre vraćanja je u fajlu ${sigurnosna.ime}.`, { cause: err });
+    }
     return { ime: path.basename(putanja), opis: o, sigurnosna: sigurnosna.ime, uvoz: o.format === 'zip', ...dodatak };
   }
 
   // SQLite kopija se prvo kopira pored zive baze i proverava; tek onda se zamenjuje.
+  // Podesavanja ovog racunara (fascikla kopija, putanje grbova) ne dolaze iz kopije.
   function pripremiSqlite(izvor) {
     return (pripremljen) => {
-      if (!baza.putanja || baza.putanja === ':memory:') throw new GreskaKorisnika('Baza nije u fajlu, pa se ne može vratiti.');
+      const fasciklaKopija = podesavanja.daj('kopije_fascikla');
       fs.copyFileSync(izvor, pripremljen);
       const db = new DatabaseSync(pripremljen);
       try {
         const provera = db.prepare('PRAGMA quick_check').all().map((r) => Object.values(r)[0]);
         if (provera.length !== 1 || provera[0] !== 'ok') throw new GreskaKorisnika('Kopija je oštećena.');
         db.exec('DROP TABLE IF EXISTS kopija_opis');
+        db.prepare('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost')
+          .run('kopije_fascikla', fasciklaKopija);
+        ocistiGrbove(db);
+        db.exec('PRAGMA journal_mode = DELETE');
       } catch (err) {
         if (err instanceof GreskaKorisnika) throw err;
         throw new GreskaKorisnika(`${NIJE_KOPIJA} (${err.message}).`, { cause: err });
@@ -302,6 +334,21 @@ function napravi(baza, opcije) {
         db.close();
       }
     };
+  }
+
+  // Grb sme da pokazuje samo na grb/<ime> u fascikli podataka; sve drugo (apsolutna ili mrezna putanja) se prazni.
+  function ocistiGrbove(db) {
+    const ok = (v) => GRB_OBLIK.test(String(v ?? ''));
+    for (const kolona of ['grb_levo', 'grb_desno']) {
+      const ima = db.prepare('PRAGMA table_info(takmicenja)').all().some((c) => c.name === kolona);
+      if (ima) {
+        for (const r of db.prepare(`SELECT id, ${kolona} AS v FROM takmicenja WHERE ${kolona} <> ''`).all()) {
+          if (!ok(r.v)) db.prepare(`UPDATE takmicenja SET ${kolona} = '' WHERE id = ?`).run(r.id);
+        }
+      }
+      const p = db.prepare('SELECT vrednost FROM podesavanja WHERE kljuc = ?').get(kolona);
+      if (p && p.vrednost !== '' && !ok(p.vrednost)) db.prepare("UPDATE podesavanja SET vrednost = '' WHERE kljuc = ?").run(kolona);
+    }
   }
 
   // PHP zip: INSERT naredbe iz baza.sql idu u novu bazu sa migracijama; vraca {redovi: {tabela: broj}}.
@@ -325,6 +372,9 @@ function napravi(baza, opcije) {
             try {
               const r = razlozi(naredba);
               if (!r || PRESKOCENE_TABELE.includes(r.tabela) || !tabele.has(r.tabela)) return;
+              const postojece = new Set(b.svi(`PRAGMA table_info(${r.tabela})`).map((c) => c.name.toLowerCase()));
+              const nema = r.kolone.find((k) => !postojece.has(k));
+              if (nema) throw new Error(`tabela ${r.tabela} nema kolonu ${nema}`);
               const upit = b.db.prepare(
                 `INSERT INTO ${r.tabela} (${r.kolone.join(', ')}) VALUES (${r.kolone.map(() => '?').join(', ')})`);
               for (const red of r.redovi) {
@@ -333,9 +383,12 @@ function napravi(baza, opcije) {
                 redovi[r.tabela] = (redovi[r.tabela] ?? 0) + 1;
               }
             } catch (err) {
-              throw new GreskaKorisnika(`Uvoz prekinut na naredbi ${i + 1} od ${naredbe.length}: ${err.message}`, { cause: err });
+              throw new GreskaKorisnika(`Vraćanje prekinuto na naredbi ${i + 1} od ${naredbe.length}: ${err.message}`, { cause: err });
             }
           });
+          // Pojas i naramenice: putanje sa drugog racunara se ne prenose ni ako je pravilo gore zaobidjeno.
+          b.izvrsi("DELETE FROM podesavanja WHERE kljuc IN ('kopije_fascikla', 'grb_levo', 'grb_desno')");
+          b.izvrsi("UPDATE takmicenja SET grb_levo = '', grb_desno = ''");
         });
         nova.db.exec('PRAGMA foreign_keys = ON');
         const loseVeze = nova.svi('PRAGMA foreign_key_check');
@@ -392,4 +445,4 @@ function napravi(baza, opcije) {
   };
 }
 
-module.exports = { VRSTE, NAJNOVIJA_PHP, napravi, uporediVerzije };
+module.exports = { VRSTE, NAJNOVIJA_PHP, napravi, uporediVerzije, oporaviStaro };

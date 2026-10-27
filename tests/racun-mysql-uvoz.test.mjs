@@ -74,3 +74,11 @@ test('preskociRed: kljucevi podesavanja koji su putanje', () => {
   assert.equal(preskociRed('podesavanja', k, ['aktivno_takmicenje', '1']), false);
   assert.equal(preskociRed('klubovi', ['kljuc'], ['grb_levo']), false);
 });
+
+test('razlozi: nazivi se svode na mala slova, neispravan naziv baca', () => {
+  const r = razlozi("INSERT INTO `TAKMICENJA` (`Id`, `Grb_Levo`) VALUES (1, 'x')");
+  assert.equal(r.tabela, 'takmicenja');
+  assert.deepEqual(r.kolone, ['id', 'grb_levo']);
+  assert.throws(() => razlozi("INSERT INTO `t` (`a b`, `c`) VALUES (1, 2)"), /Neispravan naziv/);
+  assert.equal(razlozi("INSERT INTO `t` (`a); DROP TABLE x; --`) VALUES (1)"), null); // ne prepoznaje se kao INSERT
+});
