@@ -21,7 +21,7 @@ export default function Lekarski({ lekarski }) {
                 return (
                   <div key={`${l.takmicenje_id}-${l.takmicar_id}`} style={{ minHeight: 44, padding: '4px 16px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <span className="dva-reda">
-                      <span className="odseci" style={{ fontWeight: 700 }}>{l.prezime} {l.ime}</span>
+                      <span className="odseci" style={{ fontWeight: 600 }}>{l.prezime} {l.ime}</span>
                       <span className="mali sivo odseci" title={l.takmicenje}>{l.klub_skr ?? 'bez kluba'} · {l.takmicenje}</span>
                     </span>
                     <span className={`status ${o.klasa}`} title={o.title || undefined}>

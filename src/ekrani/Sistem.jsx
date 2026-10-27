@@ -1,5 +1,4 @@
 import Ikona from '../komponente/Ikona.jsx';
-import { AzuriranjeKartica } from '../okvir/Azuriranje.jsx';
 import { konacnaE } from '../../electron/racun/ocena.mjs';
 import { prikaz } from '../../electron/racun/broj.mjs';
 
@@ -22,8 +21,6 @@ function Kartica({ naslov, raste, children }) {
 export default function Sistem() {
   return (
     <>
-      <AzuriranjeKartica />
-
       <Kartica naslov="Računanje">
         <div className="kartica-telo">
           <div>E ocena iz 8,300 8,100 8,400 8,200 (odbaci krajnje): <span className="broj">{prikaz(konacnaE([8300, 8100, 8400, 8200], 'odbaci_krajnje'))}</span></div>

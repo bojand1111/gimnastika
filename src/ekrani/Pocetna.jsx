@@ -5,6 +5,7 @@ import Ikona from '../komponente/Ikona.jsx';
 import StanjeOznake from '../komponente/StanjeOznake.jsx';
 import { najavi, obavesti } from '../okvir/Poruke.jsx';
 import { porukaOtvaranja } from './takmicenjaPoruke.js';
+import { porukaNapravljena } from './kopijaStanje.js';
 import KartaAktivnog from './pocetna/KartaAktivnog.jsx';
 import Lekarski from './pocetna/Lekarski.jsx';
 import PoslednjaKopija from './pocetna/PoslednjaKopija.jsx';
@@ -32,6 +33,12 @@ export default function Pocetna() {
 
   useEffect(() => { ziv.current = true; ucitaj(); return () => { ziv.current = false; }; }, [ucitaj]);
 
+  // Podaci vraceni iz kopije (main salje dogadjaj): ponovo ucitaj ekran.
+  useEffect(() => {
+    if (!window.gim?.kopija?.naVraceni) return undefined;
+    return window.gim.kopija.naVraceni(() => { ucitaj(); });
+  }, [ucitaj]);
+
   // Autofokus (data-fokus) posle prvog ucitavanja.
   useEffect(() => {
     if (d && !fokusirano.current && fokusRef.current) { fokusRef.current.focus(); fokusirano.current = true; }
@@ -53,13 +60,12 @@ export default function Pocetna() {
     }
   }, []);
 
-  // Rucna kopija (POPIS 3.2); dok Task 3 ne doda modul, javlja da nije dostupna.
+  // Rucna kopija (POPIS 3.2); Ctrl+S ovde ne radi, hvata ga samo ekran Rezervna kopija.
   const napraviKopiju = useCallback(async () => {
-    if (!window.gim || !window.gim.kopija) { obavesti('Rezervna kopija još nije dostupna.', 'upozorenje'); return; }
     postaviZauzeto(true);
     try {
       const r = await gim.kopija.napravi();
-      obavesti(`Rezervna kopija je napravljena: ${r.ime} (${r.velicinaTekst}).`);
+      obavesti(porukaNapravljena(r));
       await ucitaj();
     } catch (e) {
       obavesti(e.message, 'greska');
@@ -96,7 +102,7 @@ export default function Pocetna() {
                   <tr key={t.id} style={{ height: 48 }}>
                     <td>
                       <span className="dva-reda" style={{ lineHeight: '17px' }}>
-                        <span className="odseci" style={{ fontWeight: 700 }}>{t.naziv}</span>
+                        <span className="odseci" style={{ fontWeight: 600 }}>{t.naziv}</span>
                         <span className="mali sivo odseci">{t.mesto}</span>
                       </span>
                     </td>

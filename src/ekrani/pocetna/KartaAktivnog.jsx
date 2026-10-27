@@ -26,7 +26,7 @@ export default function KartaAktivnog({ takm, stanje, imaOstala, fokusRef }) {
   return (
     <>
       <section className="kartica" style={{ padding: '20px 24px', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <span style={{ display: 'inline-flex', gap: 6 }}>
             <span className="status status-ok"><Ikona ime="kvacica" velicina={13} />Aktivno takmičenje</span>
             {Number(takm.zavrseno) === 1 && <span className="status">Završeno</span>}

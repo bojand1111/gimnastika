@@ -38,12 +38,12 @@ export default function Takmicenje() {
       <div className="red">
         <div className="kolona raste">
           <section className="kartica" style={{ padding: '20px 24px', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ display: 'inline-flex', gap: 6 }}>
                 <span className="status status-ok"><Ikona ime="kvacica" velicina={13} />Aktivno takmičenje</span>
                 {Number(takm.zavrseno) === 1 && <span className="status">Završeno</span>}
               </span>
-              <span style={{ display: 'inline-flex', gap: 8 }}>
+              <span style={{ display: 'inline-flex', gap: 4 }}>
                 <a href={`#/takmicenja/izmeni?id=${takm.id}`} className="dugme dugme-tekst dugme-malo">Izmeni podatke</a>
                 <a href="#/takmicenja" className="dugme dugme-tekst dugme-malo">Sva takmičenja</a>
               </span>
