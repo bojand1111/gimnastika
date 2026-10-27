@@ -83,7 +83,7 @@ test('sinhro.stanje: oblik i structuredClone; iskljuceno dok je adresa prazna', 
 test('podesavanja.sacuvajOpsta: lose sajt_url baca tekst, sva() vraca url i token', () => {
   const o = pravi();
   assert.throws(() => o.moduli.podesavanja.sacuvajOpsta({ sajt_url: 'sajt.rs' }),
-    (e) => e instanceof GreskaKorisnika && e.message === 'Adresa sajta mora da počinje sa http:// ili https://.');
+    (e) => e instanceof GreskaKorisnika && e.message === 'Adresa sajta mora da počinje sa https:// (http:// samo za localhost).');
   o.moduli.podesavanja.sacuvajOpsta({ sajt_url: 'https://sajt.rs/', sajt_token: ' t ' });
   const sva = o.moduli.podesavanja.sva();
   assert.equal(sva.sajt_url, 'https://sajt.rs');
@@ -104,7 +104,7 @@ test('sinhro.ping i posalji: Bearer zaglavlje, 2 liste, stanje pokazuje poslato'
     assert.equal(put.putanja, '/api/gimnastika/takmicenja/1');
     assert.equal(JSON.parse(put.telo).liste.length, 2);
     const st = o.moduli.sinhro.stanje();
-    assert.equal(st.cekaSlanje, false);
+    // cekaSlanje je zakazano slanje posle cuvanja adrese (nema veze sa rucnim slanjem)
     assert.match(st.poslednje, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
     assert.equal(o.moduli.takmicenje.podaci().sinhro.poslednje, st.poslednje);
   } finally { await s.ugasi(); }
@@ -147,10 +147,12 @@ test('unos.potvrdi: odbijena potvrda (nepotpun unos) ne zakazuje slanje', async 
   try {
     const o = pravi({ sinhroOpcije: { odlaganjeMs: 30 } });
     podesi(o, s.url);
+    assert.ok(await cekaj(() => brojPut(s) === 1), 'cuvanje adrese salje neposlato');
+    const pre = s.zahtevi.length;
     const { prijava_id: pid, sprava_id: sid } = ocena(o);
     assert.throws(() => o.moduli.unos.potvrdi(pid, sid, { d: '4,8', e: ['8,3'], odbitak: '' }, 'x'), GreskaKorisnika);
     await new Promise((r) => setTimeout(r, 150));
-    assert.equal(s.zahtevi.length, 0);
+    assert.equal(s.zahtevi.length, pre);
   } finally { await s.ugasi(); }
 });
 
@@ -165,6 +167,37 @@ test('sinhro.posalji: nedostupan sajt vraca poruku, stanje pamti gresku', async 
   assert.equal(r.greska, 'Sajt nije dostupan.');
   assert.equal(o.moduli.sinhro.stanje().greska, 'Sajt nije dostupan.');
   assert.equal(o.moduli.takmicenje.podaci().sinhro.greska, 'Sajt nije dostupan.');
+});
+
+test('sacuvajOpsta adrese i tokena salje ono sto jos nije poslato', async () => {
+  const s = await sajt();
+  try {
+    const o = pravi({ sinhroOpcije: { odlaganjeMs: 30 } });
+    const { prijava_id: pid, sprava_id: sid } = ocena(o);
+    o.moduli.unos.potvrdi(pid, sid, ULAZ, 'ispravka');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal(s.zahtevi.length, 0);
+    podesi(o, s.url);
+    assert.ok(await cekaj(() => brojPut(s) === 1), 'posle cuvanja adrese stize PUT');
+    await new Promise((r) => setTimeout(r, 150));
+    assert.equal(brojPut(s), 1);
+    // izmena drugih podesavanja ne salje nista
+    o.moduli.podesavanja.sacuvajOpsta({ organizator: 'X' });
+    await new Promise((r) => setTimeout(r, 150));
+    assert.equal(brojPut(s), 1);
+  } finally { await s.ugasi(); }
+});
+
+test('unos.potvrdi vraca normalan rezultat i kad zakazi() baci izuzetak', async () => {
+  const s = await sajt();
+  try {
+    const o = pravi({ sinhroOpcije: { setTimeout: () => { throw new Error('tajmer'); } } });
+    podesi(o, s.url);
+    const { prijava_id: pid, sprava_id: sid } = ocena(o);
+    const r = o.moduli.unos.potvrdi(pid, sid, ULAZ, 'ispravka');
+    assert.ok(r && r.prikaz, 'rezultat unosa je ocuvan');
+    assert.equal(s.zahtevi.length, 0);
+  } finally { await s.ugasi(); }
 });
 
 test('sinhroSpreman daje klijenta sa imaPromena i zakazi za start programa', () => {

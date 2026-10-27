@@ -28,6 +28,24 @@ const IZBORI = {
 const GRBOVI = ['grb_levo', 'grb_desno'];
 const EKSTENZIJE = ['png', 'jpg', 'jpeg', 'svg', 'gif'];
 
+const LOKALNI = ['localhost', '127.0.0.1', '[::1]'];
+
+// https je obavezan (token putuje u zaglavlju); http samo za probni server na istom racunaru.
+function proveriAdresuSajta(adresa) {
+  let u;
+  try {
+    u = new URL(adresa);
+  } catch {
+    throw new GreskaKorisnika('Adresa sajta mora da počinje sa https:// (http:// samo za localhost).');
+  }
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && LOKALNI.includes(u.hostname))) {
+    throw new GreskaKorisnika('Adresa sajta mora da počinje sa https:// (http:// samo za localhost).');
+  }
+  if (u.username !== '' || u.password !== '' || u.search !== '' || u.hash !== '' || adresa.includes('?') || adresa.includes('#')) {
+    throw new GreskaKorisnika('Adresa sajta ne sme da sadrži korisničko ime, lozinku ni upit.');
+  }
+}
+
 function napravi(baza, fasciklaPodataka) {
   function sva() {
     const rez = { ...PODRAZUMEVANO };
@@ -76,9 +94,7 @@ function napravi(baza, fasciklaPodataka) {
     // Rezultati uzivo (SPEC8 5): prazna adresa gasi slanje; inace mora biti http(s); zavrsna kosa crta se skida.
     if (p.sajt_url !== undefined) {
       const adresa = String(p.sajt_url ?? '').trim();
-      if (adresa !== '' && !/^https?:\/\//i.test(adresa)) {
-        throw new GreskaKorisnika('Adresa sajta mora da počinje sa http:// ili https://.');
-      }
+      if (adresa !== '') proveriAdresuSajta(adresa);
       upis.sajt_url = adresa.replace(/\/+$/, '');
     }
     if (p.sajt_token !== undefined) upis.sajt_token = String(p.sajt_token ?? '').trim();

@@ -164,7 +164,17 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
         const sva = p.sva();
         return { ...sva, grb_levo_url: grbUrl(sva.grb_levo), grb_desno_url: grbUrl(sva.grb_desno) };
       },
-      sacuvajOpsta: (u) => p.sacuvajOpsta(u),
+      sacuvajOpsta: (u) => {
+        p.sacuvajOpsta(u);
+        // Nova adresa ili token: posalji ono sto jos nije poslato (kao pri startu).
+        if (u && (u.sajt_url !== undefined || u.sajt_token !== undefined)) {
+          try {
+            if (sinhro.imaPromena()) sinhro.zakazi();
+          } catch (err) {
+            dnevnik.greska('sinhro posle podesavanja', err);
+          }
+        }
+      },
       izaberiGrb: async () => (await izaberi(GRB_DIJALOG))[0] ?? null,
       aktivno: () => p.aktivno(),
     },

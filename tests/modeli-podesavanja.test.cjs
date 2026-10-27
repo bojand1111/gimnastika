@@ -139,6 +139,10 @@ test('sacuvajOpsta: sajt_url trim, kosa crta na kraju se skida, prazno je dozvol
     assert.equal(p.sva().sajt_token, 'tajna');
     p.sacuvajOpsta({ sajt_url: 'http://127.0.0.1:8080' });
     assert.equal(p.sva().sajt_url, 'http://127.0.0.1:8080');
+    for (const ok of ['http://localhost:3000', 'http://[::1]:8080/', 'https://sajt.rs']) {
+      p.sacuvajOpsta({ sajt_url: ok });
+      assert.equal(p.sva().sajt_url, ok.replace(/\/+$/, ''));
+    }
     assert.equal(p.sva().sajt_token, 'tajna', 'nedostavljen kljuc se ne dira');
     p.sacuvajOpsta({ sajt_url: '', sajt_token: '' });
     assert.equal(p.sva().sajt_url, '');
@@ -149,9 +153,13 @@ test('sacuvajOpsta: sajt_url trim, kosa crta na kraju se skida, prazno je dozvol
 test('sacuvajOpsta: sajt_url bez http:// ili https:// baca poruku i nista ne upisuje', () => {
   const { dir, p } = nova();
   try {
-    for (const lose of ['rezultati.example.rs', 'ftp://x.rs', 'httpx://x', ' www.x.rs ']) {
+    for (const lose of ['rezultati.example.rs', 'ftp://x.rs', 'httpx://x', ' www.x.rs ', 'http://example.rs', 'http://127.0.0.1.evil.rs', 'https://']) {
       assert.throws(() => p.sacuvajOpsta({ organizator: 'Neko', sajt_url: lose }), (e) => e instanceof GreskaKorisnika
-        && e.message === 'Adresa sajta mora da počinje sa http:// ili https://.');
+        && e.message === 'Adresa sajta mora da počinje sa https:// (http:// samo za localhost).');
+    }
+    for (const lose of ['https://korisnik:lozinka@sajt.rs', 'https://sajt.rs/?a=1', 'https://sajt.rs/#x', 'https://sajt.rs?']) {
+      assert.throws(() => p.sacuvajOpsta({ sajt_url: lose }), (e) => e instanceof GreskaKorisnika
+        && e.message === 'Adresa sajta ne sme da sadrži korisničko ime, lozinku ni upit.');
     }
     assert.equal(p.sva().organizator, '', 'nista nije upisano');
     assert.equal(p.sva().sajt_url, '');

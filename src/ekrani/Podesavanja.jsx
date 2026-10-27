@@ -95,7 +95,7 @@ export default function Podesavanja() {
   const proveriVezu = () => pozovi(async () => {
     const r = await gim.sinhro.ping();
     if (r.ok) obavesti(`Veza sa sajtom radi: ${r.sajt}.`);
-    else obavesti(`Sajt nije dostupan: ${r.greska}`, 'greska');
+    else obavesti(r.greska === 'Sajt nije dostupan.' ? r.greska : `Sajt nije dostupan: ${r.greska}`, 'greska');
   });
 
   const posaljiSada = () => pozovi(async () => {
@@ -185,7 +185,7 @@ export default function Podesavanja() {
               </div>
             </div>
             <p className="mali">
-              Program šalje rang liste aktivnog takmičenja posle svake potvrđene ocene. Dok je adresa prazna, ništa se ne šalje.
+              Program šalje rang liste aktivnog takmičenja posle svake potvrđene ocene. Dok je adresa prazna, ništa se ne šalje. Adresa mora da počinje sa https:// (http:// samo za probni server na ovom računaru).
               „Proveri vezu“ i „Pošalji sada“ koriste već sačuvanu adresu i token, pa prvo sačuvajte podešavanja.
             </p>
             <div className="forma-akcije">
