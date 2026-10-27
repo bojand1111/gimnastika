@@ -18,16 +18,18 @@ export default function Pocetna() {
   const [d, postaviD] = useState(null);
   const [zauzeto, postaviZauzeto] = useState(false);
   const ziv = useRef(true);
+  const brojac = useRef(0); // stariji odgovor ne sme da pregazi noviji
   const fokusRef = useRef(null);
   const fokusirano = useRef(false);
   const otvaranje = useRef(false); // dvostruki klik salje jedan poziv
 
   const ucitaj = useCallback(async () => {
+    const moj = ++brojac.current;
     try {
       const podaci = await gim.pocetna.podaci();
-      if (ziv.current) postaviD(podaci);
+      if (moj === brojac.current && ziv.current) postaviD(podaci);
     } catch (e) {
-      if (ziv.current) obavesti(e.message, 'greska');
+      if (moj === brojac.current && ziv.current) obavesti(e.message, 'greska');
     }
   }, []);
 

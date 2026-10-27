@@ -23,3 +23,8 @@ export function fasciklaOpis(fascikla) {
     napomena: fascikla.nedostupna ? `Izabrana fascikla ${fascikla.izabrana} nije dostupna.` : '',
   };
 }
+
+// "Vrati podrazumevanu" se vidi kad fascikla nije podrazumevana ili je izabrana nedostupna (POPIS 6.5).
+export function prikaziPodrazumevanu(fascikla) {
+  return !fascikla.podrazumevana || Boolean(fascikla.izabrana);
+}

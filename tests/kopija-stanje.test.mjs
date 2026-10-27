@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { vrstaTekst, potvrdaTekst, porukaNapravljena, fasciklaOpis } from '../src/ekrani/kopijaStanje.js';
+import { vrstaTekst, potvrdaTekst, porukaNapravljena, fasciklaOpis, prikaziPodrazumevanu } from '../src/ekrani/kopijaStanje.js';
 
 const VRSTE = { rucna: 'Ručna', pre_vracanja: 'Pre vraćanja', uvoz: 'Uvezena' };
 
@@ -30,4 +30,10 @@ test('fasciklaOpis: podrazumevana, izabrana i nedostupna', () => {
     { naslov: 'Fascikla za kopije', napomena: '' });
   assert.deepEqual(fasciklaOpis({ putanja: 'C:\k', podrazumevana: true, izabrana: 'E:\k', nedostupna: true }),
     { naslov: 'Fascikla za kopije (podrazumevana)', napomena: 'Izabrana fascikla E:\k nije dostupna.' });
+});
+
+test('prikaziPodrazumevanu: samo kad nije podrazumevana ili je izabrana nedostupna', () => {
+  assert.equal(prikaziPodrazumevanu({ podrazumevana: true, izabrana: '' }), false);
+  assert.equal(prikaziPodrazumevanu({ podrazumevana: false, izabrana: 'E:\k' }), true);
+  assert.equal(prikaziPodrazumevanu({ podrazumevana: true, izabrana: 'E:\k' }), true);
 });

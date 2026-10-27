@@ -14,6 +14,7 @@ export default function Kopija() {
   const [zauzeto, postaviZauzeto] = useState(false);
   const ziv = useRef(true);
   const brojac = useRef(0);
+  const lokalnoVracanje = useRef(false); // vracanje pokrenuto ovde osvezava ekran samo jednom (ne i kroz dogadjaj)
   const radi = useRef(false); // jedan poziv u toku; aria-disabled ne gubi fokus kao disabled
   const dijalog = useRef(null);
   const fokusRef = useRef(null);
@@ -64,18 +65,24 @@ export default function Kopija() {
 
   const vrati = useCallback((sta, ime) => uradi(async () => {
     if (!(await dijalog.current.potvrdi(potvrdaTekst(ime), { potvrdaTekst: 'Vrati' }))) return;
-    const r = await gim.kopija.vrati(sta);
-    obavesti(r.poruka);
-    await posleVracanja();
+    lokalnoVracanje.current = true;
+    try {
+      const r = await gim.kopija.vrati(sta);
+      obavesti(r.poruka);
+      await posleVracanja();
+    } finally { lokalnoVracanje.current = false; }
   }), [uradi, posleVracanja]);
 
   const vratiIzFajla = useCallback(() => uradi(async () => {
     const putanja = await gim.kopija.izaberiFajl();
     if (!putanja) return;
     if (!(await dijalog.current.potvrdi(potvrdaTekst(), { potvrdaTekst: 'Vrati' }))) return;
-    const r = await gim.kopija.vrati({ putanja });
-    obavesti(r.poruka);
-    await posleVracanja();
+    lokalnoVracanje.current = true;
+    try {
+      const r = await gim.kopija.vrati({ putanja });
+      obavesti(r.poruka);
+      await posleVracanja();
+    } finally { lokalnoVracanje.current = false; }
   }), [uradi, posleVracanja]);
 
   const promeniFasciklu = useCallback(() => uradi(async () => {
@@ -105,7 +112,7 @@ export default function Kopija() {
   // Vracanje iz drugog izvora (main salje dogadjaj): osvezi traku i ekran.
   useEffect(() => {
     if (!window.gim?.kopija?.naVraceni) return undefined;
-    return window.gim.kopija.naVraceni(() => { posleVracanja(); });
+    return window.gim.kopija.naVraceni(() => { if (!lokalnoVracanje.current) posleVracanja(); });
   }, [posleVracanja]);
 
   if (!d) return null;

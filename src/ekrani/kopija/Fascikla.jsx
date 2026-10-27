@@ -1,5 +1,5 @@
 import Ikona from '../../komponente/Ikona.jsx';
-import { fasciklaOpis } from '../kopijaStanje.js';
+import { fasciklaOpis, prikaziPodrazumevanu } from '../kopijaStanje.js';
 
 // Kartica sa fasciklom za kopije (POPIS 3.3, 6.5). "Vrati podrazumevanu" samo kad nije podrazumevana ili je izabrana nedostupna.
 export default function Fascikla({ fascikla, zauzeto, naPromeni, naPodrazumevanu }) {
@@ -15,7 +15,7 @@ export default function Fascikla({ fascikla, zauzeto, naPromeni, naPodrazumevanu
         {napomena && <span className="mali" style={{ color: 'var(--warn)', fontWeight: 600 }} role="status">{napomena}</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {(!fascikla.podrazumevana || fascikla.izabrana) && (
+        {prikaziPodrazumevanu(fascikla) && (
           <button type="button" className={klasa('dugme')} aria-disabled={onemoguci} onClick={naPodrazumevanu}>Vrati podrazumevanu</button>
         )}
         <button type="button" className={klasa('dugme')} aria-disabled={onemoguci} onClick={naPromeni}>Promeni fasciklu</button>

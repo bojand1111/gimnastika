@@ -5,7 +5,7 @@ Uputstvo je pisano za nekoga ko nije programer. Sve se radi na jednom računaru 
 ## 1. Instalacija
 
 1. **Pokrenuti instaler.** Dvoklik na `Gimnastika-Setup-<verzija>.exe`. Ako Windows prikaže plavi prozor „Windows protected your PC“, kliknuti „More info“, pa „Run anyway“ (instaler nije digitalno potpisan).
-2. **Fascikla.** Može se ostaviti ponuđena ili izabrati druga. Ne birati fasciklu u kojoj je stara PHP verzija (sa `Gimnastika.exe` i fasciklom `server`): instaler to odbija da se stara verzija ne pokvari.
+2. **Fascikla.** Može se ostaviti ponuđena ili izabrati druga. Ne birati fasciklu u kojoj je stara PHP verzija (u kojoj postoji `Gimnastika.exe` ili fascikla `server`): instaler to odbija da se stara verzija ne pokvari.
 3. **Pokretanje.** Dvoklik na prečicu „Gimnastika desktop“ na radnoj površini ili u Start meniju. Program se otvara u svom prozoru; browser i server ne trebaju.
 4. **Zatvaranje.** Zatvaranjem prozora zatvara se ceo program. Program se ne može otvoriti dvaput: drugi dvoklik samo vraća postojeći prozor napred.
 5. **Gde su podaci.** U fascikli `%APPDATA%\Gimnastika` (u Eksploreru ukucati taj tekst u adresnu liniju). Tamo su baza `gimnastika.sqlite`, dnevnik `dnevnik.log` i fascikla `kopije`. Deinstalacija programa ne briše tu fasciklu.
@@ -41,8 +41,8 @@ Isto se može uraditi i iz komandne linije (za programera): `node alati/uvezi-ph
 
 Program sam proverava ima li nove verzije kad se pokrene, ako je računar na internetu. Ništa se ne preuzima niti instalira bez klika.
 
-1. Kad nova verzija postoji, u gornjoj traci se pojavi dugme „Nova verzija“. Klik preuzima je, pa dugme postaje „Ponovo pokreni i ažuriraj“.
-2. Isto se može uraditi na ekranu **Rezervna kopija**, kartica „Ažuriranje“, dugme „Proveri ažuriranje“.
+1. Kad nova verzija postoji, u gornjoj traci se pojavi dugme „Nova verzija {broj}“. Klik preuzima je, pa dugme postaje „Ponovo pokreni i ažuriraj“.
+2. Na ekranu **Rezervna kopija**, kartica „Ažuriranje“, dugme „Proveri ažuriranje“ samo proverava i javlja „Dostupna je verzija X.“. Preuzimanje i instalacija idu preko dugmadi u gornjoj traci iz koraka 1.
 3. Pre instalacije program pravi kopiju „Pre ažuriranja“. Podaci se ne menjaju; ako nova verzija menja bazu, to se radi pri pokretanju, posle kopije „Pre migracije“.
 
 Bez interneta ažuriranja nema, a program radi kao i do sada.
@@ -52,7 +52,7 @@ Bez interneta ažuriranja nema, a program radi kao i do sada.
 - **Poruka o grešci u programu.** Detalji se zapisuju u `%APPDATA%\Gimnastika\dnevnik.log`. Taj fajl poslati programeru.
 - **Nestalo struje usred unosa.** Potvrđene ocene su sačuvane. Red koji je bio u toku unosa sačuvan je kao nacrt i čeka da se potvrdi.
 - **Program neće da krene posle vraćanja kopije.** Pri pokretanju program sam vraća prethodnu bazu ako je vraćanje prekinuto. Ako ipak ne kreće, ništa ne brisati u fascikli `%APPDATA%\Gimnastika`: u njoj je fajl `gimnastika.sqlite.staro` (baza pre vraćanja) i u fascikli `kopije` poslednja kopija. Poslati programeru `dnevnik.log` i reći koji je od ta dva fajla sačuvan.
-- **Vraćanje nije uspelo.** Poruka kaže zašto (na primer da je kopija iz novije verzije). Podaci ostaju kakvi su bili, a kopija trenutnog stanja je sačuvana kao „Pre vraćanja“.
+- **Vraćanje nije uspelo.** Poruka kaže zašto (na primer da je kopija iz novije verzije). Podaci ostaju kakvi su bili. Fajl se prvo proverava; ako ne prođe proveru (nije kopija ovog programa, iz novije je verzije ili je oštećen), ništa se ne menja i kopija „Pre vraćanja“ se ne pravi. Ta kopija postoji samo ako je fajl prošao proveru i vraćanje je počelo.
 
 ## 7. Za programera
 
