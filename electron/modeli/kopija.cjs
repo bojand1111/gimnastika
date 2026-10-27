@@ -20,7 +20,8 @@ const VRSTE = {
 };
 // Najnovija PHP verzija iz koje se kopija uvozi (POPIS 4).
 const NAJNOVIJA_PHP = '1.2.0';
-const GRB_OBLIK = new RegExp('^grb/[A-Za-z0-9_.-]+$');
+const GRB_OBLIK = new RegExp('^grb/[A-Za-z0-9_-][A-Za-z0-9_.-]*$');
+const grbOk = (v) => GRB_OBLIK.test(String(v ?? '')) && !String(v).includes('..');
 const OPIS_KLJUCEVI = ['aplikacija', 'verzija', 'baza_verzija', 'vreme', 'vrsta'];
 
 // Poredjenje a.b.c brojno (1.10.0 > 1.9.0); prazno ili nebrojno se racuna kao 0.
@@ -322,10 +323,15 @@ function napravi(baza, opcije) {
       try {
         const provera = db.prepare('PRAGMA quick_check').all().map((r) => Object.values(r)[0]);
         if (provera.length !== 1 || provera[0] !== 'ok') throw new GreskaKorisnika('Kopija je oštećena.');
+        // Sema aplikacije nema okidace ni poglede; tudji bi mogli da ponište čišćenje ispod.
+        for (const o of db.prepare("SELECT type, name FROM sqlite_master WHERE type IN ('trigger', 'view')").all()) {
+          db.exec(`DROP ${o.type === 'trigger' ? 'TRIGGER' : 'VIEW'} "${o.name.replaceAll('"', '""')}"`);
+        }
         db.exec('DROP TABLE IF EXISTS kopija_opis');
         db.prepare('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost')
           .run('kopije_fascikla', fasciklaKopija);
         ocistiGrbove(db);
+        proveriOciscenje(db, fasciklaKopija);
         db.exec('PRAGMA journal_mode = DELETE');
       } catch (err) {
         if (err instanceof GreskaKorisnika) throw err;
@@ -338,17 +344,34 @@ function napravi(baza, opcije) {
 
   // Grb sme da pokazuje samo na grb/<ime> u fascikli podataka; sve drugo (apsolutna ili mrezna putanja) se prazni.
   function ocistiGrbove(db) {
-    const ok = (v) => GRB_OBLIK.test(String(v ?? ''));
+    const kolone = db.prepare('PRAGMA table_info(takmicenja)').all().map((c) => c.name.toLowerCase());
     for (const kolona of ['grb_levo', 'grb_desno']) {
-      const ima = db.prepare('PRAGMA table_info(takmicenja)').all().some((c) => c.name === kolona);
-      if (ima) {
+      if (kolone.includes(kolona)) {
         for (const r of db.prepare(`SELECT id, ${kolona} AS v FROM takmicenja WHERE ${kolona} <> ''`).all()) {
-          if (!ok(r.v)) db.prepare(`UPDATE takmicenja SET ${kolona} = '' WHERE id = ?`).run(r.id);
+          if (!grbOk(r.v)) db.prepare(`UPDATE takmicenja SET ${kolona} = '' WHERE id = ?`).run(r.id);
         }
       }
       const p = db.prepare('SELECT vrednost FROM podesavanja WHERE kljuc = ?').get(kolona);
-      if (p && p.vrednost !== '' && !ok(p.vrednost)) db.prepare("UPDATE podesavanja SET vrednost = '' WHERE kljuc = ?").run(kolona);
+      if (p && p.vrednost !== '' && !grbOk(p.vrednost)) db.prepare("UPDATE podesavanja SET vrednost = '' WHERE kljuc = ?").run(kolona);
     }
+  }
+
+  // Ponovo cita ono sto je upisano; ne poklapanje znaci da nesto u fajlu menja podatke mimo nas.
+  function proveriOciscenje(db, fasciklaKopija) {
+    const f = db.prepare("SELECT vrednost FROM podesavanja WHERE kljuc = 'kopije_fascikla'").get();
+    let ispravno = f && f.vrednost === fasciklaKopija;
+    for (const r of db.prepare("SELECT vrednost FROM podesavanja WHERE kljuc IN ('grb_levo', 'grb_desno')").all()) {
+      if (r.vrednost !== '' && !grbOk(r.vrednost)) ispravno = false;
+    }
+    const kolone = db.prepare('PRAGMA table_info(takmicenja)').all().map((c) => c.name.toLowerCase());
+    for (const kolona of ['grb_levo', 'grb_desno']) {
+      if (!kolone.includes(kolona)) continue;
+      for (const r of db.prepare(`SELECT ${kolona} AS v FROM takmicenja WHERE ${kolona} <> ''`).all()) {
+        if (!grbOk(r.v)) ispravno = false;
+      }
+    }
+    if (db.prepare("SELECT 1 FROM sqlite_master WHERE type IN ('trigger', 'view')").get()) ispravno = false;
+    if (!ispravno) throw new GreskaKorisnika('Kopija je oštećena.');
   }
 
   // PHP zip: INSERT naredbe iz baza.sql idu u novu bazu sa migracijama; vraca {redovi: {tabela: broj}}.

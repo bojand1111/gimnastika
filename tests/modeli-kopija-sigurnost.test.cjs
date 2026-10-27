@@ -191,3 +191,40 @@ test('vrati: greska u posleVracanja se javlja sa imenom sigurnosne kopije', () =
     assert.equal(sig.length, 1);
   } finally { t.ukloni(); }
 });
+
+test('vrati sqlite: okidaci i pogledi iz kopije se brisu, pa ne ponistavaju ciscenje', () => {
+  const t = nova();
+  try {
+    const usb = path.join(t.dir, 'usb');
+    t.k.postaviFasciklu(usb);
+    const kopija = t.k.napravi('rucna');
+    izmeniKopiju(kopija.putanja, (db) => {
+      db.exec(`CREATE TRIGGER "vra""ti" AFTER UPDATE ON podesavanja BEGIN
+        UPDATE podesavanja SET vrednost = '//server/deljeno' WHERE kljuc = 'kopije_fascikla'; END`);
+      db.exec('CREATE VIEW pogled AS SELECT * FROM klubovi');
+      db.exec("UPDATE podesavanja SET vrednost = '//server/deljeno' WHERE kljuc = 'kopije_fascikla'");
+    });
+    t.k.vrati(kopija.putanja);
+    assert.equal(t.podesavanja.daj('kopije_fascikla'), usb);
+    assert.equal(t.baza.vrednost("SELECT COUNT(*) FROM sqlite_master WHERE type IN ('trigger', 'view')"), 0);
+    t.podesavanja.postavi('organizator', 'X');
+    assert.equal(t.podesavanja.daj('kopije_fascikla'), usb);
+  } finally { t.ukloni(); }
+});
+
+test('vrati sqlite: grb sa samo tackama ili ".." se prazni', () => {
+  const t = nova();
+  try {
+    t.baza.ubaci('takmicenja', { naziv: 'Kup', datum: '2026-10-17', kreirano: SAD, izmenjeno: SAD });
+    const kopija = t.k.napravi('rucna');
+    izmeniKopiju(kopija.putanja, (db) => {
+      db.exec("UPDATE takmicenja SET grb_levo = 'grb/..', grb_desno = 'grb/a..b.png'");
+      db.exec("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('grb_levo', 'grb/.') ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost");
+      db.exec("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('grb_desno', 'grb/ok-1_a.png') ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost");
+    });
+    t.k.vrati(kopija.putanja);
+    assert.deepEqual({ ...t.baza.jedan('SELECT grb_levo, grb_desno FROM takmicenja') }, { grb_levo: '', grb_desno: '' });
+    assert.equal(t.podesavanja.daj('grb_levo'), '');
+    assert.equal(t.podesavanja.daj('grb_desno'), 'grb/ok-1_a.png');
+  } finally { t.ukloni(); }
+});
