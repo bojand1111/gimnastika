@@ -18,7 +18,7 @@ function pravi(opcije = {}) {
   const baza = otvori(':memory:');
   baza.migriraj();
   const dialog = { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) };
-  const moduli = napraviModule(baza, { dialog, fasciklaPodataka: () => os.tmpdir(), dnevnik: dn, kopijaLista: opcije.kopijaLista });
+  const moduli = napraviModule(baza, { dialog, fasciklaPodataka: () => os.tmpdir(), dnevnik: dn, kopijaLista: opcije.kopijaLista ?? (() => []) });
   return { baza, moduli };
 }
 function sPrimerom(opcije) {
@@ -71,7 +71,6 @@ test('pocetna.podaci nad primerom: spremno, lekarski upozorenja, bez ostalih', (
   const d = moduli.pocetna.podaci();
   assert.equal(d.stanje.korak, 'spremno');
   assert.deepEqual(d.ostala, []);
-  console.log('LEKARSKI', JSON.stringify(d.lekarski.map((r) => [r.prezime, r.ime, r.lekarski_do, r.lek.stanje])));
   const imena = d.lekarski.map((r) => `${r.prezime} ${r.ime}`);
   for (const ime of ['Simić Dunja', 'Stanković Luka', 'Nikolić Teodora']) assert.ok(imena.includes(ime), ime);
   structuredClone(d);
@@ -106,12 +105,10 @@ test('pocetna.podaci: poslednjaKopija iz kopijaLista (prva), danas i tekst lokal
   structuredClone(d);
 });
 
-// PHP kod (takmicenje.php) zadrzava prvi pol kad su oba gotova, tj. Z; POPIS 7.3 pogresno kaze M.
+// PHP kod (takmicenje.php) zadrzava prvi pol kad su oba gotova, tj. Z.
 test('takmicenje.podaci nad primerom: oba pola gotova, ostaje Z (kao PHP), gotovo, nastavi null, #/unos', () => {
   const { moduli } = sPrimerom();
   const d = moduli.takmicenje.podaci();
-  console.log('PREGLED_PRIMER', JSON.stringify({ napredak: d.napredak, nastavi: d.nastavi, unosHash: d.unosHash, brojevi: d.brojevi,
-    danUNedelji: d.danUNedelji, datumTekst: d.datumTekst, korak: d.stanje.korak }));
   assert.equal(d.napredak.pol, 'Z');
   assert.equal(d.napredak.gotovo, true);
   assert.equal(d.napredak.rotacija, d.napredak.ukupno_rotacija);
@@ -138,7 +135,6 @@ test('takmicenje.podaci nad semom: Z u toku, nastavi na PR, uneto 0, hash sa pol
   assert.equal(d.danUNedelji, 'Subota');
   assert.equal(d.datumTekst, '17.10.2026.');
   assert.deepEqual(d.brojevi, { prijava: 5, klubova: 2 });
-  console.log('PREGLED_SEMA', JSON.stringify(d));
   structuredClone(d);
 });
 
@@ -157,4 +153,38 @@ test('takmicenje.podaci bez grupa: napredak null, nastavi null, #/unos', () => {
   assert.equal(d.nastavi, null);
   assert.equal(d.unosHash, '#/unos');
   structuredClone(d);
+});
+
+const OCENA = { d: '4,8', e: ['8,3', '8,1', '8,4', '8,2'], odbitak: '' };
+
+test('takmicenje.podaci: Z gotov a M u toku, nastavi je na prvoj nezavrsenoj spravi M', () => {
+  const { moduli, pid, s } = sSemom();
+  for (const sprava of [s.pr, s.gr]) {
+    for (const ime of ['Ana', 'Bea', 'Ceca']) moduli.unos.potvrdi(pid[ime], sprava, OCENA, '');
+  }
+  const m = moduli.rotacije.dodaj('M').grupa;
+  moduli.rotacije.premesti(pid.Marko, m.id, 0, 1);
+  const d = moduli.takmicenje.podaci();
+  assert.equal(d.napredak.pol, 'M');
+  assert.equal(d.napredak.gotovo, false);
+  assert.equal(d.nastavi.pol, 'M');
+  assert.equal(Number(d.nastavi.sprava.id), s.pa);
+  assert.equal(d.nastavi.uneto, 0);
+  assert.equal(d.nastavi.ukupno, 1);
+  assert.equal(d.unosHash, `#/unos?pol=M&sprava=${s.pa}&rot=1`);
+});
+
+test('takmicenje.podaci: kad je prva sprava potpuno uneta, nastavi prelazi na drugu', () => {
+  const { moduli, pid, s } = sSemom();
+  for (const ime of ['Ana', 'Bea', 'Ceca']) moduli.unos.potvrdi(pid[ime], s.pr, OCENA, '');
+  const d = moduli.takmicenje.podaci();
+  assert.equal(d.napredak.pol, 'Z');
+  assert.equal(d.napredak.gotovo, false);
+  assert.equal(d.nastavi.pol, 'Z');
+  assert.equal(d.napredak.rotacija, 2);
+  assert.equal(Number(d.nastavi.sprava.id), s.gr);
+  assert.equal(d.nastavi.rotacija, 2);
+  assert.equal(d.nastavi.uneto, 0);
+  assert.equal(d.nastavi.ukupno, 3);
+  assert.equal(d.unosHash, `#/unos?pol=Z&sprava=${s.gr}&rot=2`);
 });

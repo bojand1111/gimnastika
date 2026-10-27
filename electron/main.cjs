@@ -1,8 +1,9 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, session } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, session, shell } = require('electron');
 const path = require('node:path');
 const { verzija } = require('./sistem.cjs');
 const { putanjaBaze, fasciklaPodataka } = require('./putanje.cjs');
-const { napraviModule } = require('./moduli.cjs');
+const { napraviModule, napraviKopijuModel } = require('./moduli.cjs');
+const { oporaviStaro } = require('./modeli/kopija.cjs');
 const { otvori } = require('./baza/baza.cjs');
 const { pocetniPodaci } = require('./baza/seme.cjs');
 const dnevnik = require('./dnevnik.cjs');
@@ -12,6 +13,7 @@ const { createUpdater } = require('./updater.cjs');
 let prozor = null;
 let azuriranje = null;
 let baza = null; // otvorena baza; modeli je dobijaju odavde
+let kopija = null; // model rezervne kopije (pre azuriranja i za IPC)
 
 function log(tekst) {
   console.log(tekst);
@@ -67,13 +69,36 @@ function napraviProzor() {
   prozor.on('closed', () => { prozor = null; });
 }
 
+// Kopija pre migracija (POPIS 6.7): samo kad ima migracija na cekanju i baza vec ima tabele.
+// Greska kopije se loguje, a program se pokrece dalje.
+function kopijaPreMigracije() {
+  // tabele() mora pre naCekanju(): ono pravi tabelu migracije, pa prva instalacija ne bi bila prazna.
+  const imaTabela = baza.tabele().length > 0;
+  const naCekanju = baza.naCekanju().length;
+  if (!imaTabela || naCekanju === 0) return;
+  try {
+    if (!baza.tabele().includes('podesavanja')) {
+      log('Kopija pre migracije preskocena: baza nema tabelu podesavanja');
+      return;
+    }
+    const k = napraviKopijuModel(baza, { fasciklaPodataka, dnevnik }).napravi('pre_migracije');
+    log(`Kopija pre migracije: ${k.ime}`);
+  } catch (err) {
+    dnevnik.greska('kopija pre migracije', err);
+    console.error(`Kopija pre migracije nije napravljena: ${err.message}`);
+  }
+}
+
 function pokreni() {
   try {
+    if (oporaviStaro(putanjaBaze())) log('Baza je vracena iz fajla .staro posle prekinutog vracanja kopije');
     baza = otvori(putanjaBaze());
+    kopijaPreMigracije();
     const primenjene = baza.migriraj();
     log(`migracije: ${primenjene.length ? primenjene.join(', ') : 'nema novih'}`);
     const seme = pocetniPodaci(baza);
     if (seme.sprave || seme.podesavanja) log(`seme: sprave ${seme.sprave}, podesavanja ${seme.podesavanja}`);
+    kopija = napraviKopijuModel(baza, { fasciklaPodataka, dnevnik });
   } catch (err) {
     dnevnik.greska('baza i migracije', err);
     dialog.showErrorBox('Gimnastika', `Baza se ne može otvoriti: ${err.message}`);
@@ -84,11 +109,28 @@ function pokreni() {
     app,
     send: (stanje) => { if (prozor && !prozor.isDestroyed()) prozor.webContents.send('gim:azuriranje:stanje', stanje); },
     dnevnik,
-    // Faza 7: ovde kopija baze vrste pre_azuriranja.
-    preInstalacije: () => dnevnik.info(`Azuriranje: instalacija verzije ${azuriranje.status().verzija}`),
+    // Kopija pre_azuriranja; njena greska ne sme da zaustavi azuriranje.
+    preInstalacije: () => {
+      dnevnik.info(`Azuriranje: instalacija verzije ${azuriranje.status().verzija}`);
+      try {
+        const k = kopija.napravi('pre_azuriranja');
+        log(`Kopija pre azuriranja: ${k.ime}`);
+      } catch (err) {
+        dnevnik.greska('kopija pre azuriranja', err);
+      }
+    },
   });
   registruj(ipcMain, {
-    ...napraviModule(baza, { dialog, fasciklaPodataka, roditelj: () => BrowserWindow.getFocusedWindow() || prozor, dokumenti: app.getPath('documents') }),
+    ...napraviModule(baza, {
+      dialog,
+      shell,
+      fasciklaPodataka,
+      kopija,
+      roditelj: () => BrowserWindow.getFocusedWindow() || prozor,
+      dokumenti: app.getPath('documents'),
+      // Posle vracanja renderer ponovo ucitava ekran i traku.
+      obavesti: (podaci) => { if (prozor && !prozor.isDestroyed()) prozor.webContents.send('gim:kopija:vraceni', podaci); },
+    }),
     sistem: { verzija },
     azuriranje: {
       stanje: () => azuriranje.status(),

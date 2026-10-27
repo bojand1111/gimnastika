@@ -15,6 +15,9 @@ const rezultatiModel = require('./modeli/rezultati.cjs');
 const napraviRang = require('./rang-paket.cjs').napravi;
 const napraviStampu = require('./stampa.cjs').napravi;
 const napraviPregled = require('./pregled-paket.cjs').napravi;
+const napraviKopijuPaket = require('./kopija-paket.cjs').napravi;
+const kopijaModel = require('./modeli/kopija.cjs');
+const sistem = require('./sistem.cjs');
 const { KOLATOR } = require('./modeli/sortiranje.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
 const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
@@ -33,7 +36,15 @@ const GRB_DIJALOG = {
 };
 const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.';
 
-function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir(), kopijaLista = () => [] }) {
+// Model rezervne kopije nad bazom (main ga pravi i pre migracija, za kopiju pre_migracije).
+function napraviKopijuModel(baza, { fasciklaPodataka, dnevnik = dnevnikModul, verzija = sistem.verzija(), posleVracanja }) {
+  const opcije = { fasciklaPodrazumevana: path.join(fasciklaPodataka(), 'kopije'), podesavanja: podesavanja.napravi(baza, fasciklaPodataka()), verzija, dnevnik };
+  if (posleVracanja) opcije.posleVracanja = posleVracanja;
+  return kopijaModel.napravi(baza, opcije);
+}
+
+// Nove opcije su opcione: kopija (gotov model), shell, verzija, obavesti (javlja main-u da je vracanje gotovo), kopijaLista.
+function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir(), kopija: kopijaGotova, verzija = sistem.verzija(), obavesti = () => {}, kopijaLista }) {
   const k = klubovi.napravi(baza);
   const t = takmicari.napravi(baza);
   const s = sifarnici.napravi(baza);
@@ -43,6 +54,8 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
   const uv = uvozModel.napravi(baza, p, dnevnik);
   const gr = grupeModel.napravi(baza);
   const oc = oceneModel.napravi(baza, p);
+  const kopija = kopijaGotova ?? napraviKopijuModel(baza, { fasciklaPodataka, dnevnik, verzija });
+  const bazaVerzija = () => (baza.tabele().includes('migracije') ? (baza.vrednost('SELECT MAX(ime) FROM migracije') ?? '') : '');
 
   // Id aktivnog takmicenja; bez njega prijave i uvoz ne rade (POPIS 0.1).
   function aktivnoRed() {
@@ -95,14 +108,17 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
   // klub_id iz forme je tekst; prazan ostaje prazan (bez kluba).
   const takmicarUnos = (u) => (u && !prazno(u.klub_id) ? { ...u, klub_id: Number(u.klub_id) } : u);
 
+  // Samo grb/<ime>; sve drugo (apsolutna putanja, .., UNC) se tretira kao bez grba.
+  const GRB_OBLIK = /^grb\/(?!\.+$)[A-Za-z0-9_.-]+$/;
   function grbUrl(vrednost) {
-    if (!vrednost) return '';
+    if (!vrednost || !GRB_OBLIK.test(String(vrednost))) return '';
     const fajl = path.join(fasciklaPodataka(), vrednost);
     // ?v= (vreme izmene) da Chromium ne prikazuje staru sliku posle zamene grba
     return fs.existsSync(fajl) ? `${pathToFileURL(fajl).href}?v=${Math.round(fs.statSync(fajl).mtimeMs)}` : '';
   }
 
-  const pregled = napraviPregled({ p, pr, tk, g: gr, o: oc, s, aktivnoRed, kopijaLista });
+  const pregled = napraviPregled({ p, pr, tk, g: gr, o: oc, s, aktivnoRed, kopijaLista: kopijaLista ?? (() => kopija.lista()) });
+  const kopijaIpc = napraviKopijuPaket({ kopija, verzija, bazaVerzija, dialog, shell, roditelj, dnevnik, posleVracanja: obavesti });
 
   return {
     klubovi: {
@@ -440,6 +456,7 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
     },
     rang: napraviRang({ baza, model: rezultatiModel.napravi(baza, p), p, t, aktivnoRed, grbUrl }),
     stampa: napraviStampu({ prozor: roditelj, dialog, fs, dokumenti }),
+    kopija: kopijaIpc,
     pocetna: pregled.pocetna,
     takmicenje: pregled.takmicenje,
     uvoz: {
@@ -472,4 +489,4 @@ function napraviModule(baza, { dialog, fasciklaPodataka, roditelj = () => null, 
   };
 }
 
-module.exports = { napraviModule };
+module.exports = { napraviModule, napraviKopijuModel };

@@ -17,4 +17,11 @@ gim.azuriranje.naStanje = (cb) => {
   return () => ipcRenderer.removeListener('gim:azuriranje:stanje', slusalac);
 };
 
+// Main -> renderer: podaci su vraceni iz kopije (renderer ponovo ucitava ekran).
+gim.kopija.naVraceni = (cb) => {
+  const slusalac = (_ev, podaci) => cb(podaci);
+  ipcRenderer.on('gim:kopija:vraceni', slusalac);
+  return () => ipcRenderer.removeListener('gim:kopija:vraceni', slusalac);
+};
+
 contextBridge.exposeInMainWorld('gim', gim);

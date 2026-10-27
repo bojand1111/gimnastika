@@ -209,13 +209,14 @@ test('stampa(): strane za spravu i ekipno', () => {
 test('organizator i grb: rezervno iz podesavanja', () => {
   const { baza, moduli } = sPrimerom();
   const dir = os.tmpdir();
+  fs.mkdirSync(path.join(dir, 'grb'), { recursive: true }); // grb se cuva kao grb/<ime>
   const levo = `grb-f6-levo-${process.pid}.png`;
   const desno = `grb-f6-desno-${process.pid}.png`;
-  fs.writeFileSync(path.join(dir, levo), 'x');
-  fs.writeFileSync(path.join(dir, desno), 'x');
+  fs.writeFileSync(path.join(dir, 'grb', levo), 'x');
+  fs.writeFileSync(path.join(dir, 'grb', desno), 'x');
   try {
     baza.izvrsi("UPDATE takmicenja SET organizator = '', grb_levo = '', grb_desno = ''");
-    for (const [k, v] of [['organizator', 'Savez'], ['grb_levo', levo], ['grb_desno', desno]]) {
+    for (const [k, v] of [['organizator', 'Savez'], ['grb_levo', `grb/${levo}`], ['grb_desno', `grb/${desno}`]]) {
       baza.izvrsi('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost', [k, v]);
     }
     const b = moduli.rang.bilten('Z', '', '');
@@ -226,8 +227,8 @@ test('organizator i grb: rezervno iz podesavanja', () => {
     baza.izvrsi("UPDATE takmicenja SET organizator = 'Klub X'");
     assert.equal(moduli.rang.bilten('Z', '', '').organizator, 'Klub X');
   } finally {
-    fs.rmSync(path.join(dir, levo), { force: true });
-    fs.rmSync(path.join(dir, desno), { force: true });
+    fs.rmSync(path.join(dir, 'grb', levo), { force: true });
+    fs.rmSync(path.join(dir, 'grb', desno), { force: true });
   }
 });
 
