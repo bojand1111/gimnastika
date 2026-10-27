@@ -7,12 +7,13 @@ const KLJUC = 'sajt_poslednja_sinhronizacija';
 const BEZ_TOKENA = 'Unesite token sajta.';
 const BEZ_ADRESE = 'Adresa sajta nije podešena.';
 const BEZ_TAKMICENJA = 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.';
+const ISTEK_MS = 15000;
 const NEDOSTUPAN = 'Sajt nije dostupan.';
 const LOS_ODGOVOR = 'Odgovor sajta nije ispravan.';
 
 function napravi({
-  podesavanja, rezultati, takmicenja, sifarnici, baza, dnevnik, verzija, fetch: fetchFn = globalThis.fetch,
-  sad = () => Baza.sad(), odlaganjeMs = 3000, istekMs = 15000, setTimeout: postaviTajmer = setTimeout, clearTimeout: ukloniTajmer = clearTimeout,
+  podesavanja, rezultati, sifarnici, baza, dnevnik, verzija, fetch: fetchFn = globalThis.fetch,
+  sad = () => Baza.sad(), odlaganjeMs = 3000, istekMs = ISTEK_MS, setTimeout: postaviTajmer = setTimeout, clearTimeout: ukloniTajmer = clearTimeout,
 }) {
   let poslednjaGreska = '';
   let tekuce = null; // promise slanja koje je u toku
@@ -52,8 +53,9 @@ function napravi({
       return { json };
     } catch (err) {
       // Uzrok ide u dnevnik samo kao ime i kod (nikad adresa ni token)
-      dnevnik.info(`Sinhro greska: ${NEDOSTUPAN} (${err?.name ?? 'Greska'}: ${err?.cause?.code ?? 'nepoznato'})`);
-      return { greska: NEDOSTUPAN }; // mrezna greska, prekid ili istek
+      // Samo ime i kod; poruka greske moze da sadrzi adresu pa se ne upisuje
+      const kod = err?.cause?.code ?? err?.cause?.errors?.[0]?.code ?? err?.code ?? 'nepoznato';
+      return { greska: NEDOSTUPAN, uzrok: `${err?.name ?? 'Greska'}: ${kod}` }; // mrezna greska, prekid ili istek
     } finally {
       ukloniTajmer(rok);
     }
@@ -64,9 +66,9 @@ function napravi({
     return snimak({ takm, sprave: { Z: sifarnici.sprave('Z'), M: sifarnici.sprave('M') }, liste, verzija, sad: vreme });
   }
 
-  function neuspeh(greska) {
+  function neuspeh(greska, uzrok = '') {
     poslednjaGreska = greska;
-    dnevnik.info(`Sinhro greska: ${greska}`);
+    dnevnik.info(`Sinhro greska: ${greska}${uzrok ? ` (${uzrok})` : ''}`);
     return { ok: false, liste: 0, greska };
   }
 
@@ -87,7 +89,7 @@ function napravi({
       return neuspeh('Snimak nije mogao da se napravi.');
     }
     const r = await zahtev('PUT', `/api/gimnastika/takmicenja/${Number(takm.id)}`, telo);
-    if (r.greska) return neuspeh(r.greska);
+    if (r.greska) return neuspeh(r.greska, r.uzrok);
     podesavanja.postavi(KLJUC, vreme);
     poslednjaGreska = '';
     dnevnik.info(`Sinhro: poslato takmicenje ${Number(takm.id)} (${n} lista, ${Buffer.byteLength(telo)} B)`);
@@ -181,4 +183,4 @@ function napravi({
   return { stanje, zakazi, posalji, ping, imaPromena, snimakAktivnog };
 }
 
-module.exports = { napravi };
+module.exports = { napravi, ISTEK_MS };

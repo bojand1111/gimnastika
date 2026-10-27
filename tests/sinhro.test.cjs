@@ -6,7 +6,7 @@ const { napravi: napraviPodesavanja } = require('../electron/modeli/podesavanja.
 const { napravi: napraviRezultate } = require('../electron/modeli/rezultati.cjs');
 const { napravi: napraviSifarnike } = require('../electron/modeli/sifarnici.cjs');
 const { napravi: napraviOcene } = require('../electron/modeli/ocene.cjs');
-const { napravi: napraviSinhro } = require('../electron/sinhro.cjs');
+const { napravi: napraviSinhro, ISTEK_MS } = require('../electron/sinhro.cjs');
 const { uvezi } = require('../alati/primer-podaci.cjs');
 const json = require('../docs/proizvod/dizajn/primer-podaci.json');
 
@@ -42,7 +42,7 @@ function pravi(opcije = {}) {
   const sifarnici = napraviSifarnike(baza);
   const rezultati = napraviRezultate(baza, podesavanja);
   const sinhro = napraviSinhro({
-    podesavanja, rezultati, takmicenja: null, sifarnici, baza, dnevnik, verzija: '9.9.9', fetch: globalThis.fetch, ...opcije.sinhro,
+    podesavanja, rezultati, sifarnici, baza, dnevnik, verzija: '9.9.9', fetch: globalThis.fetch, ...opcije.sinhro,
   });
   return { baza, podesavanja, log, sinhro, rezultati };
 }
@@ -317,6 +317,7 @@ test('mrezna greska: dnevnik ima ime i kod, ne i adresu ni token', async () => {
   assert.equal(linija.includes(url), false);
   assert.equal(linija.includes('127.0.0.1'), false);
   assert.equal(linija.includes(TOKEN), false);
+  assert.equal(p.log.filter((l) => l.startsWith('Sinhro greska')).length, 1, 'tacno jedna linija po gresci');
 });
 
 test('prazna adresa ili token cisti staru gresku i slanje na cekanju', async () => {
@@ -371,4 +372,16 @@ test('tri posalji tokom slanja: tacno jedno naknadno slanje, bez neuhvacenih odb
     process.off('unhandledRejection', slusac);
     await s.ugasi();
   }
+});
+
+test('podrazumevani istek je 15000 ms i koristi se za prekid zahteva', async () => {
+  assert.equal(ISTEK_MS, 15000);
+  const s = await sajt(() => null);
+  try {
+    const rokovi = [];
+    const p = pravi({ sinhro: { setTimeout: (fn, ms) => { rokovi.push(ms); return setTimeout(fn, ms); } } });
+    podesi(p, s.url);
+    await p.sinhro.ping();
+    assert.deepEqual(rokovi, [15000]);
+  } finally { await s.ugasi(); }
 });

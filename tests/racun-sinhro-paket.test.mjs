@@ -111,3 +111,15 @@ test('listaIzRezultata: viseboj bez ijedne ocene nema zbir ni zbir_h', () => {
   assert.equal(red.odustao, true);
   assert.equal(red.mesto, null);
 });
+
+test('snimak: tacan skup kljuceva (cuvar od curenja licnih podataka)', () => {
+  const { s } = gradi();
+  const l = s.liste[0];
+  assert.deepEqual(Object.keys(l), ['pol', 'kategorija', 'program', 'po_spravi', 'viseboj', 'ekipno']);
+  assert.deepEqual(Object.keys(s), ['verzija_formata', 'program', 'poslato', 'takmicenje', 'sprave', 'liste']);
+  const red = Object.values(l.po_spravi).flat().find((r) => !r.odustao);
+  assert.deepEqual(Object.keys(red), ['mesto', 'oznaka', 'prijava_id', 'startni_broj', 'ime', 'prezime', 'klub', 'klub_ime', 'd', 'e', 'odbitak', 'konacna', 'konacna_h', 'odustao']);
+  assert.deepEqual(Object.keys(l.viseboj[0]), ['mesto', 'oznaka', 'prijava_id', 'ime', 'prezime', 'klub', 'po_spravi', 'odustao', 'zbir', 'zbir_h']);
+  assert.deepEqual(Object.keys(l.ekipno[0]), ['mesto', 'oznaka', 'klub', 'klub_ime', 'po_spravi', 'ukupno', 'ukupno_h', 'clanovi']);
+  assert.deepEqual(Object.keys(l.ekipno[0].clanovi[0]), ['prijava_id', 'ime', 'prezime']);
+});
