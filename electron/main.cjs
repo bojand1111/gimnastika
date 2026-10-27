@@ -101,6 +101,7 @@ function pokreni() {
       }
     },
   });
+  let sinhro = null; // klijent sajta (rezultati uzivo), za proveru promena pri startu
   registruj(ipcMain, {
     ...napraviModule(baza, {
       dialog,
@@ -109,6 +110,7 @@ function pokreni() {
       kopija,
       roditelj: () => BrowserWindow.getFocusedWindow() || prozor,
       dokumenti: app.getPath('documents'),
+      sinhroSpreman: (s) => { sinhro = s; },
       // Posle vracanja renderer ponovo ucitava ekran i traku.
       obavesti: (podaci) => { if (prozor && !prozor.isDestroyed()) prozor.webContents.send('gim:kopija:vraceni', podaci); },
     }),
@@ -120,6 +122,12 @@ function pokreni() {
       instaliraj: () => azuriranje.install(),
     },
   }, dnevnik);
+  // Ako ima promena od poslednjeg slanja, posalji posle odlaganja (nista ako adresa ili token nisu uneti).
+  try {
+    if (sinhro && sinhro.imaPromena()) sinhro.zakazi();
+  } catch (err) {
+    dnevnik.greska('sinhro start', err);
+  }
   napraviProzor();
 }
 

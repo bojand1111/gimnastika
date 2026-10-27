@@ -12,6 +12,7 @@ const MODULI = {
   rang: ['podaci', 'rezultati', 'stampa', 'bilten'],
   stampa: ['stampaj', 'pdf'],
   kopija: ['podaci', 'napravi', 'vrati', 'izaberiFajl', 'izaberiFasciklu', 'podrazumevanaFascikla', 'prikazi'],
+  sinhro: ['stanje', 'posalji', 'ping'],
   pocetna: ['podaci'],
   takmicenje: ['podaci'],
   uvoz: ['izaberiFajlove', 'pripremi', 'upisi'],

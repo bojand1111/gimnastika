@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import gim from '../gim.js';
 import Sifarnik from '../komponente/Sifarnik.jsx';
 import { obavesti } from '../okvir/Poruke.jsx';
@@ -26,6 +26,9 @@ export default function Podesavanja() {
   const [sva, postaviSva] = useState(null);
   const [forma, postaviFormu] = useState({});
   const [grb, postaviGrb] = useState({ grb_levo: { obrisi: false, putanja: '' }, grb_desno: { obrisi: false, putanja: '' } });
+  const [prikaziToken, postaviPrikaziToken] = useState(false);
+  const [zauzeto, postaviZauzeto] = useState(false); // proveri/posalji u toku (aria-disabled ne gubi fokus)
+  const radi = useRef(false);
 
   const ucitajSva = useCallback(async () => {
     try {
@@ -35,6 +38,7 @@ export default function Podesavanja() {
         e_zaokruzivanje: s.e_zaokruzivanje, plasman_isti_rezultat: s.plasman_isti_rezultat,
         viseboj_nepotpun: s.viseboj_nepotpun, lekarski_sprecava_prijavu: s.lekarski_sprecava_prijavu,
         lekarski_prag_dana: s.lekarski_prag_dana, organizator: s.organizator,
+        sajt_url: s.sajt_url, sajt_token: s.sajt_token,
       });
       postaviGrb({ grb_levo: { obrisi: false, putanja: '' }, grb_desno: { obrisi: false, putanja: '' } });
     } catch (e) { obavesti(e.message, 'greska'); }
@@ -73,6 +77,33 @@ export default function Podesavanja() {
     }
   }
 
+  // Proveri vezu i Pošalji sada koriste sačuvane vrednosti, ne ono što je trenutno u poljima.
+  async function pozovi(radnja) {
+    if (radi.current) return;
+    radi.current = true;
+    postaviZauzeto(true);
+    try {
+      await radnja();
+    } catch (e) {
+      obavesti(e.message, 'greska');
+    } finally {
+      radi.current = false;
+      postaviZauzeto(false);
+    }
+  }
+
+  const proveriVezu = () => pozovi(async () => {
+    const r = await gim.sinhro.ping();
+    if (r.ok) obavesti(`Veza sa sajtom radi: ${r.sajt}.`);
+    else obavesti(`Sajt nije dostupan: ${r.greska}`, 'greska');
+  });
+
+  const posaljiSada = () => pozovi(async () => {
+    const r = await gim.sinhro.posalji();
+    if (r.ok) obavesti(`Rang liste su poslate (${r.liste} lista).`);
+    else obavesti(r.greska, 'greska');
+  });
+
   return (
     <>
       <p style={{ fontSize: 14, color: 'var(--ink-2)' }}>
@@ -91,7 +122,7 @@ export default function Podesavanja() {
           <span className="sivo mali">Otvorena pitanja iz specifikacije: potvrditi sa naručiocem pre takmičenja</span>
         </div>
         {sva && (
-          <form className="forma" style={{ padding: 16 }} onSubmit={sacuvaj}>
+          <form className="forma" id="podesavanja-forma" style={{ padding: 16 }} onSubmit={sacuvaj}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
               {IZBORI.map(([ime, oznaka, opcije]) => (
                 <label className="polje" key={ime}><span className="oznaka">{oznaka}</span>
@@ -130,6 +161,41 @@ export default function Podesavanja() {
           </form>
         )}
       </section>
+
+      {sva && (
+        <section className="kartica">
+          <div className="kartica-zaglavlje">
+            <h2 className="kartica-naslov">Rezultati uživo na sajtu</h2>
+          </div>
+          <div className="forma" style={{ padding: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, alignItems: 'end' }}>
+              <label className="polje"><span className="oznaka">Adresa sajta</span>
+                <input type="text" className="unos" name="sajt_url" form="podesavanja-forma" placeholder="https://"
+                  autoComplete="off" spellCheck={false} value={forma.sajt_url ?? ''} onChange={promeni('sajt_url')} />
+              </label>
+              <div className="polje"><label className="oznaka" htmlFor="sajt-token">Token</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input id="sajt-token" type={prikaziToken ? 'text' : 'password'} className="unos" name="sajt_token" form="podesavanja-forma"
+                    autoComplete="off" spellCheck={false} style={{ flex: '1 1 0', minWidth: 0 }}
+                    value={forma.sajt_token ?? ''} onChange={promeni('sajt_token')} />
+                  <button type="button" className="dugme" aria-pressed={prikaziToken} onClick={() => postaviPrikaziToken((v) => !v)}>
+                    {prikaziToken ? 'Sakrij' : 'Prikaži'}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="mali">
+              Program šalje rang liste aktivnog takmičenja posle svake potvrđene ocene. Dok je adresa prazna, ništa se ne šalje.
+              „Proveri vezu“ i „Pošalji sada“ koriste već sačuvanu adresu i token, pa prvo sačuvajte podešavanja.
+            </p>
+            <div className="forma-akcije">
+              <button type="button" className={`dugme${zauzeto ? ' iskljuceno' : ''}`} aria-disabled={zauzeto || undefined} onClick={proveriVezu}>Proveri vezu</button>
+              <button type="button" className={`dugme${zauzeto ? ' iskljuceno' : ''}`} aria-disabled={zauzeto || undefined} onClick={posaljiSada}>Pošalji sada</button>
+              <button type="submit" form="podesavanja-forma" className="dugme dugme-glavno">Sačuvaj podešavanja</button>
+            </div>
+          </div>
+        </section>
+      )}
     </>
   );
 }

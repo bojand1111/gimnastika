@@ -28,8 +28,8 @@ function poslednja(lista) {
 }
 
 // p: podesavanja; pr: prijave; tk: takmicenja; g: grupe; o: ocene; s: sifarnici.
-// aktivnoRed baca GreskaKorisnika bez aktivnog takmicenja; kopijaLista: () => [{ime, vreme, ...}] najnovija prva.
-function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [] }) {
+// sinhroStanje: () => stanje klijenta sajta (SPEC8) ili null. aktivnoRed baca GreskaKorisnika bez aktivnog takmicenja; kopijaLista: () => [{ime, vreme, ...}] najnovija prva.
+function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhroStanje = () => null }) {
   // Prvi pol koji nije gotov (Z pa M); ako su oba gotova, ostaje poslednji sa grupama (POPIS 2.1).
   function napredakINastavi(takm) {
     const tid = Number(takm.id);
@@ -95,6 +95,7 @@ function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [] }) {
           danUNedelji: danUNedelji(String(takm.datum ?? '')),
           datumTekst: datumPrikaz(takm.datum),
           unosHash: urlUnos(nastavi),
+          sinhro: sinhroStanje(),
         };
       },
     },

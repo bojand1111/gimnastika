@@ -20,6 +20,7 @@ Potreban je Node 22.12 ili noviji (require ESM modula).
 - `npm run publish-release -- --notes beleske/<verzija>.md [--dry-run]`: objavljuje izdanje na GitHub. Prvo pokrenite sa `--dry-run`. Token se čita iz `~/.config/github-token.txt`.
 
 Uputstvo za instalaciju, prenos podataka, rezervne kopije i ažuriranje: `docs/INSTALACIJA.md`.
+Rezultati uživo (slanje rang lista na sajt, adresa i token u Podešavanjima): odeljak 7 istog uputstva.
 
 ## Podešavanja kroz okruženje
 

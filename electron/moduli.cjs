@@ -17,6 +17,7 @@ const napraviStampu = require('./stampa.cjs').napravi;
 const napraviPregled = require('./pregled-paket.cjs').napravi;
 const napraviKopijuPaket = require('./kopija-paket.cjs').napravi;
 const kopijaModel = require('./modeli/kopija.cjs');
+const napraviSinhro = require('./sinhro.cjs').napravi;
 const sistem = require('./sistem.cjs');
 const { KOLATOR } = require('./modeli/sortiranje.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
@@ -43,8 +44,9 @@ function napraviKopijuModel(baza, { fasciklaPodataka, dnevnik = dnevnikModul, ve
   return kopijaModel.napravi(baza, opcije);
 }
 
-// Nove opcije su opcione: kopija (gotov model), shell, verzija, obavesti (javlja main-u da je vracanje gotovo), kopijaLista.
-function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir(), kopija: kopijaGotova, verzija = sistem.verzija(), obavesti = () => {}, kopijaLista }) {
+// Nove opcije su opcione: kopija (gotov model), shell, verzija, obavesti (javlja main-u da je vracanje gotovo), kopijaLista,
+// fetch (klijent sajta; test ga usmerava na lazni server), sinhroOpcije (npr. odlaganjeMs), sinhroSpreman (main dobija klijenta za start).
+function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir(), kopija: kopijaGotova, verzija = sistem.verzija(), obavesti = () => {}, kopijaLista, fetch: fetchFn = globalThis.fetch, sinhroOpcije = {}, sinhroSpreman = () => {} }) {
   const k = klubovi.napravi(baza);
   const t = takmicari.napravi(baza);
   const s = sifarnici.napravi(baza);
@@ -54,6 +56,18 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
   const uv = uvozModel.napravi(baza, p, dnevnik);
   const gr = grupeModel.napravi(baza);
   const oc = oceneModel.napravi(baza, p);
+  const rez = rezultatiModel.napravi(baza, p);
+  const sinhro = napraviSinhro({ podesavanja: p, rezultati: rez, sifarnici: s, baza, dnevnik, verzija, fetch: fetchFn, ...sinhroOpcije });
+  sinhroSpreman(sinhro);
+  // Posle potvrdjene izmene ocene; slanje nikad ne sme da pokvari rezultat unosa.
+  const posleOcene = (rezultat) => {
+    try {
+      sinhro.zakazi();
+    } catch (err) {
+      dnevnik.greska('sinhro zakazi', err);
+    }
+    return rezultat;
+  };
   const kopija = kopijaGotova ?? napraviKopijuModel(baza, { fasciklaPodataka, dnevnik, verzija });
   const bazaVerzija = () => (baza.tabele().includes('migracije') ? (baza.vrednost('SELECT MAX(ime) FROM migracije') ?? '') : '');
 
@@ -117,7 +131,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     return fs.existsSync(fajl) ? `${pathToFileURL(fajl).href}?v=${Math.round(fs.statSync(fajl).mtimeMs)}` : '';
   }
 
-  const pregled = napraviPregled({ p, pr, tk, g: gr, o: oc, s, aktivnoRed, kopijaLista: kopijaLista ?? (() => kopija.lista()) });
+  const pregled = napraviPregled({ p, pr, tk, g: gr, o: oc, s, aktivnoRed, sinhroStanje: () => sinhro.stanje(), kopijaLista: kopijaLista ?? (() => kopija.lista()) });
   const kopijaIpc = napraviKopijuPaket({ kopija, verzija, bazaVerzija, dialog, shell, roditelj, dnevnik, posleVracanja: obavesti });
 
   return {
@@ -449,14 +463,15 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
         };
       },
       nacrt: (prijavaId, spravaId, ulaz) => oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), false, ''),
-      potvrdi: (prijavaId, spravaId, ulaz, razlog) =>
-        oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), true, typeof razlog === 'string' ? razlog : ''),
-      odustao: (prijavaId, spravaId) => oc.odustao(aktivnoId(), broj(prijavaId), broj(spravaId)),
-      vrati: (prijavaId, spravaId) => oc.vrati(aktivnoId(), broj(prijavaId), broj(spravaId)),
+      potvrdi: (prijavaId, spravaId, ulaz, razlog) => posleOcene(
+        oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), true, typeof razlog === 'string' ? razlog : '')),
+      odustao: (prijavaId, spravaId) => posleOcene(oc.odustao(aktivnoId(), broj(prijavaId), broj(spravaId))),
+      vrati: (prijavaId, spravaId) => posleOcene(oc.vrati(aktivnoId(), broj(prijavaId), broj(spravaId))),
     },
-    rang: napraviRang({ baza, model: rezultatiModel.napravi(baza, p), p, t, aktivnoRed, grbUrl }),
+    rang: napraviRang({ baza, model: rez, p, t, aktivnoRed, grbUrl }),
     stampa: napraviStampu({ prozor: roditelj, dialog, fs, dokumenti }),
     kopija: kopijaIpc,
+    sinhro: { stanje: () => sinhro.stanje(), posalji: () => sinhro.posalji(), ping: () => sinhro.ping() },
     pocetna: pregled.pocetna,
     takmicenje: pregled.takmicenje,
     uvoz: {

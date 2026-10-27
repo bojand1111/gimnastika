@@ -54,7 +54,17 @@ Bez interneta ažuriranja nema, a program radi kao i do sada.
 - **Program neće da krene posle vraćanja kopije.** Pri pokretanju program sam vraća prethodnu bazu ako je vraćanje prekinuto. Ako ipak ne kreće, ništa ne brisati u fascikli `%APPDATA%\Gimnastika`: u njoj je fajl `gimnastika.sqlite.staro` (baza pre vraćanja) i u fascikli `kopije` poslednja kopija. Poslati programeru `dnevnik.log` i reći koji je od ta dva fajla sačuvan.
 - **Vraćanje nije uspelo.** Poruka kaže zašto (na primer da je kopija iz novije verzije). Podaci ostaju kakvi su bili. Fajl se prvo proverava; ako ne prođe proveru (nije kopija ovog programa, iz novije je verzije ili je oštećen), ništa se ne menja i kopija „Pre vraćanja“ se ne pravi. Ta kopija postoji samo ako je fajl prošao proveru i vraćanje je počelo.
 
-## 7. Za programera
+## 7. Rezultati uživo na sajtu
+
+Program može da šalje rang liste aktivnog takmičenja na sajt, da ih gledaoci prate uživo. Slanje ide posle svake potvrđene, odustale ili vraćene ocene (uz kratko odlaganje, pa više brzih izmena daje jedno slanje), pri startu programa ako ima izmena koje nisu poslate i na dugme „Pošalji sada“.
+
+Adresa i token se unose na ekranu Podešavanja, u kartici „Rezultati uživo na sajtu“ (adresu i token dobijate od onoga ko održava sajt). Posle unosa kliknite „Sačuvaj podešavanja“, pa „Proveri vezu“. Dugmad „Proveri vezu“ i „Pošalji sada“ koriste već sačuvane vrednosti.
+
+- Dok je adresa (ili token) prazna, ništa se ne šalje.
+- Stanje slanja piše na Pregledu takmičenja: „Rezultati uživo: poslato 27.10.2026. 14:05“, „čeka slanje“, „slanje u toku“ ili „greška: …“.
+- Bez interneta stanje je „greška: Sajt nije dostupan.“ Unos ocena se zbog toga ne usporava ni ne zaustavlja, a sledeća potvrđena ocena (ili „Pošalji sada“) pokušava ponovo.
+
+## 8. Za programera
 
 ```
 npm install                                    zavisnosti

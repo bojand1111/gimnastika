@@ -7,6 +7,7 @@ import KluboviStanje from '../komponente/KluboviStanje.jsx';
 import { obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
 import { tekstPlocice, tekstRotacije } from './pocetnaStanje.js';
+import { tekstStanja } from './sinhroStanje.js';
 
 // Pregled takmicenja (POPIS 2): jedan IPC poziv daje sve sto pogled treba.
 export default function Takmicenje() {
@@ -59,6 +60,7 @@ export default function Takmicenje() {
               {takm.organizator && <span>Organizator: {takm.organizator}</span>}
               {takm.domacin && <span>Domaćin: {takm.domacin}</span>}
             </div>
+            <span className="sivo mali">Rezultati uživo: {tekstStanja(d.sinhro)}</span>
             <div className="mreza-3">
               <div className="plocica-broj"><span className="broj">{brojevi.prijava}</span><span>prijavljenih takmičara</span></div>
               <div className="plocica-broj"><span className="broj">{brojevi.klubova}</span><span>klubova</span></div>

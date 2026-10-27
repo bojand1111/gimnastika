@@ -19,8 +19,8 @@ function ocisti(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-test('PODRAZUMEVANO ima 10 kljuceva', () => {
-  assert.equal(Object.keys(PODRAZUMEVANO).length, 10);
+test('PODRAZUMEVANO ima 12 kljuceva', () => {
+  assert.equal(Object.keys(PODRAZUMEVANO).length, 12);
 });
 
 test('daj na praznoj tabeli vraca podrazumevano, postavi pa daj', () => {
@@ -126,5 +126,34 @@ test('sacuvajOpsta: slika koja ne postoji baca bez upisa; vec sacuvani fajl prol
     p.sacuvajOpsta({ grb_levo: { putanja: cuvan } });
     assert.equal(p.daj('grb_levo'), 'grb/grb_levo.png');
     assert.equal(fs.readFileSync(cuvan, 'utf8'), 'stari');
+  } finally { ocisti(dir); }
+});
+
+test('sacuvajOpsta: sajt_url trim, kosa crta na kraju se skida, prazno je dozvoljeno, token trim', () => {
+  const { dir, p } = nova();
+  try {
+    assert.equal(p.sva().sajt_url, '');
+    assert.equal(p.sva().sajt_token, '');
+    p.sacuvajOpsta({ sajt_url: '  https://rezultati.example.rs/  ', sajt_token: '  tajna  ' });
+    assert.equal(p.sva().sajt_url, 'https://rezultati.example.rs');
+    assert.equal(p.sva().sajt_token, 'tajna');
+    p.sacuvajOpsta({ sajt_url: 'http://127.0.0.1:8080' });
+    assert.equal(p.sva().sajt_url, 'http://127.0.0.1:8080');
+    assert.equal(p.sva().sajt_token, 'tajna', 'nedostavljen kljuc se ne dira');
+    p.sacuvajOpsta({ sajt_url: '', sajt_token: '' });
+    assert.equal(p.sva().sajt_url, '');
+    assert.equal(p.sva().sajt_token, '');
+  } finally { ocisti(dir); }
+});
+
+test('sacuvajOpsta: sajt_url bez http:// ili https:// baca poruku i nista ne upisuje', () => {
+  const { dir, p } = nova();
+  try {
+    for (const lose of ['rezultati.example.rs', 'ftp://x.rs', 'httpx://x', ' www.x.rs ']) {
+      assert.throws(() => p.sacuvajOpsta({ organizator: 'Neko', sajt_url: lose }), (e) => e instanceof GreskaKorisnika
+        && e.message === 'Adresa sajta mora da počinje sa http:// ili https://.');
+    }
+    assert.equal(p.sva().organizator, '', 'nista nije upisano');
+    assert.equal(p.sva().sajt_url, '');
   } finally { ocisti(dir); }
 });

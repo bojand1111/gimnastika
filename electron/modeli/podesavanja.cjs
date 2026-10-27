@@ -14,6 +14,8 @@ const PODRAZUMEVANO = {
   grb_levo: '',
   grb_desno: '',
   organizator: '',
+  sajt_url: '',
+  sajt_token: '',
 };
 
 const IZBORI = {
@@ -71,6 +73,15 @@ function napravi(baza, fasciklaPodataka) {
       upis.lekarski_prag_dana = String(Math.max(0, Math.min(365, n)));
     }
     if (p.organizator !== undefined) upis.organizator = String(p.organizator ?? '').trim();
+    // Rezultati uzivo (SPEC8 5): prazna adresa gasi slanje; inace mora biti http(s); zavrsna kosa crta se skida.
+    if (p.sajt_url !== undefined) {
+      const adresa = String(p.sajt_url ?? '').trim();
+      if (adresa !== '' && !/^https?:\/\//i.test(adresa)) {
+        throw new GreskaKorisnika('Adresa sajta mora da počinje sa http:// ili https://.');
+      }
+      upis.sajt_url = adresa.replace(/\/+$/, '');
+    }
+    if (p.sajt_token !== undefined) upis.sajt_token = String(p.sajt_token ?? '').trim();
 
     const kopije = [];
     for (const kljuc of GRBOVI) {
