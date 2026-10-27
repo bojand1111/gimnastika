@@ -74,7 +74,7 @@ kolona 5 `nerasporedjeni > 0` → `span.status.status-warn` „Neraspoređeni: {
 
 ### 1.4 Pomoćne funkcije (`pomocne.php`)
 - `dan_u_nedelji(ymd)`: `['Nedelja','Ponedeljak','Utorak','Sreda','Četvrtak','Petak','Subota'][date('w')]`; neispravan datum → ''.
-- `velicina_prikaz(b)`: `>= 1048576` → `number_format(b/1048576, 1, ',', '.') . ' MB'`; `>= 1024` → `number_format(b/1024, 0, ',', '.') . ' KB'`; inače `b . ' B'`. (Primer: 2516582 → „2,4 MB“; 39695 → „39 KB“; 147 → „147 B“; hiljade sa tačkom: 1536000 → „1.500 KB“.)
+- `velicina_prikaz(b)`: `>= 1048576` → `number_format(b/1048576, 1, ',', '.') . ' MB'`; `>= 1024` → `number_format(b/1024, 0, ',', '.') . ' KB'`; inače `b . ' B'`. (Primer: 2516582 → „2,4 MB“; 39695 → „39 KB“; 147 → „147 B“; hiljade sa tačkom: 1047552 → „1.023 KB“.)
 - `pol_naziv`: `M` → „MSG“, `Z` → „ŽSG“, inače ''.
 - `date('d.m.Y. H:i', vreme)` lokalno vreme fajla, npr. „17.10.2026. 09:42“.
 
@@ -120,6 +120,12 @@ kolona 5 `nerasporedjeni > 0` → `span.status.status-warn` „Neraspoređeni: {
   Komentar iz PHP-a: ako izabrana fascikla ne postoji (USB isključen, baza vraćena sa drugog računara) koristi se podrazumevana.
 - `Aplikacija::pokreniMigracije()`: kad ima migracija na čekanju i baza nije prazna, prvo kopija `pre_migracije` (dnevnik „Kopija pre migracije: {ime}“), pa migracije; poruka `info` „Baza je ažurirana (migracije: {lista}). Kopija je napravljena pre ažuriranja.“
 - `Zakrpa::primeni`: kopija `pre_azuriranja` pre primene (Electron: `preInstalacije` u `createUpdater`, main.cjs komentar „Faza 7: ovde kopija baze vrste pre_azuriranja.“).
+
+### 3.1a Poruke koje postoje samo u Electron portu (nisu u PHP-u)
+- `Kopija nije napravljena: {poruka}`; `Fajl nije rezervna kopija ove aplikacije (nedostaje kopija_opis).` i `... ({sqlite poruka}).`; `Kopija je iz novije verzije PHP aplikacije ({v}) nego što može da se uveze (najviše 1.2.0).`;
+  `Baza nije u fajlu, pa se ne može vratiti.`; `Kopija je oštećena.`; `Uvoz prekinut: kopija ima veze ka podacima kojih nema (tabela {t}).`; `Vraćanje nije dovršeno: {poruka}. Stanje pre vraćanja je u fajlu {sigurnosna}.`;
+  `Baza nije otvorena. Prethodno stanje je u fajlu {ime}.`; `Ne mogu da sačuvam raniji fajl {ime}.`; `Nevažeća putanja.` (IPC: prazna putanja iz renderera).
+- Vraćanje `.sqlite` kopije ne koristi fajl kopije kao živu bazu: pravi se sveža baza sa svim migracijama i u nju se kroz ATTACH prepisuju samo poznate tabele (kolone u preseku šema), `sqlite_sequence` se prenosi, `kopije_fascikla` ostaje lokalna vrednost, grbovi se prenose samo ako su oblika `grb/<ime>` bez `..`. IPC `vrati({putanja})` prima samo putanju koju je vratio dijalog iz istog procesa.
 
 ### 3.2 Kontroler (`kopija.php`)
 - `index`: `kopije = lista()`, `fascikla`, `podrazumevana = podesavanja.daj('kopije_fascikla') === ''`, `bazaVerzija = migracije.trenutnaVerzija()`. Naslov „Rezervna kopija“.
@@ -178,7 +184,7 @@ Struktura koju Electron uputstvo zadržava (za nekoga ko nije programer, Windows
 - 6.4 „Vrati iz kopije“ bez liste: `dialog.showOpenDialog` (filteri „Rezervne kopije“ `sqlite, zip`), pa ista potvrda kao PHP u in-app dijalogu (`<dialog>` kao DijalogGrupa/DijalogRazlog: tekst, dugmad „Vrati“ (opasno) i „Odustani“, Esc = odustani, fokus na „Odustani“).
 - 6.5 „Promeni fasciklu“: `dialog.showOpenDialog({properties: ['openDirectory', 'createDirectory']})` umesto tekstualnog polja; provera upisa i poruke kao PHP; pored toga dugme „Vrati podrazumevanu“ (vidi se samo kad fascikla nije podrazumevana) = PHP prazno polje. Nedostupna izabrana fascikla → koristi se podrazumevana (kao PHP) i u ekranu stoji „ (podrazumevana)“ sa dodatnom napomenom „Izabrana fascikla {x} nije dostupna.“
 - 6.6 „Preuzmi“ → „Prikaži u fascikli“ (`shell.showItemInFolder`). Nema upload-a ni ograničenja veličine.
-- 6.7 Kopija `pre_migracije` u `main.cjs` pre `baza.migriraj()` kad `baza.naCekanju()` nije prazno i baza ima tabele (prva instalacija nema), kopija `pre_azuriranja` u `preInstalacije` (greška kopije ne sme da zaustavi ažuriranje, samo se loguje i javlja porukom). Poruka posle migracija kao PHP ide u dnevnik (nema sesije), a renderer je ne prikazuje.
+- 6.7 Kopija `pre_migracije` u `main.cjs` pre `baza.migriraj()` kad `baza.naCekanju()` nije prazno i baza ima tabele (prva instalacija nema), kopija `pre_azuriranja` u `preInstalacije` (greška kopije ne sme da zaustavi ažuriranje; samo se loguje, jer program odmah zatim izlazi radi instalacije). Poruka posle migracija kao PHP ide u dnevnik (nema sesije), a renderer je ne prikazuje.
 - 6.8 Početna i Pregled: jedan IPC poziv po ekranu (`pocetna.podaci`, `takmicenje.podaci`) koji vraća sve što pogled treba, sa `dan_u_nedelji` i `velicina_prikaz` kao čiste funkcije u `electron/racun/datum.mjs` (`danUNedelji`) i novom `electron/racun/velicina.mjs` (`velicinaPrikaz`), da ih koriste i testovi i renderer.
 - 6.9 `AzuriranjeKartica` se seli sa ekrana Sistem na ekran Rezervna kopija (ekran Sistem ostaje bez nje); dugme „Nova verzija“ u traci ostaje.
 - 6.10 Verzija 1.0.0: `package.json` `1.0.0`, `beleske/1.0.0.md`, `README.md` dopuna, `docs/INSTALACIJA.md` novo. Instaler `release/Gimnastika-Setup-1.0.0.exe` se pravi na kraju faze; objavljivanje na GitHub (`publish-release`) ostaje na Bojanov znak.
@@ -187,9 +193,9 @@ Struktura koju Electron uputstvo zadržava (za nekoga ko nije programer, Windows
 
 ## 7. Testovi (očekivane vrednosti)
 
-- 7.1 `velicinaPrikaz`: 147 → „147 B“; 1024 → „1 KB“; 39695 → „39 KB“; 1536000 → „1.500 KB“; 1048576 → „1,0 MB“; 2516582 → „2,4 MB“.
+- 7.1 `velicinaPrikaz`: 147 → „147 B“; 1024 → „1 KB“; 39695 → „39 KB“; 1047552 → „1.023 KB“; 1048576 → „1,0 MB“; 1536000 → „1,5 MB“; 2516582 → „2,4 MB“.
 - 7.2 `danUNedelji('2026-10-17')` → „Subota“; `'2026-10-19'` → „Ponedeljak“; neispravno → ''.
-- 7.3 Napredak na Pregledu nad primer podacima (`alati/primer-podaci.cjs`, 100 ocena, Sara odustala na GR i PA): oba pola gotova → `napredak.pol === 'M'`, `gotovo === true`, pločica „4 / 4“ (M ima 6 sprava → „6 / 6“) sa tekstom „sve rotacije su unete“, `nastavi === null`, tekst pločice „Sve ocene su unete“, link `#/unos`.
+- 7.3 Napredak na Pregledu nad primer podacima (`alati/primer-podaci.cjs`, 100 ocena, Sara odustala na GR i PA): oba pola gotova → ostaje prvi pol (`napredak.pol === 'Z'`, PHP uslov `napredak === null || !n.gotovo` ne zamenjuje gotov Z gotovim M), `gotovo === true`, pločica „4 / 4“ sa tekstom „sve rotacije su unete“, `nastavi === null`, tekst pločice „Sve ocene su unete“, link `#/unos`.
   Nad `tests/pomoc/seme.cjs` sa jednom grupom Z na PR i GR bez ocena: `napredak = {rotacija: 1, ukupno_rotacija: 2, pol: 'Z', gotovo: false}`, `nastavi.sprava` = sprava na poziciji 1 u rotaciji 1 za grupu sa `pocetna_pozicija` 1 (PR), `uneto 0`, `ukupno` = broj članova koji rade PR; bez grupa → `napredak null`, pločica „–“ i „grupe još nisu napravljene“.
 - 7.4 Kopija: `napravi('rucna')` pravi fajl sa `kopija_opis` (5 ključeva), `lista()` ga vraća prvim sa `opis.vrsta 'rucna'`; drugi poziv u istom minutu daje `_2`; fajl koji nije SQLite ili nema opis → `opis null`; `vrati` kopije sa `verzija '9.9.9'` baca poruku iz 3.1; vraćanje menja podatke (klub dodat posle kopije nestaje) i pravi `pre_vracanja` kopiju; `kopija_opis` ne postoji u živoj bazi posle vraćanja.
 - 7.5 Uvoz PHP zip-a (test pravi zip sa `zip.cjs` od sintetičkog `baza.sql` po formatu iz odeljka 4, uključujući `\'` u nazivu kluba, `NULL` lekarski, decimalne ocene `'12.900'`, `migracije` tabelu i `podesavanja` sa `kopije_fascikla`): posle uvoza `ocene.konacna === 12900`, naziv kluba sa apostrofom tačan, `kopije_fascikla` nije uvezen, `aktivno_takmicenje` jeste, `migracije` tabela SQLite ima sve 4 migracije; zip bez `baza.sql` → poruka iz 3.1; `verzija '2.0.0'` → odbijen.
