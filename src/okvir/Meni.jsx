@@ -46,6 +46,7 @@ export default function Meni({ ekran, verzija }) {
 export function naslovEkrana(ekran) {
   if (ekran === 'takmicenja/novo') return 'Novo takmičenje';
   if (ekran === 'takmicenja/izmeni') return 'Takmičenje: podaci';
+  if (ekran === 'takmicenje') return 'Pregled takmičenja';
   const prvi = ekran.split('/')[0];
   if (prvi === 'sistem') return 'Vizuelni sistem';
   if (prvi === 'uvoz') return 'Uvoz prijava';

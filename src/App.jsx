@@ -20,8 +20,10 @@ import Rang from './ekrani/Rang.jsx';
 import Rezultati from './ekrani/Rezultati.jsx';
 import Stampa from './ekrani/Stampa.jsx';
 import Bilten from './ekrani/Bilten.jsx';
+import Pocetna from './ekrani/Pocetna.jsx';
+import Takmicenje from './ekrani/Takmicenje.jsx';
 
-const EKRANI = { sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz, rang: Rang, rezultati: Rezultati, stampa: Stampa, bilten: Bilten,
+const EKRANI = { pocetna: Pocetna, takmicenje: Takmicenje, sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz, rang: Rang, rezultati: Rezultati, stampa: Stampa, bilten: Bilten,
   'takmicenja/novo': TakmicenjeForma, 'takmicenja/izmeni': TakmicenjeForma };
 // Ekrani cele strane (POPIS 9.1): bez menija i trake, body.stampa dok su otvoreni.
 const CELA_STRANA = new Set(['stampa', 'bilten']);
