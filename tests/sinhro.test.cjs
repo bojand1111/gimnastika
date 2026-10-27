@@ -246,3 +246,129 @@ test('snimakAktivnog: snimak ili null', () => {
   p.podesavanja.postavi('aktivno_takmicenje', '');
   assert.equal(p.sinhro.snimakAktivnog(), null);
 });
+
+test('PUT: zaglavlja, kosa crta na kraju adrese skinuta, token nije u putanji', async () => {
+  const s = await sajt(() => null);
+  try {
+    const p = pravi();
+    podesi(p, `${s.url}//`);
+    assert.equal((await p.sinhro.posalji()).ok, true);
+    await p.sinhro.ping();
+    const id = p.podesavanja.aktivnoTakmicenjeId();
+    const put = s.zahtevi[0];
+    assert.equal(put.putanja, `/api/gimnastika/takmicenja/${id}`);
+    assert.equal(put.zaglavlja.authorization, `Bearer ${TOKEN}`);
+    assert.equal(put.zaglavlja['x-gimnastika-verzija'], '9.9.9');
+    assert.equal(s.zahtevi.some((z) => z.putanja.includes(TOKEN)), false);
+  } finally { await s.ugasi(); }
+});
+
+test('sad() se uzima pre gradnje snimka', async () => {
+  const s = await sajt(() => null);
+  try {
+    let n = 0;
+    const p = pravi({ sinhro: { sad: () => `2020-06-01 00:00:0${++n}` } });
+    podesi(p, s.url);
+    assert.equal((await p.sinhro.posalji()).ok, true);
+    assert.equal(p.podesavanja.daj('sajt_poslednja_sinhronizacija'), '2020-06-01 00:00:01');
+    assert.equal(JSON.parse(s.zahtevi[0].telo).poslato, '2020-06-01T00:00:01.000Z', 'jedan poziv sad() za kljuc i snimak');
+    assert.equal(n, 1);
+  } finally { await s.ugasi(); }
+});
+
+test('imaPromena: svaka od tabela prijave, takmicenja, grupe posebno', async () => {
+  const s = await sajt(() => null);
+  try {
+    for (const t of ['prijave', 'takmicenja', 'grupe']) {
+      const p = pravi({ sinhro: { sad: () => '2020-06-01 00:00:00' } });
+      for (const x of ['ocene', 'prijave', 'takmicenja', 'grupe']) p.baza.izvrsi(`UPDATE ${x} SET izmenjeno = '2020-01-01 00:00:00'`);
+      podesi(p, s.url);
+      assert.equal((await p.sinhro.posalji()).ok, true);
+      assert.equal(p.sinhro.imaPromena(), false, t);
+      p.baza.izvrsi(`UPDATE ${t} SET izmenjeno = '2021-01-01 00:00:00'`);
+      assert.equal(p.sinhro.imaPromena(), true, t);
+    }
+  } finally { await s.ugasi(); }
+});
+
+test('izuzetak pri gradnji snimka: tekst, dnevnik.greska, nema zahteva', async () => {
+  const s = await sajt(() => null);
+  try {
+    const p = pravi();
+    podesi(p, s.url);
+    p.rezultati.kombinacije = () => { throw new Error('kvar'); };
+    const r = await p.sinhro.posalji();
+    assert.deepEqual(r, { ok: false, liste: 0, greska: 'Snimak nije mogao da se napravi.' });
+    assert.ok(p.log.some((l) => l.startsWith('GRESKA Sinhro: snimak nije napravljen')));
+    assert.equal(p.sinhro.stanje().greska, 'Snimak nije mogao da se napravi.');
+    assert.equal(s.zahtevi.length, 0);
+  } finally { await s.ugasi(); }
+});
+
+test('mrezna greska: dnevnik ima ime i kod, ne i adresu ni token', async () => {
+  const s = await sajt(() => null);
+  const url = s.url;
+  await s.ugasi();
+  const p = pravi();
+  podesi(p, url);
+  await p.sinhro.posalji();
+  const linija = p.log.find((l) => l.startsWith('Sinhro greska: Sajt nije dostupan. ('));
+  assert.ok(linija, p.log.join('|'));
+  assert.equal(linija.includes(url), false);
+  assert.equal(linija.includes('127.0.0.1'), false);
+  assert.equal(linija.includes(TOKEN), false);
+});
+
+test('prazna adresa ili token cisti staru gresku i slanje na cekanju', async () => {
+  const s = await sajt(() => ({ status: 500, telo: 'x' }));
+  try {
+    const p = pravi({ sinhro: { odlaganjeMs: 60000 } });
+    podesi(p, s.url);
+    await p.sinhro.posalji();
+    p.sinhro.zakazi();
+    assert.equal(p.sinhro.stanje().greska, 'Sajt je javio grešku 500.');
+    assert.equal(p.sinhro.stanje().cekaSlanje, true);
+    p.podesavanja.postavi('sajt_token', '');
+    p.sinhro.zakazi();
+    let st = p.sinhro.stanje();
+    assert.equal(st.ukljuceno, false);
+    assert.equal(st.greska, '');
+    assert.equal(st.cekaSlanje, false);
+    // isto preko posalji i ping
+    podesi(p, s.url);
+    await p.sinhro.posalji();
+    p.podesavanja.postavi('sajt_url', '');
+    await p.sinhro.ping();
+    st = p.sinhro.stanje();
+    assert.equal(st.greska, '');
+    podesi(p, s.url);
+    await p.sinhro.posalji();
+    p.podesavanja.postavi('sajt_url', '');
+    await p.sinhro.posalji();
+    assert.deepEqual(p.sinhro.stanje(), { ukljuceno: false, poslednje: '', cekaSlanje: false, uToku: false, greska: '' });
+  } finally { await s.ugasi(); }
+});
+
+test('tri posalji tokom slanja: tacno jedno naknadno slanje, bez neuhvacenih odbijanja', async () => {
+  const neuhvaceno = [];
+  const slusac = (e) => neuhvaceno.push(e);
+  process.on('unhandledRejection', slusac);
+  const s = await sajt(() => null);
+  try {
+    const p = pravi();
+    podesi(p, s.url);
+    const rez = await Promise.all([p.sinhro.posalji(), p.sinhro.posalji(), p.sinhro.posalji()]);
+    assert.ok(rez.every((r) => r.ok));
+    assert.equal(s.zahtevi.length, 2);
+    assert.equal(p.sinhro.stanje().uToku, false);
+    // odbijanje unutar slanja stize samo pozivaocu
+    p.podesavanja.aktivno = () => { throw new Error('kvar baze'); };
+    await assert.rejects(p.sinhro.posalji(), /kvar baze/);
+    await new Promise((r) => setTimeout(r, 50));
+    assert.deepEqual(neuhvaceno, []);
+    assert.equal(p.sinhro.stanje().uToku, false);
+  } finally {
+    process.off('unhandledRejection', slusac);
+    await s.ugasi();
+  }
+});

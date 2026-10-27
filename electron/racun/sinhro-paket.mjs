@@ -44,10 +44,13 @@ export function listaIzRezultata(kombinacija, rez) {
     for (const [sid, v] of Object.entries(r.ocene)) {
       if (v !== null && v !== undefined) sprave[sid] = { konacna: tekst(v), konacna_h: v };
     }
-    return {
+    const red = {
       mesto: r.mesto ?? null, oznaka: oznaka(r.oznaka), prijava_id: Number(r.prijava), ime: pr.ime, prezime: pr.prezime,
-      klub: pr.klub_skr ?? '', po_spravi: sprave, zbir: tekst(r.zbir), zbir_h: r.zbir ?? null, odustao: Boolean(r.odustao),
+      klub: pr.klub_skr ?? '', po_spravi: sprave, odustao: Boolean(r.odustao),
     };
+    // Zbir se izostavlja kad nema nijedne ocene
+    if (r.zbir !== null && r.zbir !== undefined) Object.assign(red, { zbir: tekst(r.zbir), zbir_h: r.zbir });
+    return red;
   });
 
   const ekipno = rez.ekipno.map((e) => {

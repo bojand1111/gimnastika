@@ -17,6 +17,7 @@ function napravi({
   let poslednjaGreska = '';
   let tekuce = null; // promise slanja koje je u toku
   let tajmer = null;
+  let sledece = null; // naknadno slanje u redu iza tekuceg
 
   const url = () => String(podesavanja.daj('sajt_url', '')).trim().replace(/\/+$/, '');
   const token = () => String(podesavanja.daj('sajt_token', '')).trim();
@@ -49,7 +50,9 @@ function napravi({
       }
       if (!json || json.ok !== true) return { greska: LOS_ODGOVOR };
       return { json };
-    } catch {
+    } catch (err) {
+      // Uzrok ide u dnevnik samo kao ime i kod (nikad adresa ni token)
+      dnevnik.info(`Sinhro greska: ${NEDOSTUPAN} (${err?.name ?? 'Greska'}: ${err?.cause?.code ?? 'nepoznato'})`);
       return { greska: NEDOSTUPAN }; // mrezna greska, prekid ili istek
     } finally {
       ukloniTajmer(rok);
@@ -91,18 +94,42 @@ function napravi({
     return { ok: true, liste: n, greska: '' };
   }
 
-  // Nikad dva zahteva istovremeno: drugi poziv ceka prvi, pa tek onda salje.
+  // Jedno slanje se pokrece odmah; pracenje ne sme da proizvede neuhvaceno odbijanje.
+  function pokreni() {
+    const p = posaljiJednom();
+    const t = p.then(() => {}, () => {}).finally(() => { if (tekuce === t) tekuce = null; });
+    tekuce = t;
+    return p;
+  }
+
+  // Nikad dva zahteva istovremeno: svi pozivi tokom slanja dele jedno naknadno slanje.
   function posalji() {
-    const prethodno = tekuce ?? Promise.resolve();
-    const ovo = prethodno.then(posaljiJednom, posaljiJednom);
-    const oznaci = ovo.finally(() => { if (tekuce === oznaci) tekuce = null; });
-    tekuce = oznaci;
-    return ovo;
+    if (!ukljuceno()) ocisti();
+    if (tekuce === null) return pokreni();
+    if (sledece === null) {
+      sledece = tekuce.then(() => {
+        sledece = null;
+        return pokreni();
+      });
+    }
+    return sledece;
+  }
+
+  // Bez adrese ili tokena nema ni greske ni slanja na cekanju.
+  function ocisti() {
+    poslednjaGreska = '';
+    if (tajmer !== null) {
+      ukloniTajmer(tajmer);
+      tajmer = null;
+    }
   }
 
   // Slanje posle odlaganja; vise poziva u prozoru je jedno slanje.
   function zakazi() {
-    if (!ukljuceno()) return;
+    if (!ukljuceno()) {
+      ocisti();
+      return;
+    }
     if (tajmer !== null) ukloniTajmer(tajmer);
     tajmer = postaviTajmer(() => {
       tajmer = null;
@@ -112,6 +139,7 @@ function napravi({
   }
 
   async function ping() {
+    if (!ukljuceno()) ocisti();
     if (url() === '') return { ok: false, greska: BEZ_ADRESE };
     if (token() === '') return { ok: false, greska: BEZ_TOKENA };
     const r = await zahtev('GET', '/api/gimnastika/ping');

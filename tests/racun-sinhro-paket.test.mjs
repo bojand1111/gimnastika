@@ -93,3 +93,21 @@ test('snimak: oblik reda sprave i JSON se vraca kroz stringify bez gubitka', () 
   assert.equal(typeof red.konacna_h, 'number');
   assert.deepEqual(JSON.parse(JSON.stringify(s)), s);
 });
+
+test('listaIzRezultata: viseboj bez ijedne ocene nema zbir ni zbir_h', () => {
+  const rez = {
+    prijave: { 5: { ime: 'A', prezime: 'B', klub_skr: 'X', klub_ime: 'Klub X', startni_broj: 1 } },
+    po_spravi: {},
+    viseboj: [
+      { prijava: 5, zbir: null, mesto: null, oznaka: '', odustao: true, ocene: { 7: null } },
+    ],
+    ekipno: [],
+  };
+  const l = listaIzRezultata({ pol: 'Z', kategorija_id: 1, kategorija: 'K', program_id: 1, program: 'P' }, rez);
+  const red = l.viseboj[0];
+  assert.equal('zbir' in red, false);
+  assert.equal('zbir_h' in red, false);
+  assert.deepEqual(red.po_spravi, {});
+  assert.equal(red.odustao, true);
+  assert.equal(red.mesto, null);
+});
