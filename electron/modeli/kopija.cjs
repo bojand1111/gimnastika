@@ -22,6 +22,8 @@ const VRSTE = {
 const NAJNOVIJA_PHP = '1.2.0';
 const GRB_OBLIK = new RegExp('^grb/[A-Za-z0-9_-][A-Za-z0-9_.-]*$');
 const grbOk = (v) => GRB_OBLIK.test(String(v ?? '')) && !String(v).includes('..');
+// Podesavanja ovog racunara: ne dolaze iz kopije (sajt_token je tajna, sajt_url usmerava slanje rezultata).
+const ZIVI_KLJUCEVI = ['kopije_fascikla', 'sajt_url', 'sajt_token', 'sajt_poslednja_sinhronizacija'];
 const OPIS_KLJUCEVI = ['aplikacija', 'verzija', 'baza_verzija', 'vreme', 'vrsta'];
 
 // Poredjenje a.b.c brojno (1.10.0 > 1.9.0); prazno ili nebrojno se racuna kao 0.
@@ -76,6 +78,11 @@ function oporaviStaro(putanjaBaze) {
 function napravi(baza, opcije) {
   const { fasciklaPodrazumevana, podesavanja, verzija, dnevnik } = opcije;
   const posleVracanja = opcije.posleVracanja ?? (() => { baza.migriraj(); pocetniPodaci(baza); });
+
+  // Trenutne vrednosti podesavanja ovog racunara, koje vracanje ne sme da promeni.
+  function ziveVrednosti() {
+    return Object.fromEntries(ZIVI_KLJUCEVI.map((k) => [k, podesavanja.daj(k)]));
+  }
 
   function fasciklaStanje() {
     const izabrana = bezZavrsnihKosih(podesavanja.daj('kopije_fascikla'));
@@ -321,11 +328,11 @@ function napravi(baza, opcije) {
 
   // SQLite kopija se NE koristi kao baza: podaci se prepisuju u svezu bazu (migracije, bez okidaca i pogleda),
   // pa se ona proverava i zamenjuje. Nepoznate tabele, okidaci i pogledi iz kopije tako ne prelaze.
-  const MESNI_KLJUCEVI = ['kopije_fascikla', 'grb_levo', 'grb_desno'];
+  const MESNI_KLJUCEVI = [...ZIVI_KLJUCEVI, 'grb_levo', 'grb_desno'];
 
   function pripremiSqlite(izvor) {
     return (pripremljen) => {
-      const fasciklaKopija = podesavanja.daj('kopije_fascikla');
+      const ziva = ziveVrednosti();
       const kopijaFajl = `${pripremljen}.izvor`; // ATTACH ne sme da dira originalnu kopiju
       let nova = null;
       try {
@@ -370,10 +377,10 @@ function napravi(baza, opcije) {
           }
         });
         nova.db.exec('DETACH DATABASE kopija');
-        nova.db.prepare('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost')
-          .run('kopije_fascikla', fasciklaKopija);
+        const upis = nova.db.prepare('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost');
+        for (const [k, v] of Object.entries(ziva)) upis.run(k, v);
         ocistiGrbove(nova.db);
-        proveriOciscenje(nova.db, fasciklaKopija);
+        proveriOciscenje(nova.db, ziva);
         nova.db.exec('PRAGMA foreign_keys = ON');
         if (nova.svi('PRAGMA foreign_key_check').length) throw new GreskaKorisnika('Kopija je oštećena.');
         const cela = nova.svi('PRAGMA integrity_check').map((r) => Object.values(r)[0]);
@@ -404,9 +411,12 @@ function napravi(baza, opcije) {
   }
 
   // Ponovo cita ono sto je upisano; ne poklapanje znaci da nesto u fajlu menja podatke mimo nas.
-  function proveriOciscenje(db, fasciklaKopija) {
-    const f = db.prepare("SELECT vrednost FROM podesavanja WHERE kljuc = 'kopije_fascikla'").get();
-    let ispravno = f && f.vrednost === fasciklaKopija;
+  function proveriOciscenje(db, ziva) {
+    let ispravno = true;
+    for (const [k, v] of Object.entries(ziva)) {
+      const redovi = db.prepare('SELECT vrednost FROM podesavanja WHERE kljuc = ?').all(k);
+      if (redovi.length !== 1 || redovi[0].vrednost !== v) ispravno = false;
+    }
     for (const r of db.prepare("SELECT vrednost FROM podesavanja WHERE kljuc IN ('grb_levo', 'grb_desno')").all()) {
       if (r.vrednost !== '' && !grbOk(r.vrednost)) ispravno = false;
     }
@@ -424,7 +434,7 @@ function napravi(baza, opcije) {
   // PHP zip: INSERT naredbe iz baza.sql idu u novu bazu sa migracijama; vraca {redovi: {tabela: broj}}.
   function pripremiUvoz(zipPutanja) {
     return (pripremljen) => {
-      const fasciklaKopija = podesavanja.daj('kopije_fascikla');
+      const ziva = ziveVrednosti();
       let sql;
       try {
         sql = zip.procitaj(zipPutanja, 'baza.sql').toString('utf8');
@@ -458,9 +468,9 @@ function napravi(baza, opcije) {
             }
           });
           // Pojas i naramenice: putanje sa drugog racunara se ne prenose ni ako je pravilo gore zaobidjeno.
-          b.izvrsi("DELETE FROM podesavanja WHERE kljuc IN ('kopije_fascikla', 'grb_levo', 'grb_desno')");
+          b.izvrsi(`DELETE FROM podesavanja WHERE kljuc IN (${MESNI_KLJUCEVI.map(() => '?').join(', ')})`, MESNI_KLJUCEVI);
           // izbor fascikle je ovog racunara: ostaje, da pre_vracanja kopija bude u istoj listi
-          b.izvrsi('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?)', ['kopije_fascikla', fasciklaKopija]);
+          for (const [k, v] of Object.entries(ziva)) b.izvrsi('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?)', [k, v]);
           b.izvrsi("UPDATE takmicenja SET grb_levo = '', grb_desno = ''");
         });
         nova.db.exec('PRAGMA foreign_keys = ON');

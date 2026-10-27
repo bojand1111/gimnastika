@@ -251,8 +251,8 @@ test('vrati sqlite: grb sa samo tackama ili ".." se prazni', () => {
 function stanjeTabela(baza) {
   const rez = {};
   for (const t of baza.tabele().filter((x) => x !== 'migracije').sort()) {
-    // kopije_fascikla je podesavanje ovog racuna i uvek se upisuje posle vracanja
-    const uslov = t === 'podesavanja' ? " WHERE kljuc <> 'kopije_fascikla'" : '';
+    // kopije_fascikla i sajt_* su podesavanja ovog racuna i uvek se upisuje posle vracanja
+    const uslov = t === 'podesavanja' ? " WHERE kljuc <> 'kopije_fascikla' AND kljuc NOT LIKE 'sajt_%'" : '';
     rez[t] = baza.svi(`SELECT * FROM ${t}${uslov}`).map((r) => ({ ...r }));
   }
   return rez;
@@ -364,5 +364,36 @@ test('vrati sqlite: nevazeci brojaci iz kopije se preskacu', () => {
     assert.equal(seq.programi, undefined);
     t.baza.ubaci('kategorije', { naziv: 'K', kreirano: SAD, izmenjeno: SAD });
     assert.equal(t.baza.vrednost('SELECT id FROM kategorije'), 1);
+  } finally { t.ukloni(); }
+});
+
+const SAJT = ['sajt_url', 'sajt_token', 'sajt_poslednja_sinhronizacija'];
+
+function tudjiSajt(putanja) {
+  izmeniKopiju(putanja, (db) => {
+    const u = db.prepare('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost');
+    u.run('sajt_url', 'https://tudji.example/api');
+    u.run('sajt_token', 'TUDJI-TOKEN');
+    u.run('sajt_poslednja_sinhronizacija', '2020-01-01 00:00:00');
+  });
+}
+
+test('vrati sqlite: kljucevi sajta ostaju sa ovog racuna (i prazni ostaju prazni)', () => {
+  const t = nova();
+  try {
+    const kopija = t.k.napravi('rucna');
+    tudjiSajt(kopija.putanja);
+    t.k.vrati(kopija.putanja);
+    for (const k of SAJT) assert.equal(t.podesavanja.daj(k), '', k);
+    t.podesavanja.postavi('sajt_url', 'https://moj.example/api');
+    t.podesavanja.postavi('sajt_token', 'MOJ-TOKEN');
+    t.podesavanja.postavi('sajt_poslednja_sinhronizacija', '2026-10-30 12:00:00');
+    const druga = t.k.napravi('rucna');
+    tudjiSajt(druga.putanja);
+    t.k.vrati(druga.putanja);
+    assert.equal(t.podesavanja.daj('sajt_url'), 'https://moj.example/api');
+    assert.equal(t.podesavanja.daj('sajt_token'), 'MOJ-TOKEN');
+    assert.equal(t.podesavanja.daj('sajt_poslednja_sinhronizacija'), '2026-10-30 12:00:00');
+    assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc LIKE 'sajt_%'")), 3);
   } finally { t.ukloni(); }
 });

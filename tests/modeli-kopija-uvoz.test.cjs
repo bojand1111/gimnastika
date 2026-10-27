@@ -226,3 +226,20 @@ test('uvoz PHP zip-a: izabrana fascikla kopija ostaje, sigurnosna kopija je na l
     assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc = 'kopije_fascikla'")), 1);
   } finally { t.ukloni(); }
 });
+
+test('uvoz PHP zip-a: kljucevi sajta iz zipa se ne uvoze, ziva podesavanja ostaju', () => {
+  const t = nova('1.0.0');
+  try {
+    t.podesavanja.postavi('sajt_url', 'https://moj.example/api');
+    t.podesavanja.postavi('sajt_token', 'MOJ-TOKEN');
+    const sql = bazaSql().replace("('organizator', 'Savez');",
+      "('organizator', 'Savez'),\n('sajt_url', 'https://tudji.example'),\n('sajt_token', 'TUDJI'),\n('sajt_poslednja_sinhronizacija', '2020-01-01 00:00:00');");
+    assert.ok(sql.includes('TUDJI'));
+    t.k.vrati(napraviZip(t, OPIS, sql, 'sajt.zip'));
+    assert.equal(t.podesavanja.daj('sajt_url'), 'https://moj.example/api');
+    assert.equal(t.podesavanja.daj('sajt_token'), 'MOJ-TOKEN');
+    assert.equal(t.podesavanja.daj('sajt_poslednja_sinhronizacija'), '');
+    assert.equal(t.podesavanja.daj('organizator'), 'Savez');
+    assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc LIKE 'sajt_%'")), 3);
+  } finally { t.ukloni(); }
+});

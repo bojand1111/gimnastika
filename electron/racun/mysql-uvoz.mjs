@@ -4,7 +4,7 @@ import { izBaze } from './broj.mjs';
 // Tabele PHP sheme koje se ne uvoze (SQLite ima svoju tabelu migracije).
 export const PRESKOCENE_TABELE = ['migracije'];
 // Kljucevi podesavanja koji su putanje PHP instalacije.
-export const PRESKOCENI_KLJUCEVI = ['kopije_fascikla', 'grb_levo', 'grb_desno'];
+export const PRESKOCENI_KLJUCEVI = ['kopije_fascikla', 'grb_levo', 'grb_desno', 'sajt_url', 'sajt_token', 'sajt_poslednja_sinhronizacija'];
 // DECIMAL(6,3) kolone koje postaju celi hiljaditi delovi.
 const DECIMALNE = {
   ocene: ['d', 'e', 'odbitak', 'konacna'],
