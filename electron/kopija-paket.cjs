@@ -33,12 +33,20 @@ function napravi({ kopija, verzija, bazaVerzija, dialog, shell, roditelj = () =>
     return `Poslednja kopija: ${kad}.`;
   }
 
-  // sta: ime iz liste ili {putanja} iz izaberiFajl (mora biti apsolutna i postojati).
+  // Putanje koje je izabrao korisnik u dijalogu; renderer ne moze da podmetne proizvoljnu putanju.
+  let izabrane = new Set();
+
+  // sta: ime iz liste ili {putanja} koju je vratio izaberiFajl.
   function putanjaIzvora(sta) {
     if (sta && typeof sta === 'object') {
-      const putanja = String(sta.putanja ?? '');
-      if (!path.isAbsolute(putanja) || !fs.existsSync(putanja)) {
-        throw new GreskaKorisnika(`Fajl ne postoji: ${path.basename(putanja) || putanja}`);
+      const putanja = typeof sta.putanja === 'string' ? sta.putanja : '';
+      if (putanja === '') throw new GreskaKorisnika('Nevažeća putanja.');
+      if (!izabrane.has(putanja)) throw new GreskaKorisnika('Nevažeće ime fajla.');
+      const ext = path.extname(putanja).toLowerCase();
+      let jeFajl = false;
+      try { jeFajl = fs.statSync(putanja).isFile(); } catch { /* ne postoji */ }
+      if (!jeFajl || (ext !== '.sqlite' && ext !== '.zip')) {
+        throw new GreskaKorisnika(`Fajl ne postoji: ${path.basename(putanja)}`);
       }
       return putanja;
     }
@@ -73,10 +81,14 @@ function napravi({ kopija, verzija, bazaVerzija, dialog, shell, roditelj = () =>
       return { ime: k.ime, velicinaTekst: velicinaPrikaz(k.velicina) };
     },
 
-    izaberiFajl: () => dijalog({
-      properties: ['openFile'],
-      filters: [{ name: 'Rezervne kopije', extensions: ['sqlite', 'zip'] }],
-    }),
+    async izaberiFajl() {
+      const f = await dijalog({
+        properties: ['openFile'],
+        filters: [{ name: 'Rezervne kopije', extensions: ['sqlite', 'zip'] }],
+      });
+      izabrane = new Set(f === null ? [] : [f]);
+      return f;
+    },
 
     async vrati(sta) {
       try {
@@ -92,7 +104,8 @@ function napravi({ kopija, verzija, bazaVerzija, dialog, shell, roditelj = () =>
           uvoz: Boolean(r.uvoz),
           poruka: `Podaci su vraćeni iz ${r.ime} (verzija ${r.opis.verzija}, ${opisVreme(r.opis.vreme)}). Stanje pre vraćanja je sačuvano kao ${r.sigurnosna}.`,
         };
-        posleVracanja(izlaz);
+        // Greska u obavestavanju prozora ne sme da pretvori uspelo vracanje u gresku.
+        try { posleVracanja(izlaz); } catch (e) { dnevnik.greska('obavestenje posle vracanja', e); }
         return izlaz;
       } catch (err) {
         if (err instanceof GreskaKorisnika) {
@@ -117,4 +130,25 @@ function napravi({ kopija, verzija, bazaVerzija, dialog, shell, roditelj = () =>
   };
 }
 
-module.exports = { napravi };
+// Kopija pre migracija (POPIS 6.7): samo kad ima migracija na cekanju i baza vec ima tabele.
+// napraviModel(baza) pravi model kopije. Vraca ime kopije ili null; greska se loguje i guta.
+function kopijaPreMigracije(baza, napraviModel, dnevnik) {
+  // tabele() mora pre naCekanju(): ono pravi tabelu migracije, pa prva instalacija ne bi bila prazna.
+  const imaTabela = baza.tabele().length > 0;
+  const naCekanju = baza.naCekanju().length;
+  if (!imaTabela || naCekanju === 0) return null;
+  try {
+    if (!baza.tabele().includes('podesavanja')) {
+      dnevnik.info('Kopija pre migracije preskocena: baza nema tabelu podesavanja');
+      return null;
+    }
+    const k = napraviModel(baza).napravi('pre_migracije');
+    dnevnik.info(`Kopija pre migracije: ${k.ime}`);
+    return k.ime;
+  } catch (err) {
+    dnevnik.greska('kopija pre migracije', err);
+    return null;
+  }
+}
+
+module.exports = { napravi, kopijaPreMigracije };

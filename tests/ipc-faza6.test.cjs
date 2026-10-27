@@ -19,7 +19,7 @@ function pravi(opcije = {}) {
   const baza = otvori(':memory:');
   baza.migriraj();
   const dialog = opcije.dialog ?? { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) };
-  const moduli = napraviModule(baza, { dialog, fasciklaPodataka: () => os.tmpdir(), dnevnik: dn, roditelj: opcije.roditelj, dokumenti: opcije.dokumenti });
+  const moduli = napraviModule(baza, { dialog, fasciklaPodataka: () => opcije.podaci ?? os.tmpdir(), dnevnik: dn, roditelj: opcije.roditelj, dokumenti: opcije.dokumenti });
   return { baza, moduli };
 }
 function sPrimerom(opcije) {
@@ -207,9 +207,9 @@ test('stampa(): strane za spravu i ekipno', () => {
 });
 
 test('organizator i grb: rezervno iz podesavanja', () => {
-  const { baza, moduli } = sPrimerom();
-  const dir = os.tmpdir();
-  fs.mkdirSync(path.join(dir, 'grb'), { recursive: true }); // grb se cuva kao grb/<ime>
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-f6-grb-')); // grb se cuva kao grb/<ime>
+  const { baza, moduli } = sPrimerom({ podaci: dir });
+  fs.mkdirSync(path.join(dir, 'grb'));
   const levo = `grb-f6-levo-${process.pid}.png`;
   const desno = `grb-f6-desno-${process.pid}.png`;
   fs.writeFileSync(path.join(dir, 'grb', levo), 'x');
@@ -227,8 +227,7 @@ test('organizator i grb: rezervno iz podesavanja', () => {
     baza.izvrsi("UPDATE takmicenja SET organizator = 'Klub X'");
     assert.equal(moduli.rang.bilten('Z', '', '').organizator, 'Klub X');
   } finally {
-    fs.rmSync(path.join(dir, 'grb', levo), { force: true });
-    fs.rmSync(path.join(dir, 'grb', desno), { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 

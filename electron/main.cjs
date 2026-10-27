@@ -3,6 +3,7 @@ const path = require('node:path');
 const { verzija } = require('./sistem.cjs');
 const { putanjaBaze, fasciklaPodataka } = require('./putanje.cjs');
 const { napraviModule, napraviKopijuModel } = require('./moduli.cjs');
+const { kopijaPreMigracije } = require('./kopija-paket.cjs');
 const { oporaviStaro } = require('./modeli/kopija.cjs');
 const { otvori } = require('./baza/baza.cjs');
 const { pocetniPodaci } = require('./baza/seme.cjs');
@@ -69,31 +70,11 @@ function napraviProzor() {
   prozor.on('closed', () => { prozor = null; });
 }
 
-// Kopija pre migracija (POPIS 6.7): samo kad ima migracija na cekanju i baza vec ima tabele.
-// Greska kopije se loguje, a program se pokrece dalje.
-function kopijaPreMigracije() {
-  // tabele() mora pre naCekanju(): ono pravi tabelu migracije, pa prva instalacija ne bi bila prazna.
-  const imaTabela = baza.tabele().length > 0;
-  const naCekanju = baza.naCekanju().length;
-  if (!imaTabela || naCekanju === 0) return;
-  try {
-    if (!baza.tabele().includes('podesavanja')) {
-      log('Kopija pre migracije preskocena: baza nema tabelu podesavanja');
-      return;
-    }
-    const k = napraviKopijuModel(baza, { fasciklaPodataka, dnevnik }).napravi('pre_migracije');
-    log(`Kopija pre migracije: ${k.ime}`);
-  } catch (err) {
-    dnevnik.greska('kopija pre migracije', err);
-    console.error(`Kopija pre migracije nije napravljena: ${err.message}`);
-  }
-}
-
 function pokreni() {
   try {
     if (oporaviStaro(putanjaBaze())) log('Baza je vracena iz fajla .staro posle prekinutog vracanja kopije');
     baza = otvori(putanjaBaze());
-    kopijaPreMigracije();
+    kopijaPreMigracije(baza, (b) => napraviKopijuModel(b, { fasciklaPodataka, dnevnik }), { info: log, greska: dnevnik.greska });
     const primenjene = baza.migriraj();
     log(`migracije: ${primenjene.length ? primenjene.join(', ') : 'nema novih'}`);
     const seme = pocetniPodaci(baza);
