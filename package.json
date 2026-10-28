@@ -1,7 +1,7 @@
 {
   "name": "gimnastika",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "electron/main.cjs",
   "scripts": {
     "start": "vite build && electron .",
@@ -18,7 +18,9 @@
     "react-dom": "^19.3.1"
   },
   "private": true,
-  "engines": { "node": ">=22.12" },
+  "engines": {
+    "node": ">=22.12"
+  },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^44.9.2",
