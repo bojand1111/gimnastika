@@ -30,11 +30,13 @@ treba da ispuni; program radi i bez sajta (sve je isključeno dok je `sajt_url` 
   }
   ```
   `oznaka` je `''`, `'VK'` ili prazno kao na ekranu Rang liste; `mesto` je `null` kad nema plasmana; `odustao` je `true` kad je
-  takmičar odustao na toj spravi (u višeboju: na bilo kojoj). Nedostajuće ocene se izostavljaju iz `po_spravi`.
+  takmičar odustao na toj spravi (u višeboju: na bilo kojoj). Nedostajuće ocene se izostavljaju iz `po_spravi`; red višeboja bez
+  ijedne ocene nema ključeve `zbir` i `zbir_h`.
 
 ## 2. Ugovor sa sajtom (API koji sajt treba da ima)
 
-- Osnova: `sajt_url` bez završne kose crte (na primer `https://rezultati.primer.rs`). Dozvoljeno je `https://` i `http://`.
+- Osnova: `sajt_url` bez završne kose crte (na primer `https://rezultati.primer.rs`). Obavezno `https://`; `http://` je dozvoljen
+  samo za lokalni računar (`localhost`, `127.0.0.1`, `::1`), jer token putuje u zaglavlju.
 - Zaglavlja svakog zahteva: `Authorization: Bearer <sajt_token>`, `Content-Type: application/json; charset=utf-8`,
   `X-Gimnastika-Verzija: <verzija programa>`.
 - `GET {sajt_url}/api/gimnastika/ping` → `200` sa JSON `{"ok": true, "sajt": "<ime sajta>"}`. Služi dugmetu „Proveri vezu“.
@@ -72,7 +74,8 @@ treba da ispuni; program radi i bez sajta (sve je isključeno dok je `sajt_url` 
 
 ## 5. Razlozi grešaka (tekstovi)
 
-- „Adresa sajta mora da počinje sa http:// ili https://.“ (čuvanje podešavanja)
+- „Adresa sajta mora da počinje sa https:// (http:// samo za localhost).“ (čuvanje podešavanja)
+- „Adresa sajta nije podešena.“ (ručno slanje ili provera bez adrese)
 - „Unesite token sajta.“ (ručno slanje ili provera bez tokena)
 - „Sajt nije prihvatio token.“ (401/403)
 - „Snimak je prevelik za sajt.“ (413)
@@ -82,9 +85,10 @@ treba da ispuni; program radi i bez sajta (sve je isključeno dok je `sajt_url` 
 
 ## 6. Odluke
 
-- Token stoji u tabeli `podesavanja` kao tekst (lokalna baza, jedan laptop); nije u kopijama koje idu na sajt; `.sqlite`
-  kopija ga sadrži (ista mašina), PHP uvoz ga nema. Pri vraćanju kopije sa drugog računara token i adresa dolaze iz kopije
-  (nisu mašinski ključevi), što je i željeno (isti nalog).
+- Token stoji u tabeli `podesavanja` kao tekst (lokalna baza, jedan laptop); nije u snimku koji ide na sajt. Ključevi `sajt_url`,
+  `sajt_token` i `sajt_poslednja_sinhronizacija` su mašinski ključevi kao `kopije_fascikla`: pri vraćanju `.sqlite` kopije i pri
+  uvozu PHP zip kopije ostaju vrednosti ovog računara (kopija sa drugog računara ne može da preusmeri slanje). Na novom laptopu
+  adresa i token se unose ponovo.
 - `fetch` iz glavnog procesa (Electron 44, Node 22); bez novih zavisnosti.
 - Snimak se gradi u glavnom procesu iz modela `rezultati` (čiste funkcije `electron/racun/sinhro-paket.mjs` prave JSON iz
   `izracunaj` rezultata, pa su testirane bez baze).
