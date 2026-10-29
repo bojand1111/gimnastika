@@ -48,4 +48,34 @@ function xlsxPrimer(putanja) {
   return putanja;
 }
 
-module.exports = { docxPrimer, xlsxPrimer };
+// Isti sadržaj kao docxPrimer, u obliku koji zapisuje LibreOffice Writer (zaglavlje u
+// table-header-rows, spojena ćelija sa covered-table-cell, text:s, span, lista, fusnota).
+function odtPrimer(putanja, { mimetype = true } = {}) {
+  const p = (t) => '<text:p text:style-name="P1">' + xml(t) + '</text:p>';
+  const tc = (t, span = 1) => '<table:table-cell office:value-type="string"' + (span > 1 ? ' table:number-columns-spanned="' + span + '"' : '') + '>' + p(t) + '</table:table-cell>'
+    + '<table:covered-table-cell/>'.repeat(span - 1);
+  const tr = (...celije) => '<table:table-row>' + celije.join('') + '</table:table-row>';
+  const kolone = (n) => '<table:table-column table:number-columns-repeated="' + n + '"/>';
+  const telo = '<text:sequence-decls><text:sequence-decl text:display-outline-level="0" text:name="Table"/></text:sequence-decls>'
+    + '<text:p>I KOLO PGL<text:s/>VOJVODINE <text:span text:style-name="T1">MSG</text:span> A, B i C<text:note text:note-class="footnote"><text:note-body><text:p>fusnota</text:p></text:note-body></text:note></text:p>'
+    + '<text:list><text:list-item><text:h text:outline-level="1">DEFINITIVNA I IMENIČNA PRIJAVA</text:h></text:list-item></text:list>'
+    + '<table:table table:name="T1">' + kolone(2) + tr(tc('Klub'), tc('G.D.“PARTIZAN –ŽELJEZNIČAR“')) + tr(tc('Kontakt osoba'), tc('Robert M.')) + '</table:table>'
+    + '<text:p/>'
+    + '<table:table table:name="T2">' + kolone(6)
+    + '<table:table-header-rows>' + tr(tc('#'), tc('PREZIME'), tc('IME'), tc('KATEGORIJA'), '<table:table-cell>' + p('DATUM') + p('ROĐENJA') + '</table:table-cell>', tc('FUNKCIJA-EKIPA')) + '</table:table-header-rows>'
+    + tr(tc('1.'), tc('Neorčić'), '<table:table-cell><text:p>No<text:span>ah</text:span></text:p></table:table-cell>', tc('I “B”'), tc('12.02.2017.'), tc('pojedinac'))
+    + tr(tc('2.'), tc('Herceg'), tc('Aron'), tc('IV “A”'), tc('25.04.2012..'), tc('ekipa'))
+    + tr(tc('3.'), tc('Laudis Nanaši'), tc('Dragan'), tc('IV “A”'), tc('14.11.2012.'), '<table:table-cell><text:p/></table:table-cell>')
+    + tr(tc('4.'), '<table:table-cell table:number-columns-repeated="5"><text:p/></table:table-cell>')
+    + tr(tc('napomena preko dve kolone', 2), tc(''), tc(''), tc(''), tc(''))
+    + '</table:table>';
+  const ns = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"';
+  const dok = '<?xml version="1.0" encoding="UTF-8"?><office:document-content ' + ns + ' office:version="1.3"><office:body><office:text>' + telo + '</office:text></office:body></office:document-content>';
+  const stavke = mimetype ? { mimetype: { sadrzaj: 'application/vnd.oasis.opendocument.text' } } : {};
+  stavke['content.xml'] = { sadrzaj: dok };
+  stavke['META-INF/manifest.xml'] = { sadrzaj: '<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"/>' };
+  zip.napravi(putanja, stavke);
+  return putanja;
+}
+
+module.exports = { docxPrimer, xlsxPrimer, odtPrimer };

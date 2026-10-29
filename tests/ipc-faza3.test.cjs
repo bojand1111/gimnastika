@@ -262,3 +262,36 @@ test('takmicenja.sacuvaj: lista gresaka provere ide u greske', async () => {
     cisti(dir);
   }
 });
+
+test('uvoz: prozor nudi sve podrzane vrste; pripremi cita PDF (asinhrono), xls i doc zajedno', async () => {
+  const baza = otvori(':memory:');
+  baza.migriraj();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-ipc3-'));
+  napravljeni.push(dir);
+  let opcije = null;
+  const dn = laznidnevnik();
+  const moduli = napraviModule(baza, {
+    dialog: { showOpenDialog: async (...a) => { opcije = a.at(-1); return { canceled: true, filePaths: [] }; } },
+    fasciklaPodataka: () => dir,
+    dnevnik: dn,
+  });
+  await moduli.uvoz.izaberiFajlove();
+  assert.deepEqual(opcije.filters, [{ name: 'Prijave', extensions: ['docx', 'doc', 'xlsx', 'xls', 'odt', 'ods', 'pdf'] }]);
+  const s = tokSeme(baza);
+  moduli.takmicenja.otvori(s.takm);
+  const { docPrimer } = require('./pomoc/doc-pisac.cjs');
+  const docPut = docPrimer(path.join(dir, 'prijava.doc'));
+  const skeniran = path.join(dir, 'skeniran.pdf');
+  fs.writeFileSync(skeniran, '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n'
+    + '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
+  const f = path.join(__dirname, 'fajlovi');
+  const r = await moduli.uvoz.pripremi([path.join(f, 'prijava-partizan.pdf'), skeniran, path.join(f, 'prijava-vojvodina.xls'), docPut]);
+  assert.deepEqual(r.fajlovi.map((x) => [x.ime, x.vrsta, x.redovi.length]), [
+    ['prijava-partizan.pdf', 'pdf', 3], ['prijava-vojvodina.xls', 'xls', 4], ['prijava.doc', 'doc', 3],
+  ]);
+  assert.equal(r.greske.length, 1);
+  assert.ok(r.greske[0].startsWith('skeniran.pdf: PDF nema teksta (verovatno je skeniran).'));
+  assert.equal(dn.poziva, 0);
+  structuredClone(r);
+  cisti(dir);
+});

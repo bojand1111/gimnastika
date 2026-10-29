@@ -213,4 +213,4 @@ function protumaci(dokument) {
   return izlaz;
 }
 
-module.exports = { protumaci, normalizuj, datum, kategorijaProgram, ucesce };
+module.exports = { protumaci, normalizuj, datum, kategorijaProgram, ucesce, kolone };

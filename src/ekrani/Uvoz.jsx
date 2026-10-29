@@ -8,7 +8,7 @@ import { obradiNemaAktivnog } from './aktivno.js';
 import { nedostajePol, pocetniIzbor, prebroj, zaUpis, zbir } from './uvozBrojac.js';
 import * as uvozStanje from '../uvozStanje.js';
 
-const PRAZAN = 'Na ekranu Prijave kliknite „Uvezi iz fajla“ i izaberite prijavu kluba (.docx ili .xlsx).';
+const PRAZAN = 'Na ekranu Prijave kliknite „Uvezi iz fajla“ i izaberite prijavu kluba (Word, Excel, OpenDocument ili PDF).';
 const OTKAZAN = 'Uvoz je otkazan, ništa nije upisano.';
 
 // Izbori zapisnicara zive u stanju ekrana pod kljucem fajla (identitet objekta), pa prezive dodavanje i uklanjanje (POPIS 10.11).

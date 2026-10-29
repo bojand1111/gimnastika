@@ -22,6 +22,7 @@ const sistem = require('./sistem.cjs');
 const { KOLATOR } = require('./modeli/sortiranje.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
 const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
+const { EKSTENZIJE: EKSTENZIJE_PRIJAVA } = require('./uvoz/citac.cjs');
 const { lekarski } = require('./racun/lekarski.mjs');
 const { datumPrikaz } = require('./racun/datum.mjs');
 const { pozicijaURotaciji, redosledURotaciji, grupaNaSpravi } = require('./racun/grupe.mjs');
@@ -487,17 +488,17 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     uvoz: {
       izaberiFajlove: () => izaberi({
         properties: ['openFile', 'multiSelections'],
-        filters: [{ name: 'Prijave', extensions: ['docx', 'xlsx'] }],
+        filters: [{ name: 'Prijave', extensions: EKSTENZIJE_PRIJAVA }],
       }),
       // Fajl koji ne uspe ne zaustavlja ostale; greska ide u listu kao "{ime}: {poruka}".
-      pripremi: (putanje) => {
+      pripremi: async (putanje) => {
         const aid = aktivnoId();
         const fajlovi = [];
         const greske = [];
         for (const putanja of putanje || []) {
           const ime = path.basename(String(putanja));
           try {
-            fajlovi.push(uv.pripremiFajl(putanja, ime, aid));
+            fajlovi.push(await uv.pripremiFajl(putanja, ime, aid));
           } catch (err) {
             if (err instanceof GreskaKorisnika) {
               greske.push(`${ime}: ${err.message}`);

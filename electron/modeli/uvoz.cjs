@@ -1,4 +1,4 @@
-// Model Uvoz (SQLite): uvoz prijava iz fajlova klubova (docx, xlsx). Priprema za pregled ne upisuje nista;
+// Model Uvoz (SQLite): uvoz prijava iz fajlova klubova (docx, doc, xlsx, xls, odt, ods, pdf). Priprema za pregled ne upisuje nista;
 // upis posle potvrde ide u jednoj transakciji. Poruke su doslovno iz PHP verzije.
 const { GreskaKorisnika } = require('../greska.cjs');
 const dnevnikModul = require('../dnevnik.cjs');
@@ -28,9 +28,15 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
   const sifarnici = napraviSifarnike(baza);
   const prijave = napraviPrijave(baza, podesavanja);
 
-  // Cita fajl, tumaci tabelu i uparuje redove sa bazom. Nista ne upisuje.
+  // Cita fajl, tumaci tabelu i uparuje redove sa bazom. Nista ne upisuje. PDF se cita asinhrono,
+  // pa je tada i rezultat Promise (moduli.cjs uvek ceka rezultat).
   function pripremiFajl(putanja, imeFajla, takmicenjeId) {
     const dok = procitaj(putanja);
+    if (dok instanceof Promise) return dok.then((d) => pripremiDokument(d, imeFajla, takmicenjeId));
+    return pripremiDokument(dok, imeFajla, takmicenjeId);
+  }
+
+  function pripremiDokument(dok, imeFajla, takmicenjeId) {
     const p = protumaci(dok);
     const svi = takmicari.svi();
     const prijavljeni = prijave.prijavljeniTakmicari(takmicenjeId);

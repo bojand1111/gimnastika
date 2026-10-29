@@ -11,7 +11,7 @@ const { GreskaKorisnika } = require('../electron/greska.cjs');
 const { docxPrimer, xlsxPrimer } = require('./pomoc/uzorci.cjs');
 
 const FAJLOVI = path.join(__dirname, 'fajlovi');
-const NIJE_WORD = 'Fajl nije Word (.docx) ni Excel (.xlsx) dokument.';
+const NIJE_PODRZAN = 'Fajl nije podržan dokument. Uvoze se Word (.docx, .doc), Excel (.xlsx, .xls), OpenDocument (.odt, .ods) i PDF sa tekstom; skenirani dokumenti i slike ne mogu.';
 
 function privremeni(ime) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-citac-'));
@@ -51,14 +51,19 @@ test('xlsx: citanje sinteticki uzorak', () => {
   } finally { t.ukloni(); }
 });
 
-test('citac: odbija tudj fajl', () => {
+test('citac: odbija tudj fajl', async () => {
   const t = privremeni('a.pdf');
   try {
+    // pocinje kao PDF: ide u PDF citac, koji ga odbija (Promise)
     fs.writeFileSync(t.put, '%PDF-1.4 nije zip');
-    assert.throws(() => citac.procitaj(t.put), (e) => e.message.includes('nije Word') && e.message.includes('Skeniran PDF'));
+    await assert.rejects(citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message === 'PDF fajl je oštećen ili nije PDF.');
     zip.napravi(t.put, { 'a.txt': { sadrzaj: 'x' } });
-    assert.throws(() => citac.procitaj(t.put), (e) => e.message.includes('.doc i .xls'));
-    assert.throws(() => citac.procitaj(t.put + '.nema'), (e) => e.message.startsWith(NIJE_WORD));
+    assert.throws(() => citac.procitaj(t.put), { message: NIJE_PODRZAN });
+    fs.writeFileSync(t.put, Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10])); // JPEG slika
+    assert.throws(() => citac.procitaj(t.put), { message: NIJE_PODRZAN });
+    assert.throws(() => citac.procitaj(t.put + '.nema'), { message: 'Ne mogu da otvorim fajl. ' + NIJE_PODRZAN });
+    fs.writeFileSync(t.put, '');
+    assert.throws(() => citac.procitaj(t.put), { message: 'Fajl je prazan.' });
   } finally { t.ukloni(); }
 });
 
@@ -66,9 +71,12 @@ test('citac: greske citaca su GreskaKorisnika sa cause', () => {
   const t = privremeni('a.docx');
   try {
     fs.writeFileSync(t.put, 'nije zip');
-    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message.startsWith(NIJE_WORD) && e.cause instanceof Error);
+    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message === NIJE_PODRZAN);
+    // pocinje kao zip, ali je ostecen
+    fs.writeFileSync(t.put, 'PK ostecen');
+    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message === 'Fajl je oštećen. ' + NIJE_PODRZAN && e.cause instanceof Error);
     zip.napravi(t.put, { 'a.txt': { sadrzaj: 'x' } });
-    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message.includes('.doc i .xls'));
+    assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message === NIJE_PODRZAN);
     // pokvaren docx: greska iz docx citaca
     zip.napravi(t.put, { 'word/document.xml': { sadrzaj: '<w:document><w:body></w:document>' } });
     assert.throws(() => citac.procitaj(t.put), (e) => e instanceof GreskaKorisnika && e.message.includes('oštećen') && e.cause instanceof Error);

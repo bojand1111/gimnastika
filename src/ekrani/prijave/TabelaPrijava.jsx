@@ -34,7 +34,7 @@ export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije 
           )}
           <button type="button" className="dugme dugme-malo" id="startni" onClick={akcije.startni}>Dodeli startne brojeve</button>
           <button type="button" className="dugme dugme-malo" id="uvoz" onClick={akcije.uvoz}
-            title="Prijava kluba kao Word (.docx) ili Excel (.xlsx) fajl; može više fajlova odjednom">
+            title="Prijava kluba kao Word (.docx, .doc), Excel (.xlsx, .xls), OpenDocument (.odt, .ods) ili PDF fajl sa tekstom; može više fajlova odjednom">
             <Ikona ime="fascikla" velicina={14} /><span>Uvezi iz fajla</span></button>
         </div>
       </div>

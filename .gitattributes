@@ -6,3 +6,8 @@
 *.ttf binary
 *.docx binary
 *.xlsx binary
+*.doc binary
+*.xls binary
+*.odt binary
+*.ods binary
+*.pdf binary

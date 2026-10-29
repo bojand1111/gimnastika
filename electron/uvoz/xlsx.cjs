@@ -160,4 +160,4 @@ function procitaj(putanja) {
   return { tabele, tekst: '' };
 }
 
-module.exports = { procitaj };
+module.exports = { procitaj, DATUMSKI_UGRADJENI, datumIzBroja };
