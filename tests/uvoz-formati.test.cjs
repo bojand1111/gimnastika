@@ -386,3 +386,97 @@ test('pdf: bez teksta (skeniran) i oštećen', async () => {
     await assert.rejects(citac.procitaj(t.put), { message: 'PDF fajl je oštećen ili nije PDF.' });
   } finally { t.ukloni(); }
 });
+
+// ---------- zaštita od namerno napravljenih fajlova (1.1.1) ----------
+
+test('doc: ugnježđena polja (kod unutar koda) i ograničenje dubine polja', () => {
+  const t = privremeni('a.doc');
+  try {
+    napraviDoc(t.put, [{ p: 'A\x13 SPOLJA \x13 UNUTRA \x14u\x15 \x14x\x15B \x13 C \x14c\x15' }]);
+    assert.equal(doc.procitaj(t.put).tekst, 'AxB c');
+    napraviDoc(t.put, [{ p: 'x' + '\x13'.repeat(64) }]);
+    assert.equal(doc.procitaj(t.put).tekst, 'x');
+    napraviDoc(t.put, [{ p: 'x' + '\x13'.repeat(65) }]);
+    assert.throws(() => doc.procitaj(t.put), { message: 'Word dokument je oštećen.' });
+  } finally { t.ukloni(); }
+});
+
+test('doc: ista FKP strana navedena mnogo puta se čita jednom; delovi teksta van redosleda se odbijaju', () => {
+  const t = privremeni('a.doc');
+  try {
+    docPrimer(t.put);
+    const ocekivano = doc.procitaj(t.put);
+    // bez provere ponavljanja ovo bi bilo preko milion runova (ograničenje NAJVISE_RUNOVA)
+    docPrimer(t.put, { ponoviStrane: 100000 });
+    assert.deepEqual(doc.procitaj(t.put), ocekivano);
+    docPrimer(t.put, { delovi: 2, cpObrnuto: true });
+    assert.throws(() => doc.procitaj(t.put), { message: 'Word dokument je oštećen.' });
+  } finally { t.ukloni(); }
+});
+
+test('xls: prazne ćelije kojima se red dopunjava ulaze u ograničenje', () => {
+  const t = privremeni('a.xls');
+  try {
+    // 65536 redova, u svakom samo ćelija u koloni 255: 65536 upisanih, a 16,7 miliona posle dopune
+    const redovi = [];
+    for (let r = 0; r < 65536; r++) redovi.push(z(0x0203, Buffer.concat([celija(r, 255, 0), f64(1)])));
+    const list = Buffer.concat([bof(0x0600, 0x0010), ...redovi, EOF_ZAPIS]);
+    const glava = (o) => Buffer.concat([bof(0x0600, 0x0005), z(0x0085, Buffer.concat([u32(o), Buffer.from([0, 0, 1, 0]), Buffer.from('L')])), EOF_ZAPIS]);
+    const duz = glava(0).length;
+    cfbPisac.napravi(t.put, [['Workbook', Buffer.concat([glava(duz), list])]]);
+    assert.throws(() => xls.procitaj(t.put), { message: 'Excel fajl je oštećen.' });
+  } finally { t.ukloni(); }
+});
+
+test('xls: listovi sa istim ofsetom se čitaju jednom; listovi koji se preklapaju se odbijaju', () => {
+  const t = privremeni('a.xls');
+  try {
+    const zapisiLista = [bof(0x0600, 0x0010)];
+    for (let i = 0; i < 300; i++) zapisiLista.push(z(0x0204, Buffer.concat([celija(i, 0, 0), niz('x' + i)])));
+    zapisiLista.push(EOF_ZAPIS);
+    const list = Buffer.concat(zapisiLista);
+    const ofsetiZapisa = [];
+    let o = 0;
+    for (const zp of zapisiLista) { ofsetiZapisa.push(o); o += zp.length; }
+    const sveska = (ofseti) => {
+      const glava = (pocetak) => Buffer.concat([
+        bof(0x0600, 0x0005),
+        ...ofseti.map((x) => z(0x0085, Buffer.concat([u32(pocetak + x), Buffer.from([0, 0, 1, 0]), Buffer.from('L')]))),
+        EOF_ZAPIS,
+      ]);
+      const duz = glava(0).length;
+      return Buffer.concat([glava(duz), list]);
+    };
+    cfbPisac.napravi(t.put, [['Workbook', sveska(Array(2000).fill(0))]]);
+    const d = xls.procitaj(t.put);
+    assert.equal(d.tabele.length, 1);
+    assert.equal(d.tabele[0].length, 300);
+    // svaki "list" počinje na sledećem zapisu istog lista: posao raste sa kvadratom
+    cfbPisac.napravi(t.put, [['Workbook', sveska(ofsetiZapisa.slice(0, 300))]]);
+    assert.throws(() => xls.procitaj(t.put), { message: 'Excel fajl je oštećen.' });
+  } finally { t.ukloni(); }
+});
+
+test('ods: ograničenje ćelija važi za ceo fajl, ne po listu', () => {
+  const t = privremeni('a.ods');
+  try {
+    // jedan list: 16384 x 70 = 1146880 ćelija (prolazi); dva lista zajedno prelaze 2 miliona
+    const list = '<table:table-row table:number-rows-repeated="70"><table:table-cell table:number-columns-repeated="16384" office:value-type="string"><text:p>x</text:p></table:table-cell></table:table-row>';
+    ods(t.put, [list]);
+    assert.equal(odf.procitaj(t.put).tabele[0].length, 70);
+    ods(t.put, [list, list]);
+    assert.throws(() => odf.procitaj(t.put), { message: 'OpenDocument fajl je oštećen (content.xml nije ispravan XML).' });
+  } finally { t.ukloni(); }
+});
+
+test('xlsx: isti list naveden dva puta u workbook.xml se čita jednom', () => {
+  const t = privremeni('a.xlsx');
+  try {
+    const wb = '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'
+      + '<sheet name="A" sheetId="1" r:id="rId1"/><sheet name="B" sheetId="2" r:id="rId1"/></sheets></workbook>';
+    const rels = '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>';
+    const list = '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>x</t></is></c></row></sheetData></worksheet>';
+    zip.napravi(t.put, { 'xl/workbook.xml': { sadrzaj: wb }, 'xl/_rels/workbook.xml.rels': { sadrzaj: rels }, 'xl/worksheets/sheet1.xml': { sadrzaj: list } });
+    assert.deepEqual(xlsx.procitaj(t.put).tabele, [[['x']]]);
+  } finally { t.ukloni(); }
+});

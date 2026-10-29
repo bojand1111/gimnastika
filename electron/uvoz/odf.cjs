@@ -152,9 +152,9 @@ function vrednostCelije(tc) {
 
 // Jedan list .ods. Prazne ćelije na kraju reda i prazni redovi na kraju lista se odbacuju
 // (Calc ih zapisuje kao ponovljene do kraja lista); prazni redovi između ostaju kao [].
-function list(tbl) {
+// brojac.n je zajednički za sve listove fajla (i prazan red se broji kao jedna ćelija).
+function list(tbl, brojac) {
   const redovi = [];
-  let ukupno = 0;
   let praznih = 0;
   for (const tr of redoviTabele(tbl)) {
     const red = [];
@@ -177,9 +177,8 @@ function list(tbl) {
     const puta = broj(tr, 'table:number-rows-repeated', NAJVISE_REDOVA);
     if (duzina === 0) { praznih += puta; continue; }
     if (redovi.length + praznih + puta > NAJVISE_REDOVA) throw new Error(GRESKA_XML);
+    proveriBroj(brojac, praznih + duzina * puta);
     for (; praznih > 0; praznih--) redovi.push([]);
-    ukupno += duzina * puta;
-    if (ukupno > NAJVISE_CELIJA) throw new Error(GRESKA_XML);
     for (let k = 0; k < puta; k++) redovi.push([...red]);
   }
   return redovi;
@@ -204,7 +203,8 @@ function procitaj(putanja) {
   const tabele = [];
   if (v === 'ods') {
     const sp = xml.deca(body).find((n) => xml.ime(n) === 'office:spreadsheet');
-    for (const t of sp ? xml.deca(sp) : []) if (xml.ime(t) === 'table:table') tabele.push(list(t));
+    const brojac = { n: 0 };
+    for (const t of sp ? xml.deca(sp) : []) if (xml.ime(t) === 'table:table') tabele.push(list(t, brojac));
     return { tabele, tekst: '', vrsta: v };
   }
   const tx = xml.deca(body).find((n) => xml.ime(n) === 'office:text');

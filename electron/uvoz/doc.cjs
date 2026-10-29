@@ -5,6 +5,8 @@ const cfb = require('./cfb.cjs');
 
 const NAJVISE_ZNAKOVA = 20_000_000;
 const NAJVISE_CELIJA = 2_000_000;
+const NAJVISE_RUNOVA = 1_000_000; // svojstava pasusa, ukupno u svim FKP stranama
+const NAJVISE_POLJA = 64; // dubina ugnježđenih polja
 const OSTECEN = 'Word dokument je oštećen.';
 const PRESTAR = 'Word dokument je u prestarom formatu (Word 95 ili stariji). Sačuvajte ga kao .docx pa ga uvezite ponovo.';
 const ZASTICEN = 'Word dokument je zaštićen lozinkom. Sačuvajte ga bez lozinke pa ga uvezite ponovo.';
@@ -53,6 +55,8 @@ function deloviTeksta(clx) {
   const n = (lcb - 4) / 12;
   const delovi = [];
   for (let i = 0; i < n; i++) {
+    // granice delova idu redom, pa se svaki znak čita najviše jednom
+    if (plc.readUInt32LE(i * 4) > plc.readUInt32LE((i + 1) * 4)) throw new Error(OSTECEN);
     const p = 4 * (n + 1) + i * 8;
     const fc = plc.readUInt32LE(p + 2);
     const komp = (fc & 0x40000000) !== 0;
@@ -94,17 +98,23 @@ function sprmovi(b) {
   return izlaz;
 }
 
-// Runovi svojstava pasusa iz FKP strana: [{fc, fcKraj, sprm}], po fc.
+// Runovi svojstava pasusa iz FKP strana: [{fc, fcKraj, sp, dodatni}], po fc. Svaka strana se čita
+// jednom; veliki PAPX iz toka Data (sprmPHugePapx) se razbira jednom po ofsetu i deli između runova.
 function runoviPasusa(w, tabela, f, podaci) {
   const plc = deo(tabela, f.papx);
   if (plc.length < 4 || (plc.length - 4) % 8 !== 0) return [];
   const n = (plc.length - 4) / 8;
   const runovi = [];
+  const strane = new Set();
+  const velikiPapx = new Map();
   for (let i = 0; i < n; i++) {
     const pn = plc.readUInt32LE((n + 1) * 4 + i * 4) & 0x3fffff;
+    if (strane.has(pn)) continue;
+    strane.add(pn);
     const s = w.subarray(pn * 512, pn * 512 + 512);
     if (s.length < 512) throw new Error(OSTECEN);
     const crun = s[511];
+    if (runovi.length + crun > NAJVISE_RUNOVA) throw new Error(OSTECEN);
     for (let k = 0; k < crun; k++) {
       const fc = s.readUInt32LE(k * 4);
       const fcKraj = s.readUInt32LE((k + 1) * 4);
@@ -114,13 +124,17 @@ function runoviPasusa(w, tabela, f, podaci) {
         const cb = s[b];
         grp = cb === 0 ? s.subarray(b + 2, b + 2 + 2 * s[b + 1]) : s.subarray(b + 1, b + 2 * cb);
       }
-      let sp = sprmovi(grp.subarray(2)); // bez istd
+      const sp = sprmovi(grp.subarray(2)); // bez istd
       const veliki = sp.find((x) => x.op === 0x6646 && x.v.length === 4);
+      let dodatni = null;
       if (veliki && podaci) {
         const o = veliki.v.readUInt32LE(0);
-        if (o + 2 <= podaci.length) sp = sp.concat(sprmovi(podaci.subarray(o + 2, o + 2 + podaci.readUInt16LE(o))));
+        if (!velikiPapx.has(o)) {
+          velikiPapx.set(o, o + 2 <= podaci.length ? sprmovi(podaci.subarray(o + 2, o + 2 + podaci.readUInt16LE(o))) : []);
+        }
+        dodatni = velikiPapx.get(o);
       }
-      runovi.push({ fc, fcKraj, sp });
+      runovi.push({ fc, fcKraj, sp, dodatni });
     }
   }
   return runovi.sort((a, b) => a.fc - b.fc);
@@ -137,7 +151,7 @@ function svojstva(runovi, fc) {
   }
   const s = { uTabeli: false, ttp: false, granice: null };
   if (r === null || fc >= r.fcKraj) return s;
-  for (const { op, v } of r.sp) {
+  for (const { op, v } of r.dodatni ? r.sp.concat(r.dodatni) : r.sp) {
     if (op === 0x2416) s.uTabeli = v[0] !== 0;
     else if (op === 0x6649 && v.length === 4) s.uTabeli = s.uTabeli || v.readInt32LE(0) >= 1;
     else if (op === 0x2417) s.ttp = v[0] !== 0;
@@ -158,7 +172,8 @@ function pasusiTeksta(w, delovi, ccp) {
   if (ccp > NAJVISE_ZNAKOVA) throw new Error('Fajl je prevelik.');
   const pasusi = [];
   let s = '';
-  const polja = []; // true dok je kod polja
+  const polja = []; // po otvorenom polju: true dok traje kod polja
+  let uKodu = 0; // koliko otvorenih polja je još u kodu
   for (const d of delovi) {
     const od = Math.max(0, d.cp);
     const doo = Math.min(ccp, d.cpKraj);
@@ -169,15 +184,26 @@ function pasusiTeksta(w, delovi, ccp) {
     const t = d.sirina === 2 ? bajtovi.toString('utf16le') : cp1252.decode(bajtovi);
     for (let i = 0; i < t.length; i++) {
       const z = t.charCodeAt(i);
-      if (z === 0x13) { polja.push(true); continue; }
-      if (z === 0x14) { if (polja.length) polja[polja.length - 1] = false; continue; }
-      if (z === 0x15) { polja.pop(); continue; }
+      if (z === 0x13) {
+        if (polja.length >= NAJVISE_POLJA) throw new Error(OSTECEN);
+        polja.push(true);
+        uKodu++;
+        continue;
+      }
+      if (z === 0x14) {
+        if (polja.length && polja[polja.length - 1]) { polja[polja.length - 1] = false; uKodu--; }
+        continue;
+      }
+      if (z === 0x15) {
+        if (polja.length && polja.pop()) uKodu--;
+        continue;
+      }
       if (z === 0x0d || z === 0x07 || z === 0x0c) {
         pasusi.push({ tekst: s, kraj: t[i], fc: pocetak + i * d.sirina });
         s = '';
         continue;
       }
-      if (polja.includes(true)) continue;
+      if (uKodu > 0) continue;
       if (z === 0x09 || z === 0x0b || z === 0xa0) s += ' ';
       else if (z === 0x1e) s += '-';
       else if (z >= 0x20) s += t[i];

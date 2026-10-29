@@ -16,7 +16,8 @@ function tDefTable(granice) {
 const U_TABELI = Buffer.concat([sprm(0x2416, Buffer.from([1])), sprm(0x6649, u32(1))]);
 
 // elementi: {p: 'tekst'} ili {tabela: [[ćelija, ...], ...], granice: [[x0, x1, ...], ...]?}
-// Ćelija je tekst ili niz pasusa. opcije: {komprimovano, delovi: 1|2, sifrovano, nFib}
+// Ćelija je tekst ili niz pasusa. opcije: {komprimovano, delovi: 1|2, sifrovano, nFib,
+// ponoviStrane: n (svaka FKP strana navedena n puta), cpObrnuto (granice delova van redosleda)}
 function napravi(putanja, elementi, opcije = {}) {
   const pasusi = []; // {tekst (sa znakom kraja), sprm}
   for (const e of elementi) {
@@ -105,9 +106,13 @@ function napravi(putanja, elementi, opcije = {}) {
   // Tabela: CLX pa PlcfBtePapx.
   const pcd = (d) => Buffer.concat([u16(0), u32(opcije.komprimovano ? (d.fc * 2) | 0x40000000 : d.fc), u16(0)]);
   const sortirani = [...delovi].sort((a, b) => a.cp - b.cp);
-  const plc = Buffer.concat([...sortirani.map((d) => u32(d.cp)), u32(tekst.length), ...sortirani.map(pcd)]);
+  const cpovi = sortirani.map((d) => d.cp).concat([tekst.length]);
+  if (opcije.cpObrnuto) cpovi[0] = cpovi[1] + 1;
+  const plc = Buffer.concat([...cpovi.map(u32), ...sortirani.map(pcd)]);
   const clx = Buffer.concat([Buffer.from([1]), i16(2), Buffer.from([0, 0]), Buffer.from([2]), u32(plc.length), plc]);
-  const bte = Buffer.concat([...strane.map((x) => u32(x.fc)), u32(strane.at(-1).kraj), ...strane.map((_, i) => u32(pocetakFkp / 512 + i))]);
+  const puta = opcije.ponoviStrane ?? 1;
+  const sveStrane = strane.flatMap((x, i) => Array(puta).fill({ ...x, pn: pocetakFkp / 512 + i }));
+  const bte = Buffer.concat([...sveStrane.map((x) => u32(x.fc)), u32(strane.at(-1).kraj), ...sveStrane.map((x) => u32(x.pn))]);
   const tabela = Buffer.concat([clx, bte]);
 
   // FIB (Word 97: csw 14, cslw 22, cbRgFcLcb 93).

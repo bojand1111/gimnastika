@@ -6,7 +6,7 @@ const xml = require('./xml.cjs');
 const DATUMSKI_UGRADJENI = [14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 45, 46, 47, 50, 51, 52, 53, 54, 55, 56, 57, 58];
 const NAJVISE_REDOVA = 1048576;
 const NAJVISE_KOLONA = 16384;
-const NAJVISE_CELIJA = 2_000_000; // ukupno u jednom listu, sa popunjenim praznim
+const NAJVISE_CELIJA = 2_000_000; // ukupno u svim listovima, sa popunjenim praznim (prazan red je jedna)
 const GRESKA_XML = 'Excel fajl je oštećen (XML nije ispravan).';
 
 function ucitaj(putanja, lista, ime) {
@@ -119,13 +119,17 @@ function sredi(s) {
   return s.replace(/\s+/g, ' ').trim();
 }
 
-function citajList(stablo, deljeni, stilovi) {
+// brojac.n je zajednički za sve listove radne sveske.
+function citajList(stablo, deljeni, stilovi, brojac) {
   const redovi = [];
-  let ukupno = 0;
   for (const redEl of svi(stablo, 'row')) {
     // redovi koji nedostaju u XML-u ostaju prazni da brojevi redova odgovaraju Excelu
     const broj = parseInt(atr(redEl, 'r'), 10) || 0;
     if (broj > NAJVISE_REDOVA) throw new Error(GRESKA_XML);
+    if (broj > 0 && redovi.length < broj - 1) {
+      brojac.n += broj - 1 - redovi.length;
+      if (brojac.n > NAJVISE_CELIJA) throw new Error(GRESKA_XML);
+    }
     while (broj > 0 && redovi.length < broj - 1) redovi.push([]);
     const red = [];
     for (const c of xml.deca(redEl)) {
@@ -137,8 +141,8 @@ function citajList(stablo, deljeni, stilovi) {
       while (red.length < kolona) red.push('');
       red[kolona] = vrednostCelije(c, deljeni, stilovi);
     }
-    ukupno += red.length;
-    if (ukupno > NAJVISE_CELIJA) throw new Error(GRESKA_XML);
+    brojac.n += red.length;
+    if (brojac.n > NAJVISE_CELIJA) throw new Error(GRESKA_XML);
     redovi.push(red.map(sredi));
   }
   return redovi;
@@ -153,9 +157,11 @@ function procitaj(putanja) {
     : [];
   const stilovi = lista['xl/styles.xml'] ? datumskiStilovi(ucitaj(putanja, lista, 'xl/styles.xml')) : new Set();
   const tabele = [];
-  for (const put of putanjeListova(putanja, lista)) {
+  const brojac = { n: 0 };
+  // isti list naveden više puta se čita jednom
+  for (const put of new Set(putanjeListova(putanja, lista))) {
     if (!lista[put]) continue;
-    tabele.push(citajList(ucitaj(putanja, lista, put), deljeni, stilovi));
+    tabele.push(citajList(ucitaj(putanja, lista, put), deljeni, stilovi, brojac));
   }
   return { tabele, tekst: '' };
 }

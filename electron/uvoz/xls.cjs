@@ -158,13 +158,13 @@ function datumskiXf(g) {
   return izlaz;
 }
 
-function list(tok, ofset, g, datumski) {
+// budzet: zajedničko ograničenje za celu radnu svesku, {celija, zapisa, najviseZapisa}
+function list(tok, ofset, g, datumski, budzet) {
   const celije = new Map(); // red -> Map(kolona -> vrednost)
-  let ukupno = 0;
   const upisi = (red, kol, v) => {
     if (!celije.has(red)) celije.set(red, new Map());
     const r = celije.get(red);
-    if (!r.has(kol) && ++ukupno > NAJVISE_CELIJA) throw new Error(OSTECEN);
+    if (!r.has(kol) && ++budzet.celija > NAJVISE_CELIJA) throw new Error(OSTECEN);
     r.set(kol, v);
   };
   const broj = (n, xf) => {
@@ -175,6 +175,7 @@ function list(tok, ofset, g, datumski) {
   let dubina = 0;
   let cekaNiz = null; // formula sa tekstom: vrednost je u sledećem STRING zapisu
   for (const z of zapisi(tok, ofset)) {
+    if (++budzet.zapisa > budzet.najviseZapisa) throw new Error(OSTECEN);
     const p = z.podaci;
     if (z.tip === BOF) { dubina++; continue; }
     if (z.tip === EOF) { if (--dubina <= 0) break; continue; }
@@ -210,12 +211,17 @@ function list(tok, ofset, g, datumski) {
       upisi(red, kol, p[6] ? 'da' : 'ne');
     }
   }
+  // prazne ćelije kojima se red dopunjava do poslednje kolone ulaze u isto ograničenje (kao u xlsx)
+  const najveci = (kljucevi) => { let n = -1; for (const k of kljucevi) if (k > n) n = k; return n; };
   const redovi = [];
-  const poslednji = celije.size === 0 ? -1 : Math.max(...celije.keys());
+  const poslednji = najveci(celije.keys());
   for (let r = 0; r <= poslednji; r++) {
     const m = celije.get(r);
     if (!m) { redovi.push([]); continue; }
-    const red = new Array(Math.max(...m.keys()) + 1).fill('');
+    const duzina = najveci(m.keys()) + 1;
+    budzet.celija += duzina - m.size;
+    if (budzet.celija > NAJVISE_CELIJA) throw new Error(OSTECEN);
+    const red = new Array(duzina).fill('');
     for (const [k, v] of m) red[k] = v;
     redovi.push(red);
   }
@@ -233,10 +239,16 @@ function procitaj(putanja) {
   const g = globalno(tok);
   const datumski = datumskiXf(g);
   const tabele = [];
+  // svaki zapis toka se u ispravnom fajlu čita najviše jednom; listovi koji se preklapaju ili
+  // ponavljaju isti ofset bi isti posao radili iznova
+  const budzet = { celija: 0, zapisa: 0, najviseZapisa: Math.ceil(tok.length / 4) };
+  const videni = new Set();
   for (const l of g.listovi) {
     if (l.vrsta !== 0) continue; // samo radni listovi, bez grafikona i makroa
     if (l.ofset >= tok.length) throw new Error(OSTECEN);
-    tabele.push(list(tok, l.ofset, g, datumski));
+    if (videni.has(l.ofset)) continue;
+    videni.add(l.ofset);
+    tabele.push(list(tok, l.ofset, g, datumski, budzet));
   }
   return { tabele, tekst: '' };
 }
