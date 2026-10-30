@@ -10,20 +10,21 @@ const { tokSeme } = require('./pomoc/seme.cjs');
 
 const S = '2026-01-01 00:00:00';
 
-// Baza sa semom i prijavama Ana, Bea, Ceca, Dona (Z) i Marko (M).
+// Baza sa semom: prijave Ana, Bea, Ceca, Dona u ZSG takmicenju (s.takm) i Marko u MSG takmicenju (s.takmM).
 function nova() {
   const baza = otvori(':memory:');
   baza.migriraj();
   const s = tokSeme(baza);
   const prijave = napraviPrijave(baza, napraviPodesavanja(baza, ''));
-  prijave.dodajVise(s.takm, [s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona, s.muski]);
+  prijave.dodajVise(s.takm, [s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  prijave.dodajVise(s.takmM, [s.muski]);
   const pid = {};
-  for (const r of baza.svi('SELECT p.id, t.ime FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id WHERE p.takmicenje_id = ?', [s.takm])) pid[r.ime] = r.id;
+  for (const r of baza.svi('SELECT p.id, t.ime FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id WHERE p.takmicenje_id IN (?, ?)', [s.takm, s.takmM])) pid[r.ime] = r.id;
   return { baza, s, pid, prijave, g: napravi(baza), takm: napraviTakmicenja(baza, '') };
 }
 
-function drugoTakmicenje(baza) {
-  return baza.ubaci('takmicenja', { naziv: 'Drugo', datum: '2026-10-18', mesto: 'NS', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje', ekipno_broji: 1, kreirano: S, izmenjeno: S });
+function drugoTakmicenje(baza, pol = 'Z') {
+  return baza.ubaci('takmicenja', { naziv: 'Drugo', datum: '2026-10-18', mesto: 'NS', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje', ekipno_broji: 1, pol, kreirano: S, izmenjeno: S });
 }
 
 function poruka(fn) {
@@ -183,11 +184,22 @@ test('dodaj: nazivi, redosled i pocetna pozicija (POPIS 8.4)', () => {
   const [g1, g2, g3] = [g.dodaj(T2, 'Z'), g.dodaj(T2, 'Z'), g.dodaj(T2, 'Z')];
   assert.deepEqual([g1, g2, g3].map((i) => g.nadji(i).pocetna_pozicija), [1, 2, 1]);
   assert.deepEqual([g1, g2, g3].map((i) => g.nadji(i).redosled), [1, 2, 3]);
-  assert.equal(g.nadji(g.dodaj(T2, 'M')).pocetna_pozicija, 1);
+  assert.equal(g.nadji(g.dodaj(drugoTakmicenje(baza, 'M'), 'M')).pocetna_pozicija, 1);
   assert.equal(g.brojSprava('Z'), 2);
   assert.equal(g.brojSprava('M'), 1);
   assert.equal(g.brojSprava('X'), 1);
   assert.equal(poruka(() => g.dodaj(T2, 'X')), 'Nepoznat pol.');
+});
+
+test('grupa drugog pola se odbija', () => {
+  const { baza, s, g } = nova();
+  assert.equal(poruka(() => g.dodaj(s.takm, 'M')), 'Grupa mora biti istog pola kao takmičenje.');
+  assert.equal(poruka(() => g.dodaj(s.takmM, 'Z')), 'Grupa mora biti istog pola kao takmičenje.');
+  assert.equal(poruka(() => g.dodaj(s.takm + 1000, 'Z')), 'Takmičenje ne postoji.');
+  assert.equal(Number(baza.vrednost('SELECT COUNT(*) FROM grupe')), 0);
+  assert.ok(g.dodaj(s.takmM, 'M'));
+  assert.ok(g.dodaj(s.takm, 'Z'));
+  assert.equal(Number(baza.vrednost('SELECT COUNT(*) FROM grupe')), 2);
 });
 
 test('izmeni, obrisi i vratiRedosled: poruke', () => {
@@ -213,11 +225,11 @@ test('premesti: greske i granice pozicije', () => {
   const { baza, s, pid, g } = nova();
   const T = s.takm;
   const a = g.dodaj(T, 'Z');
-  const m = g.dodaj(T, 'M');
+  const m = g.dodaj(s.takmM, 'M');
   assert.equal(poruka(() => g.premesti(T, pid.Ana + 1000, a, 0)), 'Prijava ne postoji.');
   const T2 = drugoTakmicenje(baza);
   assert.equal(poruka(() => g.premesti(T2, pid.Ana, a, 0)), 'Prijava ne postoji.');
-  assert.equal(poruka(() => g.premesti(T, pid.Marko, a, 0)), 'Grupa ne postoji ili nije za taj pol.');
+  assert.equal(poruka(() => g.premesti(s.takmM, pid.Marko, a, 0)), 'Grupa ne postoji ili nije za taj pol.');
   assert.equal(poruka(() => g.premesti(T, pid.Ana, m, 0)), 'Grupa ne postoji ili nije za taj pol.');
   assert.equal(poruka(() => g.premesti(T, pid.Ana, a + 1000, 0)), 'Grupa ne postoji ili nije za taj pol.');
   const tudja = g.dodaj(T2, 'Z');
@@ -225,10 +237,10 @@ test('premesti: greske i granice pozicije', () => {
   assert.equal(poruka(() => g.premesti(T, pid.Ana, a, 0, 0)), 'Rotacija mora biti između 1 i 2.');
   assert.equal(poruka(() => g.premesti(T, pid.Ana, a, 0, 3)), 'Rotacija mora biti između 1 i 2.');
   assert.equal(poruka(() => g.premesti(T, pid.Ana, a, 0, 2.5)), 'Rotacija mora biti između 1 i 2.');
-  assert.equal(poruka(() => g.premesti(T, pid.Marko, m, 0, 2)), 'Rotacija mora biti između 1 i 1.');
+  assert.equal(poruka(() => g.premesti(s.takmM, pid.Marko, m, 0, 2)), 'Rotacija mora biti između 1 i 1.');
   // za neraspodeljene se rotacija ne proverava
   assert.equal(poruka(() => g.premesti(T, pid.Ana, null, 0, 9)), null);
-  g.premesti(T, pid.Marko, m, 0);
+  g.premesti(s.takmM, pid.Marko, m, 0);
   assert.deepEqual(ids(g.clanovi(m)), [pid.Marko]);
   // pozicija van opsega: 99 na kraj, -5 na pocetak
   g.premesti(T, pid.Ana, a, 0);
@@ -274,7 +286,7 @@ test('premesti: zamrzavanje i premestaj u drugu grupu', () => {
 test('nerasporedjeni: redosled sa null kategorijom prvom i polja', () => {
   const { baza, s, pid, g } = nova();
   const T = s.takm;
-  const pion = baza.ubaci('kategorije', { naziv: 'Pionir', redosled: 2, kreirano: S, izmenjeno: S });
+  const pion = baza.ubaci('kategorije', { naziv: 'Pionir', redosled: 2, pol: 'Z', kreirano: S, izmenjeno: S });
   baza.izmeni('prijave', { kategorija_id: pion }, 'id = ?', [pid.Ana]);
   baza.izmeni('prijave', { kategorija_id: null }, 'id = ?', [pid.Dona]);
   baza.izmeni('prijave', { kategorija_id: s.kat }, 'id IN (?, ?)', [pid.Bea, pid.Ceca]);
@@ -286,7 +298,8 @@ test('nerasporedjeni: redosled sa null kategorijom prvom i polja', () => {
   assert.equal(red.klub_skr, 'DVA');
   assert.equal(red.kategorija, 'Kadet');
   assert.equal(red.pol, 'Z');
-  assert.deepEqual(ids(g.nerasporedjeni(T, 'M')), [pid.Marko]);
+  assert.deepEqual(ids(g.nerasporedjeni(s.takmM, 'M')), [pid.Marko]);
+  assert.deepEqual(g.nerasporedjeni(T, 'M'), []);
   const a = g.dodaj(T, 'Z');
   g.premesti(T, pid.Dona, a, 0);
   assert.equal(g.nerasporedjeni(T, 'Z').length, 3);
@@ -322,8 +335,8 @@ test('takmicenja.postaviPomeraj', () => {
 test('kombinacije: redosled kategorije i programa, null par prvi', () => {
   const { baza, s, g } = nova();
   const ubaci = (t, r) => baza.ubaci(t, { ...r, kreirano: S, izmenjeno: S });
-  const kAaa = ubaci('kategorije', { naziv: 'Aaa', redosled: 5 });
-  const pPz = ubaci('programi', { naziv: 'Pz', redosled: 3 });
+  const kAaa = ubaci('kategorije', { naziv: 'Aaa', redosled: 5, pol: 'Z' });
+  const pPz = ubaci('programi', { naziv: 'Pz', redosled: 3, pol: 'Z' });
   const dodeli = (ime, kat, prog) => baza.izmeni('prijave', { kategorija_id: kat, program_id: prog }, 'takmicar_id = ?', [s.t[ime]]);
   dodeli('Ana', kAaa, s.prog);
   dodeli('Bea', s.kat, pPz);

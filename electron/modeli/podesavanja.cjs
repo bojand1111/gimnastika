@@ -107,12 +107,11 @@ function napravi(baza, fasciklaPodataka) {
   }
 
   // Red iz takmicenja ili null (i kad id pokazuje na obrisano takmicenje ili takmicenje drugog pola).
-  // Red sa pol = '' (jos nepodeljen) prolazi dok zadaci podele ne zavrse prelaz.
   function aktivno(pol = aktivniPol()) {
     const id = aktivnoTakmicenjeId(pol);
     if (id === null) return null;
     const red = baza.jedan('SELECT * FROM takmicenja WHERE id = ?', [id]);
-    return red !== null && (red.pol === pol || red.pol === '') ? red : null;
+    return red !== null && red.pol === pol ? red : null;
   }
 
   // id = null brise aktivno takmicenje tog pola.

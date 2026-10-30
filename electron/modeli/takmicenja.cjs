@@ -43,12 +43,13 @@ function napravi(baza, fasciklaPodataka) {
     };
   }
 
-  function sva() {
+  // Samo takmicenja tog pola ('M' ili 'Z'); drugi deo aplikacije ih ne vidi.
+  function sva(pol) {
     return baza.svi(
       `SELECT t.*,
               (SELECT COUNT(*) FROM prijave p WHERE p.takmicenje_id = t.id) AS broj_prijava,
               (SELECT COUNT(*) ${OCENE_UNETE.replace('?', 't.id')}) AS broj_ocena
-       FROM takmicenja t ORDER BY t.datum DESC, t.id DESC`);
+       FROM takmicenja t WHERE t.pol = ? ORDER BY t.datum DESC, t.id DESC`, [pol]);
   }
 
   function nadji(id) {
@@ -63,8 +64,8 @@ function napravi(baza, fasciklaPodataka) {
     return Number(baza.vrednost('SELECT COUNT(*) FROM prijave WHERE takmicenje_id = ?', [id]));
   }
 
-  function prazno() {
-    return { naziv: '', datum: null, mesto: '', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje', ekipno_broji: 3,
+  function prazno(pol) {
+    return { pol, naziv: '', datum: null, mesto: '', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje', ekipno_broji: 3,
       pomeraj_redosled: 0, zavrseno: 0, zaglavlje_biltena: '', organizator: '', domacin: '', grb_levo: '', grb_desno: '' };
   }
 
@@ -87,14 +88,18 @@ function napravi(baza, fasciklaPodataka) {
     return g;
   }
 
-  function sacuvaj(p, id) {
+  // Novo takmicenje dobija pol (obavezan); izmena pol ne menja.
+  function sacuvaj(p, id, pol) {
+    const novo = id === null || id === undefined;
+    if (novo && pol !== 'M' && pol !== 'Z') throw new GreskaKorisnika('Nepoznat pol.');
     const greske = proveri(p, id);
     if (greske.length) throw new GreskaKorisnika(greske.join(' '), { greske });
     const o = ocisti(p);
     const red = {};
     for (const k of POLJA) red[k] = o[k];
     red.izmenjeno = Baza.sad();
-    if (id === null || id === undefined) {
+    if (novo) {
+      red.pol = pol;
       red.kreirano = red.izmenjeno;
       return baza.ubaci('takmicenja', red);
     }

@@ -10,21 +10,22 @@ const { izBaze } = require('../electron/racun/broj.mjs');
 const { tokSeme } = require('./pomoc/seme.cjs');
 const json = require('../docs/proizvod/dizajn/primer-podaci.json');
 
-// Baza sa semom (Ana, Bea, Ceca, Dona u ZSG; Marko u MSG) i prijavama; svi Z su clanovi ekipe, Ceca je VK.
+// Baza sa semom (Ana, Bea, Ceca, Dona u ZSG takmicenju s.takm; Marko u MSG takmicenju s.takmM) i prijavama; svi Z su clanovi ekipe, Ceca je VK.
 function nova() {
   const baza = otvori(':memory:');
   baza.migriraj();
   const s = tokSeme(baza);
   const podesavanja = napraviPodesavanja(baza, '');
   const prijave = napraviPrijave(baza, podesavanja);
-  prijave.dodajVise(s.takm, [s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona, s.muski]);
+  prijave.dodajVise(s.takm, [s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  prijave.dodajVise(s.takmM, [s.muski]);
   const pid = {};
-  for (const r of baza.svi('SELECT p.id, t.ime FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id WHERE p.takmicenje_id = ?', [s.takm])) pid[r.ime] = r.id;
+  for (const r of baza.svi('SELECT p.id, t.ime FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id WHERE p.takmicenje_id IN (?, ?)', [s.takm, s.takmM])) pid[r.ime] = r.id;
   for (const ime of ['Ana', 'Bea', 'Ceca', 'Dona']) prijave.izmeniPolje(s.takm, pid[ime], 'clan_ekipe', true);
   prijave.izmeniPolje(s.takm, pid.Ceca, 'van_konkurencije', true);
   const o = napraviOcene(baza, podesavanja);
   const unos = (ime, sprava, d, e) => o.sacuvaj(s.takm, pid[ime], sprava, { d, e: [e, e, e, e], odbitak: '' }, true);
-  return { baza, s, pid, prijave, podesavanja, o, unos, r: napravi(baza, podesavanja), takm: () => baza.jedan('SELECT * FROM takmicenja WHERE id = ?', [s.takm]) };
+  return { baza, s, pid, prijave, podesavanja, o, unos, r: napravi(baza, podesavanja), takm: () => baza.jedan('SELECT * FROM takmicenja WHERE id = ?', [s.takm]), takmM: () => baza.jedan('SELECT * FROM takmicenja WHERE id = ?', [s.takmM]) };
 }
 
 // Ocene iz POPIS 8.1.
@@ -106,19 +107,19 @@ test('izracunaj iz baze (POPIS 8.1)', () => {
 test('kombinacije: null kombinacija i redosled', () => {
   const n = nova();
   const { s, pid, prijave, baza, r } = n;
-  // Dona bez kategorije i programa; Marko u MSG bez kategorije i programa
+  // Dona bez kategorije i programa; Marko je u MSG takmicenju
   prijave.izmeniPolje(s.takm, pid.Dona, 'kategorija_id', 0);
   prijave.izmeniPolje(s.takm, pid.Dona, 'program_id', 0);
-  const druga = baza.ubaci('kategorije', { naziv: 'Juniori', redosled: 2, kreirano: 'a', izmenjeno: 'a' });
+  const druga = baza.ubaci('kategorije', { naziv: 'Juniori', redosled: 2, pol: 'Z', kreirano: 'a', izmenjeno: 'a' });
   prijave.izmeniPolje(s.takm, pid.Bea, 'kategorija_id', druga);
   const k = r.kombinacije(s.takm);
   assert.deepEqual(k.map((x) => [x.pol, x.kategorija_id, x.kategorija, x.program_id, x.program, x.broj]), [
     ['Z', null, null, null, null, 1],
     ['Z', s.kat, 'Kadet', s.prog, 'C', 2],
     ['Z', druga, 'Juniori', s.prog, 'C', 1],
-    ['M', s.kat, 'Kadet', s.prog, 'C', 1],
   ]);
-  assert.deepEqual(r.kombinacije(s.takm, 'M').map((x) => x.pol), ['M']);
+  assert.deepEqual(r.kombinacije(s.takmM).map((x) => [x.pol, x.kategorija_id, x.program_id, x.broj]), [['M', s.katM, s.progM, 1]]);
+  assert.deepEqual(r.kombinacije(s.takm, 'M'), []);
   assert.deepEqual(r.kombinacije(s.takm, 'Z').map((x) => x.pol), ['Z', 'Z', 'Z']);
   baza.zatvori();
 });
@@ -145,18 +146,18 @@ test('izbor: podrazumevane vrednosti i nepostojeci kat', () => {
   assert.equal(iz.pol, 'Z');
   assert.equal(iz.kat, s.kat);
   assert.equal(iz.prog, s.prog);
-  iz = r.izbor(s.takm, 'M', String(s.kat), '');
+  iz = r.izbor(s.takmM, 'M', String(s.katM), '');
   assert.equal(iz.pol, 'M');
-  assert.equal(iz.kat, s.kat);
+  assert.equal(iz.kat, s.katM);
   baza.zatvori();
 });
 
 test('izbor: pol bez ZSG prijava, null kategorija (0) i bez prijava', () => {
   const n = nova();
   const { s, r, baza, pid, prijave } = n;
-  prijave.izmeniPolje(s.takm, pid.Marko, 'kategorija_id', 0);
-  prijave.izmeniPolje(s.takm, pid.Marko, 'program_id', 0);
-  let iz = r.izbor(s.takm, 'M', '0', '0');
+  prijave.izmeniPolje(s.takmM, pid.Marko, 'kategorija_id', 0);
+  prijave.izmeniPolje(s.takmM, pid.Marko, 'program_id', 0);
+  let iz = r.izbor(s.takmM, 'M', '0', '0');
   assert.equal(iz.ima, true);
   assert.equal(iz.kat, null);
   assert.equal(iz.prog, null);
@@ -165,12 +166,12 @@ test('izbor: pol bez ZSG prijava, null kategorija (0) i bez prijava', () => {
   assert.equal(iz.kat_naziv, '–');
   assert.equal(iz.prog_naziv, '–');
   // nepostojeci kat -> prva (null) kategorija
-  iz = r.izbor(s.takm, 'M', '77', '77');
+  iz = r.izbor(s.takmM, 'M', '77', '77');
   assert.equal(iz.kat, null);
   assert.equal(iz.kat_naziv, '–');
 
   // takmicenje bez prijava
-  const drugo = baza.ubaci('takmicenja', { naziv: 'Prazno', datum: '2026-11-01', mesto: 'X', broj_e_sudija: 4, pravilo_e: 'prosek', ekipno_broji: 3, kreirano: 'a', izmenjeno: 'a' });
+  const drugo = baza.ubaci('takmicenja', { naziv: 'Prazno', datum: '2026-11-01', mesto: 'X', broj_e_sudija: 4, pravilo_e: 'prosek', ekipno_broji: 3, pol: 'Z', kreirano: 'a', izmenjeno: 'a' });
   iz = r.izbor(drugo, undefined, undefined, undefined);
   assert.equal(iz.ima, false);
   assert.equal(iz.pol, 'Z');
@@ -185,7 +186,7 @@ test('izbor: podrazumevani pol je M kad nema ZSG prijava', () => {
   const n = nova();
   const { s, r, baza } = n;
   baza.izvrsi("DELETE FROM prijave WHERE takmicar_id IN (SELECT id FROM takmicari WHERE pol = 'Z')");
-  assert.equal(r.izbor(s.takm, undefined, undefined, undefined).pol, 'M');
+  assert.equal(r.izbor(s.takmM, undefined, undefined, undefined).pol, 'M');
   baza.zatvori();
 });
 
@@ -273,7 +274,7 @@ test('izracunaj za drugu grupu i pol: samo njene prijave', () => {
   const n = nova();
   const { s, r, pid } = n;
   n.unos('Ana', s.pr, '4,0', '8,0');
-  const m = r.izracunaj(n.takm(), 'M', s.kat, s.prog);
+  const m = r.izracunaj(n.takmM(), 'M', s.katM, s.progM);
   assert.deepEqual(m.sprave.map((x) => x.id), [s.pa]);
   assert.deepEqual(m.prijave_redom.map((p) => p.id), [pid.Marko]);
   assert.deepEqual(m.po_spravi[s.pa], []);
@@ -291,7 +292,7 @@ function proveriPrimer(kljuc, pol) {
   uvezi(baza, json);
   const podesavanja = napraviPodesavanja(baza, '');
   const r = napravi(baza, podesavanja);
-  const takm = baza.jedan('SELECT * FROM takmicenja WHERE naziv = ?', [json.takmicenje.naziv]);
+  const takm = baza.jedan('SELECT * FROM takmicenja WHERE naziv = ? AND pol = ?', [json.takmicenje.naziv, pol]);
   const iz = r.izbor(takm.id, pol, undefined, undefined);
   assert.equal(iz.ima, true);
   assert.equal(iz.pol, pol);

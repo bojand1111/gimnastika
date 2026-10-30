@@ -21,8 +21,8 @@ test('uvoz primera: klubovi, takmicari, sprave, kategorija i program', () => {
   assert.equal(broj(baza, 'takmicari'), svi.length + NA_UVOZ);
   assert.equal(Number(baza.vrednost('SELECT COUNT(*) FROM takmicari WHERE klub_id IS NULL')), 0);
   assert.equal(broj(baza, 'sprave'), 10);
-  assert.equal(broj(baza, 'kategorije'), 1);
-  assert.equal(broj(baza, 'programi'), 1);
+  assert.equal(broj(baza, 'kategorije'), 2);
+  assert.equal(broj(baza, 'programi'), 2);
   assert.equal(rez.klubovi_novih, json.klubovi.length);
   assert.equal(rez.takmicara_novih, svi.length);
   baza.zatvori();
@@ -35,8 +35,8 @@ test('uvoz primera: drugi put nista ne dodaje', () => {
   assert.equal(broj(baza, 'klubovi'), json.klubovi.length);
   assert.equal(broj(baza, 'takmicari'), svi.length + NA_UVOZ);
   assert.equal(broj(baza, 'sprave'), 10);
-  assert.equal(broj(baza, 'kategorije'), 1);
-  assert.equal(broj(baza, 'programi'), 1);
+  assert.equal(broj(baza, 'kategorije'), 2);
+  assert.equal(broj(baza, 'programi'), 2);
   assert.equal(rez.klubovi_novih, 0);
   assert.equal(rez.takmicara_novih, 0);
   baza.zatvori();
@@ -45,10 +45,10 @@ test('uvoz primera: drugi put nista ne dodaje', () => {
 test('uvoz primera: postojeci klub i kategorija se prepoznaju bez obzira na velika slova', () => {
   const baza = nova();
   baza.ubaci('klubovi', { puno_ime: 'Moj klub', skracenica: 'voj', grad: 'X', kreirano: 'a', izmenjeno: 'a' });
-  baza.ubaci('kategorije', { naziv: 'kadet', redosled: 1, kreirano: 'a', izmenjeno: 'a' });
+  baza.ubaci('kategorije', { naziv: 'kadet', redosled: 1, pol: 'Z', kreirano: 'a', izmenjeno: 'a' });
   uvezi(baza, json);
   assert.equal(broj(baza, 'klubovi'), json.klubovi.length);
-  assert.equal(broj(baza, 'kategorije'), 1);
+  assert.equal(broj(baza, 'kategorije'), 2);
   baza.zatvori();
 });
 
@@ -66,12 +66,15 @@ function prijaveSa(baza) {
   return baza.svi(`SELECT p.*, t.prezime, t.ime, t.pol FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id`);
 }
 
-test('uvoz primera: takmicenje i prijave svih takmicara iz JSON-a', () => {
+test('uvoz primera: po jedno takmicenje za svaki pol i prijave takmicara tog pola', () => {
   const baza = nova();
   const rez = uvezi(baza, json);
-  assert.equal(broj(baza, 'takmicenja'), 1);
-  assert.equal(baza.vrednost('SELECT naziv FROM takmicenja'), json.takmicenje.naziv);
+  assert.equal(broj(baza, 'takmicenja'), 2);
+  assert.deepEqual(baza.svi('SELECT naziv, pol FROM takmicenja ORDER BY pol').map((r) => [r.naziv, r.pol]),
+    [[json.takmicenje.naziv, 'M'], [json.takmicenje.naziv, 'Z']]);
   const prijave = prijaveSa(baza);
+  assert.equal(Number(baza.vrednost('SELECT COUNT(*) FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id JOIN takmicenja k ON k.id = p.takmicenje_id WHERE t.pol <> k.pol')), 0);
+  assert.equal(Number(baza.vrednost("SELECT COUNT(*) FROM kategorije WHERE naziv = 'Kadet' AND pol IN ('M', 'Z')")), 2);
   assert.equal(prijave.length, svi.length);
   assert.equal(rez.prijava, svi.length);
   assert.equal(rez.prijava_novih, svi.length);
@@ -120,7 +123,7 @@ test('uvoz primera: drugi put ne duplira takmicenje i prijave i cuva startne bro
   uvezi(baza, json);
   const pre = prijaveSa(baza).map((p) => [p.id, p.startni_broj]);
   const rez = uvezi(baza, json);
-  assert.equal(broj(baza, 'takmicenja'), 1);
+  assert.equal(broj(baza, 'takmicenja'), 2);
   assert.equal(broj(baza, 'prijave'), svi.length);
   assert.equal(broj(baza, 'takmicari'), svi.length + NA_UVOZ);
   assert.equal(rez.prijava_novih, 0);
@@ -129,14 +132,18 @@ test('uvoz primera: drugi put ne duplira takmicenje i prijave i cuva startne bro
   baza.zatvori();
 });
 
-test('uvoz primera: aktivno takmicenje se postavlja samo ako nije izabrano', () => {
+test('uvoz primera: aktivno takmicenje svakog dela se postavlja samo ako nije izabrano', () => {
   const baza = nova();
   uvezi(baza, json);
-  const id = Number(baza.vrednost('SELECT id FROM takmicenja'));
-  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_M'"), String(id));
+  for (const pol of ['M', 'Z']) {
+    const id = Number(baza.vrednost('SELECT id FROM takmicenja WHERE pol = ?', [pol]));
+    assert.equal(baza.vrednost('SELECT vrednost FROM podesavanja WHERE kljuc = ?', ['aktivno_takmicenje_' + pol]), String(id));
+  }
   baza.izvrsi("UPDATE podesavanja SET vrednost = '999' WHERE kljuc = 'aktivno_takmicenje_M'");
   uvezi(baza, json);
   assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_M'"), '999');
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_Z'"),
+    String(baza.vrednost("SELECT id FROM takmicenja WHERE pol = 'Z'")));
   baza.zatvori();
 });
 
@@ -159,8 +166,9 @@ const { napravi: napraviGrupe } = require('../electron/modeli/grupe.cjs');
 
 function grupeStanje(baza) {
   const grupe = napraviGrupe(baza);
-  const takmId = Number(baza.vrednost('SELECT id FROM takmicenja'));
-  return { grupe, takmId, Z: grupe.lista(takmId, 'Z'), M: grupe.lista(takmId, 'M') };
+  const takmId = {};
+  for (const pol of ['Z', 'M']) takmId[pol] = Number(baza.vrednost('SELECT id FROM takmicenja WHERE pol = ?', [pol]));
+  return { grupe, takmId, Z: grupe.lista(takmId.Z, 'Z'), M: grupe.lista(takmId.M, 'M') };
 }
 
 test('uvoz primera: po dve grupe po polu, svi raspodeljeni, naizmenicno po startnom broju', () => {
@@ -171,7 +179,7 @@ test('uvoz primera: po dve grupe po polu, svi raspodeljeni, naizmenicno po start
   assert.equal(rez.grupe_novih, 4);
   for (const pol of ['Z', 'M']) {
     assert.deepEqual(po[pol].map((g) => g.naziv), ['Grupa A', 'Grupa B']);
-    assert.equal(grupe.nerasporedjeni(takmId, pol).length, 0);
+    assert.equal(grupe.nerasporedjeni(takmId[pol], pol).length, 0);
     const startni = [...(pol === 'Z' ? json.zsg_kadet_c : json.msg_kadet_c).takmicari].map((t) => t.startni_broj).sort((a, b) => a - b);
     assert.deepEqual(po[pol].map((g) => g.clanovi.length), [startni.length / 2, startni.length / 2]);
     assert.equal(po[pol][0].clanovi.length, 5);

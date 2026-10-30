@@ -32,8 +32,10 @@ function napravi(baza) {
     };
   }
 
-  function svi() {
-    return poImenu(baza.svi(`${SELECT} ORDER BY t.id`), 'prezime', 'ime');
+  // pol = null: svi takmicari; 'M' ili 'Z': samo taj pol.
+  function svi(pol = null) {
+    if (pol === null) return poImenu(baza.svi(`${SELECT} ORDER BY t.id`), 'prezime', 'ime');
+    return poImenu(baza.svi(`${SELECT} WHERE t.pol = ? ORDER BY t.id`, [pol]), 'prezime', 'ime');
   }
 
   function nadji(id) {
@@ -53,7 +55,14 @@ function napravi(baza) {
     if (o.godina_rodjenja < 1900 || o.godina_rodjenja > new Date().getFullYear()) {
       g.push('Godina rođenja nije ispravna.');
     }
-    if (o.pol !== 'M' && o.pol !== 'Z') g.push('Izaberite pol.');
+    if (o.pol !== 'M' && o.pol !== 'Z') {
+      g.push('Izaberite pol.');
+    } else if (id !== null && id !== undefined) {
+      // takmicar sa prijavama ostaje u svom delu (prijave su vezane za takmicenje tog pola)
+      const staro = baza.jedan('SELECT pol FROM takmicari WHERE id = ?', [id]);
+      const prijava = Number(baza.vrednost('SELECT COUNT(*) FROM prijave WHERE takmicar_id = ?', [id]));
+      if (staro && staro.pol !== o.pol && prijava > 0) g.push('Takmičar ima prijave, pa mu se pol ne može promeniti.');
+    }
     if (o.klub_id !== null && !baza.jedan('SELECT id FROM klubovi WHERE id = ?', [o.klub_id])) {
       g.push('Klub ne postoji.');
     }

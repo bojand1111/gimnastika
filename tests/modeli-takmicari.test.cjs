@@ -144,3 +144,38 @@ test('obrisi: bez prijava brise, sa prijavom baca poruku sa brojem', () => {
     && e.message === 'Takmičar ima 1 prijava na takmičenjima i ne može se obrisati.');
   assert.ok(t.nadji(b));
 });
+
+function prijaviNa(baza, takmicarId) {
+  const sad = Baza.sad();
+  const tk = baza.ubaci('takmicenja', { naziv: 'T', datum: '2026-10-25', mesto: 'M', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje', ekipno_broji: 3, pol: 'Z', kreirano: sad, izmenjeno: sad });
+  baza.ubaci('prijave', { takmicenje_id: tk, takmicar_id: takmicarId, kreirano: sad, izmenjeno: sad });
+}
+
+test('svi: bez argumenta svi, sa polom samo taj pol', () => {
+  const { t } = nova();
+  const z = t.sacuvaj(ispravan({ id_broj: '1', pol: 'Z' }), null);
+  const m = t.sacuvaj(ispravan({ id_broj: '2', pol: 'M' }), null);
+  assert.deepEqual(t.svi().map((r) => r.id).sort(), [z, m].sort());
+  assert.deepEqual(t.svi(null).map((r) => r.id).sort(), [z, m].sort());
+  assert.deepEqual(t.svi('Z').map((r) => r.id), [z]);
+  assert.deepEqual(t.svi('M').map((r) => r.id), [m]);
+});
+
+test('pol se ne menja ako ima prijave', () => {
+  const { baza, t } = nova();
+  const id = t.sacuvaj(ispravan({ pol: 'Z' }), null);
+  prijaviNa(baza, id);
+  assert.throws(() => t.sacuvaj(ispravan({ pol: 'M' }), id), (e) => e instanceof GreskaKorisnika
+    && e.message === 'Takmičar ima prijave, pa mu se pol ne može promeniti.');
+  assert.equal(t.nadji(id).pol, 'Z');
+  // isti pol i druga polja se i dalje cuvaju
+  t.sacuvaj(ispravan({ pol: 'Z', ime: 'Bea' }), id);
+  assert.equal(t.nadji(id).ime, 'Bea');
+});
+
+test('pol se menja bez prijava', () => {
+  const { t } = nova();
+  const id = t.sacuvaj(ispravan({ pol: 'Z' }), null);
+  t.sacuvaj(ispravan({ pol: 'M' }), id);
+  assert.equal(t.nadji(id).pol, 'M');
+});

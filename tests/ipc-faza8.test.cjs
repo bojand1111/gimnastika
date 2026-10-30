@@ -38,6 +38,8 @@ function pravi(opcije = {}) {
   const baza = otvori(':memory:');
   baza.migriraj();
   uvezi(baza, json);
+  // izabran je ZSG deo: prijava 1 i njene ocene pripadaju ZSG takmicenju
+  baza.ubaci('podesavanja', { kljuc: 'aktivni_pol', vrednost: 'Z' });
   const pozivi = [];
   const fetchProba = (...a) => { pozivi.push(a[0]); return globalThis.fetch(...a); };
   const dialog = { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) };
@@ -90,7 +92,7 @@ test('podesavanja.sacuvajOpsta: lose sajt_url baca tekst, sva() vraca url i toke
   assert.equal(sva.sajt_token, 't');
 });
 
-test('sinhro.ping i posalji: Bearer zaglavlje, 2 liste, stanje pokazuje poslato', async () => {
+test('sinhro.ping i posalji: Bearer zaglavlje, 1 lista, stanje pokazuje poslato', async () => {
   const s = await sajt();
   try {
     const o = pravi();
@@ -98,11 +100,11 @@ test('sinhro.ping i posalji: Bearer zaglavlje, 2 liste, stanje pokazuje poslato'
     assert.deepEqual(await o.moduli.sinhro.ping(), { ok: true, sajt: 'Proba' });
     const r = await o.moduli.sinhro.posalji();
     assert.equal(r.ok, true);
-    assert.equal(r.liste, 2);
+    assert.equal(r.liste, 1);
     const put = s.zahtevi.find((z) => z.metoda === 'PUT');
     assert.equal(put.zaglavlja.authorization, `Bearer ${TOKEN}`);
     assert.equal(put.putanja, '/api/gimnastika/takmicenja/1');
-    assert.equal(JSON.parse(put.telo).liste.length, 2);
+    assert.equal(JSON.parse(put.telo).liste.length, 1);
     const st = o.moduli.sinhro.stanje();
     // cekaSlanje je zakazano slanje posle cuvanja adrese (nema veze sa rucnim slanjem)
     assert.match(st.poslednje, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
@@ -135,7 +137,7 @@ test('unos.potvrdi, odustao i vrati zakazuju slanje; bez adrese ne ide nista', a
 
     o.moduli.unos.odustao(pid, sid);
     assert.ok(await cekaj(() => brojPut(s) === 2), 'odustao: PUT stigao');
-    assert.equal(JSON.parse(s.zahtevi[1].telo).liste.length, 2);
+    assert.equal(JSON.parse(s.zahtevi[1].telo).liste.length, 1);
 
     o.moduli.unos.vrati(pid, sid);
     assert.ok(await cekaj(() => brojPut(s) === 3), 'vrati: PUT stigao');

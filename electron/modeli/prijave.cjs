@@ -95,8 +95,10 @@ function napravi(baza, podesavanja) {
   }
 
   function dodajVise(takmicenjeId, takmicarIds) {
-    const prvaKat = baza.vrednost('SELECT id FROM kategorije ORDER BY redosled, id LIMIT 1');
-    const prviProg = baza.vrednost('SELECT id FROM programi ORDER BY redosled, id LIMIT 1');
+    // prva kategorija i program su iz liste pola takmicenja
+    const polTakm = baza.vrednost('SELECT pol FROM takmicenja WHERE id = ?', [takmicenjeId]);
+    const prvaKat = baza.vrednost('SELECT id FROM kategorije WHERE pol = ? ORDER BY redosled, id LIMIT 1', [polTakm]);
+    const prviProg = baza.vrednost('SELECT id FROM programi WHERE pol = ? ORDER BY redosled, id LIMIT 1', [polTakm]);
     let dodato = 0;
     const preskoceno = [];
     const upozorenja = [];
@@ -126,6 +128,9 @@ function napravi(baza, podesavanja) {
       return { stanje: 'nema', ime: '', poruka: 'Takmičar ne postoji.', lekarski_ne_vazi: false, prijava_id: null };
     }
     const ime = `${t.prezime} ${t.ime}`;
+    if (t.pol !== takm.pol) {
+      return { stanje: 'preskoceno', ime, poruka: `${ime}: nije istog pola kao takmičenje.`, lekarski_ne_vazi: false, prijava_id: null };
+    }
     if (prijavljeniTakmicari(takmicenjeId).includes(takmicarId)) {
       return { stanje: 'vec', ime, poruka: `${ime} je već prijavljen.`, lekarski_ne_vazi: false, prijava_id: null };
     }
@@ -168,8 +173,12 @@ function napravi(baza, podesavanja) {
         const tabela = polje === 'kategorija_id' ? 'kategorije' : 'programi';
         const n = vrednost === null || vrednost === undefined ? 0 : (parseInt(vrednost, 10) || 0);
         v = n === 0 ? null : n;
-        if (v !== null && baza.vrednost(`SELECT id FROM ${tabela} WHERE id = ?`, [v]) === null) {
-          throw new GreskaKorisnika('Stavka ne postoji.');
+        if (v !== null) {
+          const stavka = baza.jedan(`SELECT pol FROM ${tabela} WHERE id = ?`, [v]);
+          if (stavka === null) throw new GreskaKorisnika('Stavka ne postoji.');
+          if (stavka.pol !== baza.vrednost('SELECT pol FROM takmicenja WHERE id = ?', [takmicenjeId])) {
+            throw new GreskaKorisnika('Kategorija ili program ne pripada ovom polu.');
+          }
         }
         break;
       }
@@ -289,13 +298,14 @@ function napravi(baza, podesavanja) {
     });
   }
 
-  function lekarskiUpozorenja(pragDana) {
+  // Samo takmicenja tog pola.
+  function lekarskiUpozorenja(pragDana, pol) {
     const redovi = baza.svi(
       `SELECT t.id AS takmicar_id, t.ime, t.prezime, t.lekarski_do, k.skracenica AS klub_skr,
               tk.id AS takmicenje_id, tk.naziv AS takmicenje, tk.datum
        FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id JOIN takmicenja tk ON tk.id = p.takmicenje_id
        LEFT JOIN klubovi k ON k.id = p.klub_id
-       WHERE tk.zavrseno = 0`);
+       WHERE tk.zavrseno = 0 AND tk.pol = ?`, [pol]);
     const izlaz = [];
     for (const r of poKljucevima(redovi, (x) => [x.datum, x.takmicenje_id, x.prezime, x.ime, x.takmicar_id])) {
       const lek = lekarski(r.lekarski_do, pragDana, String(r.datum));

@@ -9,16 +9,17 @@ const { tokSeme } = require('./pomoc/seme.cjs');
 
 const S = '2026-01-01 00:00:00';
 
-// Baza sa semom i prijavama Ana, Bea, Ceca, Dona (Z) i Marko (M).
+// Baza sa semom i prijavama Ana, Bea, Ceca, Dona u ZSG takmicenju (s.takm) i Marko u MSG takmicenju (s.takmM).
 function nova() {
   const baza = otvori(':memory:');
   baza.migriraj();
   const s = tokSeme(baza);
   const podesavanja = napraviPodesavanja(baza, '');
   const prijave = napraviPrijave(baza, podesavanja);
-  prijave.dodajVise(s.takm, [s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona, s.muski]);
+  prijave.dodajVise(s.takm, [s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  prijave.dodajVise(s.takmM, [s.muski]);
   const pid = {};
-  for (const r of baza.svi('SELECT p.id, t.ime FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id WHERE p.takmicenje_id = ?', [s.takm])) pid[r.ime] = r.id;
+  for (const r of baza.svi('SELECT p.id, t.ime FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id WHERE p.takmicenje_id IN (?, ?)', [s.takm, s.takmM])) pid[r.ime] = r.id;
   return { baza, s, pid, prijave, podesavanja, o: napravi(baza, podesavanja), grupe: napraviGrupe(baza) };
 }
 
@@ -85,11 +86,11 @@ test('nacrt, potvrda, ispravka, odustajanje (POPIS 8.1)', () => {
 test('poruke: takmicenje, prijava, sprava', () => {
   const { baza, s, pid, o } = nova();
   assert.equal(poruka(() => o.sacuvaj(999, pid.Ana, s.gr, UNOS, false)), 'Takmičenje ne postoji.');
-  const drugo = baza.ubaci('takmicenja', { naziv: 'Drugo', datum: '2026-10-18', mesto: 'NS', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje', ekipno_broji: 1, kreirano: S, izmenjeno: S });
+  const drugo = baza.ubaci('takmicenja', { naziv: 'Drugo', datum: '2026-10-18', mesto: 'NS', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje', ekipno_broji: 1, pol: 'Z', kreirano: S, izmenjeno: S });
   assert.equal(poruka(() => o.sacuvaj(drugo, pid.Ana, s.gr, UNOS, false)), 'Prijava ne postoji na ovom takmičenju.');
   assert.equal(poruka(() => o.sacuvaj(s.takm, 9999, s.gr, UNOS, false)), 'Prijava ne postoji na ovom takmičenju.');
   // Marko (M) ne radi Gredu.
-  assert.equal(poruka(() => o.sacuvaj(s.takm, pid.Marko, s.gr, UNOS, false)), 'Test Marko nije prijavljen/a na ovu spravu.');
+  assert.equal(poruka(() => o.sacuvaj(s.takmM, pid.Marko, s.gr, UNOS, false)), 'Test Marko nije prijavljen/a na ovu spravu.');
   assert.equal(poruka(() => o.sacuvaj(s.takm, pid.Ana, s.gr, { d: '', e: ['8,x'], odbitak: '' }, false)), 'E1: neispravna vrednost „8,x“ (0 do 20, najviše tri decimale).');
   assert.equal(poruka(() => o.sacuvaj(s.takm, pid.Ana, s.gr, { d: '', e: [], odbitak: '' }, true)), 'Unesite D ocenu.');
   assert.equal(poruka(() => o.odustao(drugo, pid.Ana, s.gr)), 'Prijava ne postoji na ovom takmičenju.');
@@ -180,9 +181,10 @@ test('zaTakmicenje: oblik pid -> sid -> ocena', () => {
   const { s, pid, o } = nova();
   o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, true);
   o.sacuvaj(s.takm, pid.Ana, s.pr, UNOS, false);
-  o.sacuvaj(s.takm, pid.Marko, s.pa, UNOS, false);
+  o.sacuvaj(s.takmM, pid.Marko, s.pa, UNOS, false);
   const z = o.zaTakmicenje(s.takm);
-  assert.deepEqual(Object.keys(z).map(Number).sort(), [pid.Ana, pid.Marko].sort());
+  assert.deepEqual(Object.keys(z).map(Number), [pid.Ana]);
+  assert.deepEqual(Object.keys(o.zaTakmicenje(s.takmM)).map(Number), [pid.Marko]);
   assert.equal(z[pid.Ana][s.gr].status, 'uneto');
   assert.equal(z[pid.Ana][s.pr].status, 'nacrt');
   assert.deepEqual(z[pid.Ana][s.gr].e_sudije, { 1: 8300, 2: 8100, 3: 8400, 4: 8200 });

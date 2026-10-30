@@ -20,12 +20,16 @@ function pravi() {
   const moduli = napraviModule(baza, { dialog, fasciklaPodataka: () => os.tmpdir(), dnevnik: dn });
   return { baza, moduli };
 }
-// Aktivno takmicenje sa prijavama (Ana, Bea, Ceca, Dona, Marko); grupa A sa Anom, Beom i Cecom na pocetnoj poziciji 1.
+// Aktivno ZSG takmicenje sa prijavama (Ana, Bea, Ceca, Dona); grupa A sa Anom, Beom i Cecom na pocetnoj poziciji 1.
+// Marko je prijavljen u MSG takmicenju (s.takmM); izabran ostaje ZSG deo.
 function sa4(saGrupom = true) {
   const o = pravi();
   const s = tokSeme(o.baza);
   o.moduli.takmicenja.otvori(String(s.takm));
-  o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona, s.muski]);
+  o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  o.moduli.takmicenja.otvori(String(s.takmM));
+  o.moduli.prijave.dodaj([s.muski]);
+  o.moduli.takmicenja.otvori(String(s.takm));
   const pid = {};
   const tid = { Ana: s.t.Ana, Bea: s.t.Bea, Ceca: s.t.Ceca, Dona: s.t.Dona, Marko: s.muski };
   for (const [ime, id] of Object.entries(tid)) {
@@ -118,6 +122,7 @@ test('podaci("Z", 999, 9): nepoznata sprava i rotacija se biraju iz napretka', (
 
 test('podaci("M") bez grupa: svi prijavljeni, startni broj null poslednji', () => {
   const { moduli, baza, s, pid } = sa4(false);
+  moduli.takmicenja.otvori(String(s.takmM));
   const d = moduli.unos.podaci('M');
   assert.equal(d.pol, 'M');
   assert.equal(d.bezGrupa, true);
@@ -127,6 +132,7 @@ test('podaci("M") bez grupa: svi prijavljeni, startni broj null poslednji', () =
   assert.equal(d.redovi[0].ime, 'Test Marko');
   assert.equal(d.redovi[0].prijava_id, pid.Marko);
   // Redosled: startni broj, pa bez broja po prezimenu i imenu.
+  moduli.takmicenja.otvori(String(s.takm));
   const z = moduli.unos.podaci('Z');
   assert.equal(z.bezGrupa, true);
   assert.deepEqual(z.redovi.map((r) => r.ime), ['Test Ana', 'Test Bea', 'Test Ceca', 'Test Dona']);

@@ -28,6 +28,13 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
   const sifarnici = napraviSifarnike(baza);
   const prijave = napraviPrijave(baza, podesavanja);
 
+  // Pol uvoza je uvek pol takmicenja (pol iz fajla i iz izbora se ne koristi).
+  function polTakmicenja(takmicenjeId) {
+    const pol = baza.vrednost('SELECT pol FROM takmicenja WHERE id = ?', [takmicenjeId]);
+    if (pol === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
+    return pol;
+  }
+
   // Cita fajl, tumaci tabelu i uparuje redove sa bazom. Nista ne upisuje. PDF se cita asinhrono,
   // pa je tada i rezultat Promise (moduli.cjs uvek ceka rezultat).
   function pripremiFajl(putanja, imeFajla, takmicenjeId) {
@@ -38,18 +45,22 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
 
   function pripremiDokument(dok, imeFajla, takmicenjeId) {
     const p = protumaci(dok);
+    const pol = polTakmicenja(takmicenjeId);
     const svi = takmicari.svi();
     const prijavljeni = prijave.prijavljeniTakmicari(takmicenjeId);
-    const kategorije = baza.svi('SELECT id, naziv FROM kategorije ORDER BY redosled, id');
-    const programi = baza.svi('SELECT id, naziv FROM programi ORDER BY redosled, id');
-    const pol = p.pol;
+    const kategorije = sifarnici.lista('kategorije', pol);
+    const programi = sifarnici.lista('programi', pol);
+    const polovi = new Map(svi.map((t) => [Number(t.id), t.pol]));
 
     const oznake = [];
     const indeksOznake = new Map();
     const redovi = [];
     const videni = new Map();
     for (const r of p.redovi) {
-      let o = U.oceni(r, svi, prijavljeni, r.pol ?? pol);
+      let o = U.oceni(r, svi, prijavljeni, pol);
+      if (o.takmicar_id !== null && polovi.get(Number(o.takmicar_id)) !== pol) {
+        o = { status: U.GRESKA, takmicar_id: null, postupak: 'nista', napomena: 'takmičar je drugog pola' };
+      }
       const kljuc = U.kljuc(r.prezime, r.ime);
       if (o.status !== U.GRESKA) {
         if (videni.has(kljuc)) {
@@ -87,7 +98,7 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
   }
 
   // Izbor iz forme za kategoriju ili program: '' => null, 'novo' => {novo: naziv}, broj => {id}.
-  function razresiStavku(vrsta, izbor, naziv) {
+  function razresiStavku(vrsta, izbor, naziv, pol) {
     const iz = String(izbor).trim();
     if (iz === '' || iz === '0') return null;
     if (iz === 'novo') {
@@ -95,30 +106,29 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
       return n === '' ? null : { novo: n };
     }
     const tabela = sifarnici.meta(vrsta).tabela;
-    if (!/^[0-9]+$/.test(iz) || baza.vrednost(`SELECT id FROM ${tabela} WHERE id = ?`, [Number(iz)]) === null) {
+    if (!/^[0-9]+$/.test(iz) || baza.vrednost(`SELECT id FROM ${tabela} WHERE id = ? AND pol = ?`, [Number(iz), pol]) === null) {
       throw new GreskaKorisnika(`Izabrana stavka ne postoji (${vrsta}).`);
     }
     return { id: Number(iz) };
   }
 
   // Id stavke iz razresenog izbora; novu pravi jednom po nazivu.
-  function stavkaId(vrsta, izbor, napravljene) {
+  function stavkaId(vrsta, izbor, napravljene, pol) {
     if (izbor === null) return null;
     if (izbor.id !== undefined) return izbor.id;
     const kljuc = vrsta + '|' + normalizuj(izbor.novo);
     if (!napravljene.has(kljuc)) {
-      const postojeca = U.nadjiStavku(izbor.novo, baza.svi(`SELECT id, naziv FROM ${sifarnici.meta(vrsta).tabela}`));
-      napravljene.set(kljuc, postojeca ?? sifarnici.dodaj(vrsta, { naziv: izbor.novo }));
+      const postojeca = U.nadjiStavku(izbor.novo, sifarnici.lista(vrsta, pol));
+      napravljene.set(kljuc, postojeca ?? sifarnici.dodaj(vrsta, { naziv: izbor.novo }, pol));
     }
     return napravljene.get(kljuc);
   }
 
   // Faza 1: provera i razresavanje izbora, bez upisa.
-  function planiraj(fajlovi, izbor) {
+  function planiraj(fajlovi, izbor, pol) {
     const plan = [];
     fajlovi.forEach((f, fi) => {
       const iz = izbor[String(fi)] ?? {};
-      const pol = String(iz.pol ?? f.pol ?? '');
       const klubId = Object.hasOwn(iz, 'klub_id') ? (parseInt(iz.klub_id, 10) || 0) : Number(f.klub_id ?? 0);
       if (klubId !== 0 && baza.vrednost('SELECT id FROM klubovi WHERE id = ?', [klubId]) === null) {
         throw new GreskaKorisnika(`Klub za fajl ${f.ime} ne postoji.`);
@@ -126,8 +136,8 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
       const oznake = f.oznake.map((o, oi) => {
         const zo = iz.oznake?.[oi] ?? {};
         return {
-          kategorija: razresiStavku('kategorije', zo.kategorija ?? o.kategorija_id ?? '', o.kategorija ?? o.oznaka),
-          program: razresiStavku('programi', zo.program ?? o.program_id ?? '', o.program),
+          kategorija: razresiStavku('kategorije', zo.kategorija ?? o.kategorija_id ?? '', o.kategorija ?? o.oznaka, pol),
+          program: razresiStavku('programi', zo.program ?? o.program_id ?? '', o.program, pol),
         };
       });
       const redovi = [];
@@ -136,13 +146,10 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
         if (prazno(zr.uvezi) || r.status === U.GRESKA || r.status === U.PRIJAVLJEN) return;
         let postupak = String(zr.postupak ?? r.postupak);
         if (postupak === 'postojeci' && (r.takmicar_id === null || r.takmicar_id === undefined)) postupak = 'novi';
-        if (postupak === 'novi' && !['M', 'Z'].includes(r.pol ?? pol)) {
-          throw new GreskaKorisnika(`Izaberite pol (M ili Ž) za fajl ${f.ime}: potreban je za nove takmičare.`);
-        }
         if (postupak !== 'postojeci' && postupak !== 'novi') return;
         redovi.push({ ...r, postupak_izabran: postupak });
       });
-      plan.push({ fajl: f, pol, klub_id: klubId || null, oznake, redovi });
+      plan.push({ fajl: f, klub_id: klubId || null, oznake, redovi });
     });
     return plan;
   }
@@ -150,7 +157,8 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
   // Upisuje potvrdjeni uvoz. fajlovi su iz pripremiFajl, izbor je po indeksu fajla (kljucevi se citaju kao tekst).
   function upisi(takmicenjeId, fajlovi, izbor) {
     const iz = Object.fromEntries(Object.entries(izbor ?? {}).map(([k, v]) => [String(k), v]));
-    const plan = planiraj(fajlovi, iz);
+    const pol = polTakmicenja(takmicenjeId);
+    const plan = planiraj(fajlovi, iz, pol);
 
     const rez = { prijavljeno: 0, novih: 0, postojecih: 0, vec: 0, preskoceno: [], upozorenja: [] };
     baza.transakcija(() => {
@@ -159,8 +167,8 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
       let idBroj = null;
       for (const p of plan) {
         const katProg = p.oznake.map((o) => [
-          stavkaId('kategorije', o.kategorija, napravljene),
-          stavkaId('programi', o.program, napravljene),
+          stavkaId('kategorije', o.kategorija, napravljene, pol),
+          stavkaId('programi', o.program, napravljene, pol),
         ]);
         for (const r of p.redovi) {
           const ime = `${r.prezime} ${r.ime}`;
@@ -186,7 +194,7 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
                 ime: r.ime,
                 prezime: r.prezime,
                 godina_rodjenja: Number(r.godina),
-                pol: r.pol ?? p.pol,
+                pol,
                 klub_id: p.klub_id,
                 drzavljanstvo: 'Srbija',
                 lekarski_do: null,

@@ -21,17 +21,22 @@ function pravi(opcije = {}) {
   const moduli = napraviModule(baza, { dialog, fasciklaPodataka: () => os.tmpdir(), dnevnik: dn, kopijaLista: opcije.kopijaLista ?? (() => []) });
   return { baza, moduli };
 }
+// Primer ima dva takmicenja (ZSG i MSG); izabran je ZSG deo.
 function sPrimerom(opcije) {
   const o = pravi(opcije);
   uvezi(o.baza, json);
+  o.baza.ubaci('podesavanja', { kljuc: 'aktivni_pol', vrednost: 'Z' });
   return o;
 }
-// Seme: aktivno takmicenje sa 4 Z + 1 M prijavom i jednom Z grupom (Ana, Bea, Ceca) na pocetnoj poziciji 1.
+// Seme: aktivno ZSG takmicenje sa 4 prijave i jednom grupom (Ana, Bea, Ceca) na pocetnoj poziciji 1; Marko je prijavljen u MSG takmicenju.
 function sSemom(saGrupom = true) {
   const o = pravi();
   const s = tokSeme(o.baza);
   o.moduli.takmicenja.otvori(String(s.takm));
-  o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona, s.muski]);
+  o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  o.moduli.takmicenja.otvori(String(s.takmM));
+  o.moduli.prijave.dodaj([s.muski]);
+  o.moduli.takmicenja.otvori(String(s.takm));
   const pid = {};
   for (const [ime, id] of Object.entries({ Ana: s.t.Ana, Bea: s.t.Bea, Ceca: s.t.Ceca, Dona: s.t.Dona, Marko: s.muski })) {
     pid[ime] = Number(o.baza.vrednost('SELECT id FROM prijave WHERE takmicar_id = ?', [id]));
@@ -67,21 +72,33 @@ test('takmicenje.podaci bez aktivnog baca poruku, pocetna.podaci radi', () => {
 });
 
 test('pocetna.podaci nad primerom: spremno, lekarski upozorenja, bez ostalih', () => {
-  const { moduli } = sPrimerom();
+  const { moduli, baza } = sPrimerom();
   const d = moduli.pocetna.podaci();
   assert.equal(d.stanje.korak, 'spremno');
   assert.deepEqual(d.ostala, []);
   const imena = d.lekarski.map((r) => `${r.prezime} ${r.ime}`);
-  for (const ime of ['Simić Dunja', 'Stanković Luka', 'Nikolić Teodora']) assert.ok(imena.includes(ime), ime);
+  // ZSG deo: samo upozorenja za ZSG takmicenja
+  for (const ime of ['Simić Dunja', 'Nikolić Teodora']) assert.ok(imena.includes(ime), ime);
+  assert.ok(!imena.includes('Stanković Luka'));
   structuredClone(d);
+  moduli.takmicenja.otvori(String(baza.vrednost("SELECT id FROM takmicenja WHERE pol = 'M'")));
+  const m = moduli.pocetna.podaci();
+  assert.equal(m.stanje.korak, 'spremno');
+  assert.deepEqual(m.ostala, []);
+  const imenaM = m.lekarski.map((r) => `${r.prezime} ${r.ime}`);
+  assert.ok(imenaM.includes('Stanković Luka'));
+  assert.ok(!imenaM.includes('Simić Dunja'));
 });
 
 test('pocetna.podaci: ostala su sva osim aktivnog, svako sa stanjem', () => {
   const { moduli, baza, s } = sSemom();
   baza.ubaci('takmicenja', { naziv: 'Stari kup', datum: '2025-05-05', mesto: '', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje',
-    ekipno_broji: 1, kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });
+    ekipno_broji: 1, pol: 'Z', kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });
+  baza.ubaci('takmicenja', { naziv: 'Stari MSG kup', datum: '2025-05-05', mesto: '', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje',
+    ekipno_broji: 1, pol: 'M', kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });
   const d = moduli.pocetna.podaci();
   assert.equal(Number(d.takm.id), s.takm);
+  // MSG takmicenja (Test kup i Stari MSG kup) nisu u ZSG delu
   assert.equal(d.ostala.length, 1);
   assert.equal(d.ostala[0].naziv, 'Stari kup');
   assert.equal(d.ostala[0].stanje.prijava, 0);
@@ -134,7 +151,7 @@ test('takmicenje.podaci nad semom: Z u toku, nastavi na PR, uneto 0, hash sa pol
   assert.equal(d.unosHash, `#/unos?pol=Z&sprava=${s.pr}&rot=1`);
   assert.equal(d.danUNedelji, 'Subota');
   assert.equal(d.datumTekst, '17.10.2026.');
-  assert.deepEqual(d.brojevi, { prijava: 5, klubova: 2 });
+  assert.deepEqual(d.brojevi, { prijava: 4, klubova: 2 });
   structuredClone(d);
 });
 
@@ -157,11 +174,14 @@ test('takmicenje.podaci bez grupa: napredak null, nastavi null, #/unos', () => {
 
 const OCENA = { d: '4,8', e: ['8,3', '8,1', '8,4', '8,2'], odbitak: '' };
 
-test('takmicenje.podaci: Z gotov a M u toku, nastavi je na prvoj nezavrsenoj spravi M', () => {
+test('takmicenje.podaci: MSG takmicenje u toku, nastavi je na prvoj nezavrsenoj spravi M', () => {
   const { moduli, pid, s } = sSemom();
   for (const sprava of [s.pr, s.gr]) {
     for (const ime of ['Ana', 'Bea', 'Ceca']) moduli.unos.potvrdi(pid[ime], sprava, OCENA, '');
   }
+  // Z deo je gotov; MSG takmicenje je zasebno i ima svoj napredak
+  assert.equal(moduli.takmicenje.podaci().napredak.gotovo, true);
+  moduli.takmicenja.otvori(String(s.takmM));
   const m = moduli.rotacije.dodaj('M').grupa;
   moduli.rotacije.premesti(pid.Marko, m.id, 0, 1);
   const d = moduli.takmicenje.podaci();

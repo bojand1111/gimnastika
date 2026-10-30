@@ -46,7 +46,7 @@ test('aktivno takmicenje: prazno je null, postavljeno vraca red', () => {
     assert.equal(p.aktivnoTakmicenjeId(), null);
     assert.equal(p.aktivno(), null);
     const sad = Baza.sad();
-    const id = baza.ubaci('takmicenja', { naziv: 'T', datum: '2026-10-25', kreirano: sad, izmenjeno: sad });
+    const id = baza.ubaci('takmicenja', { naziv: 'T', datum: '2026-10-25', pol: 'M', kreirano: sad, izmenjeno: sad });
     p.postaviAktivno(id, 'M');
     assert.equal(p.aktivnoTakmicenjeId(), id);
     assert.equal(p.aktivno().naziv, 'T');

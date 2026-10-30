@@ -85,6 +85,9 @@ function napravi(baza) {
 
   function dodaj(takmicenjeId, pol) {
     if (pol !== 'M' && pol !== 'Z') throw new GreskaKorisnika('Nepoznat pol.');
+    const polTakm = baza.vrednost('SELECT pol FROM takmicenja WHERE id = ?', [takmicenjeId]);
+    if (polTakm === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
+    if (polTakm !== pol) throw new GreskaKorisnika('Grupa mora biti istog pola kao takmičenje.');
     const postojece = baza.svi('SELECT naziv FROM grupe WHERE takmicenje_id = ? AND pol = ? ORDER BY redosled', [takmicenjeId, pol])
       .map((r) => r.naziv);
     const n = postojece.length;

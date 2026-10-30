@@ -131,29 +131,41 @@ test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
   const { baza, moduli, dir } = pravi();
   const s = tokSeme(baza);
   moduli.takmicenja.otvori(s.takm);
-  moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Dona, s.muski]);
+  const d = moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Dona, s.muski]);
+  // Marko je MSG takmicar: u ZSG takmicenju se preskace
+  assert.deepEqual([d.dodato, d.preskoceno], [3, ['Test Marko: nije istog pola kao takmičenje.']]);
   const p = moduli.prijave.podaci(null);
   assert.deepEqual(Object.keys(p).sort(), ['kategorije', 'klubovi', 'prijave', 'prijavljeni', 'programi', 'sledeciIdBroj', 'sprave', 'stanje', 'takm', 'takmicari', 'ukupno', 'upozorenja']);
   assert.equal(p.takm.id, s.takm);
-  assert.equal(p.ukupno, 4);
-  assert.equal(p.prijave.length, 4);
+  assert.equal(p.ukupno, 3);
+  assert.equal(p.prijave.length, 3);
   assert.equal(p.takmicari.length, 5);
   assert.ok('klub_skr' in p.takmicari[0]);
-  assert.deepEqual([...p.prijavljeni].sort((a, b) => a - b), [s.t.Ana, s.t.Bea, s.t.Dona, s.muski].sort((a, b) => a - b));
+  assert.deepEqual([...p.prijavljeni].sort((a, b) => a - b), [s.t.Ana, s.t.Bea, s.t.Dona].sort((a, b) => a - b));
+  assert.deepEqual(p.kategorije.map((k) => k.id), [s.kat]);
+  assert.deepEqual(p.programi.map((k) => k.id), [s.prog]);
   assert.deepEqual(Object.keys(p.sprave).sort(), ['M', 'Z']);
   assert.equal(p.sprave.Z.length, 2);
   assert.equal(p.sledeciIdBroj, '100');
-  assert.deepEqual(Object.fromEntries(p.prijave.map((r) => [r.ime, r.lek_ne_vazi])), { Ana: false, Bea: true, Dona: true, Marko: true });
+  assert.deepEqual(Object.fromEntries(p.prijave.map((r) => [r.ime, r.lek_ne_vazi])), { Ana: false, Bea: true, Dona: true });
   assert.deepEqual(p.upozorenja.slice().sort(), [
     'Test Bea: lekarski važi do 01.01.2026. i ne važi na dan takmičenja (17.10.2026.).',
     'Test Dona: nema unet lekarski pregled.',
-    'Test Marko: nema unet lekarski pregled.',
   ]);
   const z = moduli.prijave.podaci('Z');
   assert.equal(z.prijave.length, 3);
-  assert.equal(z.ukupno, 4);
-  assert.equal(moduli.prijave.podaci('X').prijave.length, 4);
+  assert.equal(z.ukupno, 3);
+  assert.equal(moduli.prijave.podaci('M').prijave.length, 0);
+  assert.equal(moduli.prijave.podaci('X').prijave.length, 3);
   structuredClone(p);
+  // MSG deo: Marko se prijavljuje u MSG takmicenju
+  moduli.takmicenja.otvori(s.takmM);
+  assert.deepEqual(moduli.prijave.dodaj([s.muski]).dodato, 1);
+  const m = moduli.prijave.podaci(null);
+  assert.equal(m.takm.id, s.takmM);
+  assert.deepEqual(m.prijave.map((r) => r.ime), ['Marko']);
+  assert.deepEqual(m.kategorije.map((k) => k.id), [s.katM]);
+  assert.deepEqual(m.upozorenja, ['Test Marko: nema unet lekarski pregled.']);
   cisti(dir);
 });
 

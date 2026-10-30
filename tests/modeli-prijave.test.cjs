@@ -39,8 +39,9 @@ test('tok prijava (POPIS 9.2)', () => {
   const { baza, s, podesavanja, p } = nova();
   // 1
   const r = p.dodajVise(s.takm, svi(s));
-  assert.equal(r.dodato, 5);
-  assert.equal(r.upozorenja.length, 3);
+  assert.equal(r.dodato, 4);
+  assert.deepEqual(r.preskoceno, ['Test Marko: nije istog pola kao takmičenje.']);
+  assert.equal(r.upozorenja.length, 2);
   // 2
   assert.equal(p.dodajVise(s.takm, [s.t.Ana]).dodato, 0);
   // 3
@@ -62,12 +63,12 @@ test('tok prijava (POPIS 9.2)', () => {
   assert.equal(poruka(() => p.izmeniPolje(s.takm, bea, 'startni_broj', '21')), 'Startni broj 21 već ima Test Ana.');
   assert.equal(poruka(() => p.izmeniPolje(s.takm, bea, 'startni_broj', 'x')), 'Startni broj mora biti pozitivan ceo broj.');
   // 6
-  assert.equal(p.dodeliStartneBrojeve(s.takm), 4);
+  assert.equal(p.dodeliStartneBrojeve(s.takm), 3);
   const broj = (id) => p.nadji(id).startni_broj;
   assert.equal(broj(ana), 21);
   assert.equal(broj(bea), 24);
   const po = Object.fromEntries(p.lista(s.takm).map((x) => [x.ime, x.startni_broj]));
-  assert.deepEqual(po, { Ana: 21, Ceca: 22, Dona: 23, Bea: 24, Marko: 25 });
+  assert.deepEqual(po, { Ana: 21, Ceca: 22, Dona: 23, Bea: 24 });
   // 7
   assert.equal(poruka(() => p.postaviSpravu(s.takm, ana, s.pa, true)), 'Sprava ne odgovara polu takmičara.');
   p.postaviSpravu(s.takm, ana, s.gr, false);
@@ -201,33 +202,80 @@ test('dodajJednu: stanja i poruke', () => {
 });
 
 test('lista: filtar pola, redosled Z pa M', () => {
-  const { s, p } = nova();
-  p.dodajVise(s.takm, [s.muski, s.t.Dona, s.t.Ana]);
+  const { baza, s, p } = nova();
+  p.dodajVise(s.takm, [s.t.Dona, s.t.Ana]);
+  p.dodajVise(s.takmM, [s.muski]);
+  assert.deepEqual(p.lista(s.takm).map((x) => x.ime), ['Ana', 'Dona']);
+  assert.deepEqual(p.lista(s.takmM).map((x) => x.ime), ['Marko']);
+  assert.deepEqual(p.lista(s.takmM, 'M')[0].sprave, [s.pa]);
+  assert.equal(p.lista(s.takm)[0].klub_skr, 'JED');
+  // stari mesoviti red (ne moze nastati dodavanjem) ostaje pod filtrom pola i redom Z pa M
+  baza.ubaci('prijave', { takmicenje_id: s.takm, takmicar_id: s.muski, kreirano: S, izmenjeno: S });
   assert.deepEqual(p.lista(s.takm).map((x) => x.ime), ['Ana', 'Dona', 'Marko']);
   assert.deepEqual(p.lista(s.takm, 'M').map((x) => x.ime), ['Marko']);
-  assert.deepEqual(p.lista(s.takm, 'M')[0].sprave, [s.pa]);
-  assert.equal(p.lista(s.takm)[0].klub_skr, 'JED');
+});
+
+test('prijava drugog pola se preskace', () => {
+  const { baza, s, p } = nova();
+  const r = p.dodajJednu(s.takm, s.muski, s.kat, s.prog, 'pojedinac');
+  assert.deepEqual(r, { stanje: 'preskoceno', ime: 'Test Marko', poruka: 'Test Marko: nije istog pola kao takmičenje.', lekarski_ne_vazi: false, prijava_id: null });
+  const v = p.dodajVise(s.takmM, [s.t.Ana, s.muski]);
+  assert.equal(v.dodato, 1);
+  assert.deepEqual(v.preskoceno, ['Test Ana: nije istog pola kao takmičenje.']);
+  assert.deepEqual(v.upozorenja, ['Test Marko']);
+  assert.equal(Number(baza.vrednost('SELECT COUNT(*) FROM prijave')), 1);
+  assert.deepEqual(p.lista(s.takmM).map((x) => x.ime), ['Marko']);
+  // kategorija i program su prva stavka pola takmicenja
+  assert.equal(p.lista(s.takmM)[0].kategorija_id, s.katM);
+  assert.equal(p.lista(s.takmM)[0].program_id, s.progM);
+  p.dodajVise(s.takm, [s.t.Ana]);
+  assert.equal(p.lista(s.takm)[0].kategorija_id, s.kat);
+  assert.equal(p.lista(s.takm)[0].program_id, s.prog);
+});
+
+test('kategorija drugog pola se odbija', () => {
+  const { s, p } = nova();
+  p.dodajVise(s.takm, [s.t.Ana]);
+  const ana = p.lista(s.takm)[0].id;
+  assert.equal(poruka(() => p.izmeniPolje(s.takm, ana, 'kategorija_id', s.katM)), 'Kategorija ili program ne pripada ovom polu.');
+  assert.equal(poruka(() => p.izmeniPolje(s.takm, ana, 'program_id', s.progM)), 'Kategorija ili program ne pripada ovom polu.');
+  assert.equal(p.nadji(ana).kategorija_id, s.kat);
+  assert.equal(p.nadji(ana).program_id, s.prog);
+  p.dodajVise(s.takmM, [s.muski]);
+  const marko = p.lista(s.takmM)[0].id;
+  assert.equal(poruka(() => p.izmeniPolje(s.takmM, marko, 'kategorija_id', s.kat)), 'Kategorija ili program ne pripada ovom polu.');
+  p.izmeniPolje(s.takmM, marko, 'kategorija_id', s.katM);
+  assert.equal(p.nadji(marko).kategorija_id, s.katM);
 });
 
 test('lekarskiUpozorenja i brojevi', () => {
   const { baza, s, p } = nova();
   p.dodajVise(s.takm, svi(s));
-  const u = p.lekarskiUpozorenja(30);
-  assert.deepEqual(u.map((x) => x.ime), ['Bea', 'Dona', 'Marko']);
-  assert.deepEqual(u.map((x) => x.lek.stanje), ['istekao', 'nema', 'nema']);
+  p.dodajVise(s.takmM, [s.muski]);
+  const u = p.lekarskiUpozorenja(30, 'Z');
+  assert.deepEqual(u.map((x) => x.ime), ['Bea', 'Dona']);
+  assert.deepEqual(u.map((x) => x.lek.stanje), ['istekao', 'nema']);
   assert.equal(u[0].takmicenje, 'Test kup');
-  assert.deepEqual(p.brojevi(s.takm), { prijava: 5, klubova: 2 });
+  assert.deepEqual(p.brojevi(s.takm), { prijava: 4, klubova: 2 });
   baza.izmeni('takmicenja', { zavrseno: 1 }, 'id = ?', [s.takm]);
-  assert.deepEqual(p.lekarskiUpozorenja(30), []);
+  assert.deepEqual(p.lekarskiUpozorenja(30, 'Z'), []);
+});
+
+test('lekarski samo za pol', () => {
+  const { s, p } = nova();
+  p.dodajVise(s.takm, svi(s));
+  p.dodajVise(s.takmM, [s.muski]);
+  assert.deepEqual(p.lekarskiUpozorenja(30, 'Z').map((x) => x.ime), ['Bea', 'Dona']);
+  assert.deepEqual(p.lekarskiUpozorenja(30, 'M').map((x) => [x.ime, x.takmicenje_id]), [['Marko', s.takmM]]);
 });
 
 test('lekarskiUpozorenja: vraca i red sa stanjem istice (u pragu)', () => {
   const { baza, s, p } = nova();
   p.dodajVise(s.takm, [s.t.Ana, s.t.Ceca]);
-  assert.deepEqual(p.lekarskiUpozorenja(30), []);
+  assert.deepEqual(p.lekarskiUpozorenja(30, 'Z'), []);
   // takmicenje je 2026-10-17: 10 dana do isteka je u pragu od 30
   baza.izmeni('takmicari', { lekarski_do: '2026-10-27' }, 'id = ?', [s.t.Ceca]);
-  const u = p.lekarskiUpozorenja(30);
+  const u = p.lekarskiUpozorenja(30, 'Z');
   assert.deepEqual(u.map((x) => [x.ime, x.lek.stanje, x.lek.dana]), [['Ceca', 'istice', 10]]);
 });
 

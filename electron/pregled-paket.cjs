@@ -69,13 +69,14 @@ function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhr
     pocetna: {
       // Radi i bez aktivnog takmicenja (takm i stanje su tada null).
       podaci: () => {
-        const takm = p.aktivno();
+        const pol = p.aktivniPol();
+        const takm = p.aktivno(pol);
         const aid = takm ? Number(takm.id) : null;
         return {
           takm,
           stanje: aid === null ? null : pr.stanjePripreme(aid),
-          ostala: tk.sva().filter((r) => Number(r.id) !== aid).map((r) => ({ ...r, stanje: pr.stanjePripreme(Number(r.id)) })),
-          lekarski: pr.lekarskiUpozorenja(p.dajInt('lekarski_prag_dana', 30)),
+          ostala: tk.sva(pol).filter((r) => Number(r.id) !== aid).map((r) => ({ ...r, stanje: pr.stanjePripreme(Number(r.id)) })),
+          lekarski: pr.lekarskiUpozorenja(p.dajInt('lekarski_prag_dana', 30), pol),
           poslednjaKopija: poslednja(kopijaLista()),
           precice: PRECICE.map(([tekst, tasteri]) => [tekst, [...tasteri]]),
         };

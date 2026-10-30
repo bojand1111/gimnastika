@@ -11,15 +11,16 @@ const { napravi: napraviSifarnike } = require('../electron/modeli/sifarnici.cjs'
 const { uvezi } = require('../alati/primer-podaci.cjs');
 const json = require('../docs/proizvod/dizajn/primer-podaci.json');
 
-// Snimak nad primer podacima, napravljen kroz modele u memoriji.
-function gradi() {
+// Snimak aktivnog takmicenja jednog dela (pol) nad primer podacima, napravljen kroz modele u memoriji.
+function gradi(pol = 'Z') {
   const baza = otvori(':memory:');
   baza.migriraj();
   uvezi(baza, json);
   const podesavanja = napraviPodesavanja(baza, '');
   const rezultati = napraviRezultate(baza, podesavanja);
   const sifarnici = napraviSifarnike(baza);
-  const takm = podesavanja.aktivno();
+  podesavanja.postaviPol(pol);
+  const takm = podesavanja.aktivno(pol);
   const liste = rezultati.kombinacije(Number(takm.id)).map((k) => listaIzRezultata(k, rezultati.izracunaj(takm, k.pol, k.kategorija_id ?? null, k.program_id ?? null)));
   const s = snimak({ takm, sprave: { Z: sifarnici.sprave('Z'), M: sifarnici.sprave('M') }, liste, verzija: '1.2.3', sad: '2026-10-27 10:15:30' });
   return { s, baza };
@@ -35,10 +36,20 @@ test('snimak: zaglavlje, takmicenje i sprave po polu', () => {
   assert.equal(s.sprave.Z.length, 4);
   assert.equal(s.sprave.M.length, 6);
   assert.deepEqual(Object.keys(s.sprave.Z[0]), ['id', 'naziv', 'skracenica']);
-  assert.equal(s.liste.length, 2);
-  assert.deepEqual(s.liste.map((l) => l.pol), ['Z', 'M']);
+  assert.equal(s.liste.length, 1);
+  assert.deepEqual(s.liste.map((l) => l.pol), ['Z']);
   assert.equal(s.liste[0].kategorija.naziv, 'Kadet');
   assert.equal(s.liste[0].program.naziv, 'C program');
+});
+
+test('snimak: MSG takmicenje nosi samo MSG listu', () => {
+  const { s } = gradi('M');
+  assert.equal(s.takmicenje.naziv, json.takmicenje.naziv);
+  assert.equal(s.liste.length, 1);
+  assert.deepEqual(s.liste.map((l) => l.pol), ['M']);
+  assert.equal(s.liste[0].viseboj.length, json.msg_kadet_c.takmicari.length);
+  assert.equal(s.sprave.Z.length, 4);
+  assert.equal(s.sprave.M.length, 6);
 });
 
 test('snimak: visebojska rang lista Z, Petrovic Ana', () => {

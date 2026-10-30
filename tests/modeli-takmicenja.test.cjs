@@ -30,7 +30,7 @@ function prijava(baza, tid, status) {
 
 test('prazno: podrazumevane vrednosti', () => {
   const { t } = nova();
-  assert.deepEqual(t.prazno(), { naziv: '', datum: null, mesto: '', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje',
+  assert.deepEqual(t.prazno('Z'), { pol: 'Z', naziv: '', datum: null, mesto: '', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje',
     ekipno_broji: 3, pomeraj_redosled: 0, zavrseno: 0, zaglavlje_biltena: '', organizator: '', domacin: '',
     grb_levo: '', grb_desno: '' });
   assert.equal(t.POLJA.length, 11);
@@ -57,7 +57,7 @@ test('proveri: neispravan datum, formati, opsezi', () => {
 
 test('sacuvaj: vraca id, nadji ima podrazumevane, izmena vraca isti id', () => {
   const { t } = nova();
-  const id = t.sacuvaj({ ...OK, ekstra: 'x' }, null);
+  const id = t.sacuvaj({ ...OK, ekstra: 'x' }, null, 'Z');
   const r = t.nadji(id);
   assert.equal(r.naziv, 'Kup');
   assert.equal(r.datum, '2027-03-15');
@@ -75,13 +75,13 @@ test('sacuvaj: vraca id, nadji ima podrazumevane, izmena vraca isti id', () => {
 
 test('sacuvaj: baca GreskaKorisnika sa spojenim porukama', () => {
   const { t } = nova();
-  assert.throws(() => t.sacuvaj({}, null),
+  assert.throws(() => t.sacuvaj({}, null, 'Z'),
     (e) => e instanceof GreskaKorisnika && e.message.startsWith('Naziv takmičenja je obavezan. Datum je obavezan.'));
 });
 
 test('broj E sudija: blokira uneto, ne blokira nacrt, ne blokira istu vrednost', () => {
   const { baza, t } = nova();
-  const id = t.sacuvaj(OK, null);
+  const id = t.sacuvaj(OK, null, 'Z');
   prijava(baza, id, 'nacrt');
   assert.equal(t.imaOcena(id), false);
   assert.deepEqual(t.proveri({ ...OK, broj_e_sudija: '5' }, id), []);
@@ -96,7 +96,7 @@ test('broj E sudija: blokira uneto, ne blokira nacrt, ne blokira istu vrednost',
 
 test('postaviGrb: nepoznato polje baca, prazno uklanja', () => {
   const { t } = nova();
-  const id = t.sacuvaj(OK, null);
+  const id = t.sacuvaj(OK, null, 'Z');
   assert.throws(() => t.postaviGrb(id, 'naziv', 'x'), /Nepoznato polje grba: naziv/);
   t.postaviGrb(id, 'grb_desno', 'grb/a.png');
   assert.equal(t.nadji(id).grb_desno, 'grb/a.png');
@@ -108,7 +108,7 @@ test('sacuvajGrb: kopira, velika ekstenzija, ime po zigu, greske', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'grb-'));
   try {
     const { t } = nova(dir);
-    const id = t.sacuvaj(OK, null);
+    const id = t.sacuvaj(OK, null, 'Z');
     const izvor = path.join(dir, 'slika.PNG');
     fs.writeFileSync(izvor, 'x');
     const v1 = t.sacuvajGrb(id, 'grb_levo', izvor);
@@ -131,12 +131,12 @@ test('sacuvajGrb: kopira, velika ekstenzija, ime po zigu, greske', () => {
 
 test('obrisi: sa prijavom baca sa brojem, bez prijave brise i potvrde', () => {
   const { baza, t } = nova();
-  const id = t.sacuvaj(OK, null);
+  const id = t.sacuvaj(OK, null, 'Z');
   const { kid } = prijava(baza, id, null);
   assert.equal(t.brojPrijava(id), 1);
   assert.throws(() => t.obrisi(id),
     (e) => e instanceof GreskaKorisnika && e.message === 'Takmičenje ima 1 prijava i ne može se obrisati.');
-  const id2 = t.sacuvaj(OK, null);
+  const id2 = t.sacuvaj(OK, null, 'Z');
   baza.ubaci('potvrde_klubova', { takmicenje_id: id2, klub_id: kid, potvrdjeno: S });
   t.obrisi(id2);
   assert.equal(t.nadji(id2), null);
@@ -152,14 +152,43 @@ test('status: aktivno ima prednost, zavrseno, priprema', () => {
 
 test('sva: datum opadajuce pa id, sa brojevima', () => {
   const { baza, t } = nova();
-  const a = t.sacuvaj({ ...OK, datum: '2027-01-01' }, null);
-  const b = t.sacuvaj({ ...OK, datum: '2027-05-01' }, null);
-  const c = t.sacuvaj({ ...OK, datum: '2027-01-01' }, null);
+  const a = t.sacuvaj({ ...OK, datum: '2027-01-01' }, null, 'Z');
+  const b = t.sacuvaj({ ...OK, datum: '2027-05-01' }, null, 'Z');
+  const c = t.sacuvaj({ ...OK, datum: '2027-01-01' }, null, 'Z');
   prijava(baza, a, 'uneto');
   prijava(baza, a, 'nacrt');
-  const sva = t.sva();
+  const sva = t.sva('Z');
   assert.deepEqual(sva.map(r => r.id), [b, c, a]);
   const ra = sva.find(r => r.id === a);
   assert.equal(ra.broj_prijava, 2);
   assert.equal(ra.broj_ocena, 1);
+});
+
+test('sva po polu: samo takmicenja tog pola', () => {
+  const { t } = nova();
+  const z = t.sacuvaj({ ...OK, naziv: 'ZSG kup' }, null, 'Z');
+  const m = t.sacuvaj({ ...OK, naziv: 'MSG kup' }, null, 'M');
+  assert.deepEqual(t.sva('Z').map((r) => r.id), [z]);
+  assert.deepEqual(t.sva('M').map((r) => r.id), [m]);
+  assert.deepEqual(t.sva('X'), []);
+});
+
+test('sacuvaj: novo takmicenje dobija pol, izmena ga ne menja', () => {
+  const { t } = nova();
+  assert.equal(t.prazno('M').pol, 'M');
+  const id = t.sacuvaj(OK, null, 'M');
+  assert.equal(t.nadji(id).pol, 'M');
+  t.sacuvaj({ ...OK, naziv: 'Drugo' }, id, 'Z');
+  assert.equal(t.nadji(id).pol, 'M');
+  assert.equal(t.nadji(id).naziv, 'Drugo');
+  t.sacuvaj({ ...OK, naziv: 'Trece' }, id);
+  assert.equal(t.nadji(id).pol, 'M');
+});
+
+test('sacuvaj: novo takmicenje bez ispravnog pola se odbija', () => {
+  const { baza, t } = nova();
+  for (const pol of [undefined, '', 'X']) {
+    assert.throws(() => t.sacuvaj(OK, null, pol), (e) => e instanceof GreskaKorisnika && e.message === 'Nepoznat pol.');
+  }
+  assert.equal(Number(baza.vrednost('SELECT COUNT(*) FROM takmicenja')), 0);
 });

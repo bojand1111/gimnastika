@@ -74,7 +74,7 @@ test('posalji: PUT 200 postavlja kljuc, dnevnik bez tokena, telo je snimak', asy
     assert.equal(p.sinhro.stanje().poslednje, '');
     assert.equal(p.sinhro.imaPromena(), true);
     const r = await p.sinhro.posalji();
-    assert.deepEqual(r, { ok: true, liste: 2, greska: '' });
+    assert.deepEqual(r, { ok: true, liste: 1, greska: '' });
     const z = s.zahtevi[0];
     const id = p.podesavanja.aktivnoTakmicenjeId();
     assert.equal(z.metoda, 'PUT');
@@ -83,11 +83,11 @@ test('posalji: PUT 200 postavlja kljuc, dnevnik bez tokena, telo je snimak', asy
     assert.equal(z.zaglavlja.authorization, `Bearer ${TOKEN}`);
     const telo = JSON.parse(z.telo);
     assert.equal(telo.verzija_formata, 1);
-    assert.equal(telo.liste.length, 2);
+    assert.equal(telo.liste.length, 1);
     assert.match(p.sinhro.stanje().poslednje, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
     assert.equal(p.sinhro.stanje().greska, '');
     const linija = p.log.find((l) => l.startsWith('Sinhro: poslato takmicenje'));
-    assert.match(linija, new RegExp(`^Sinhro: poslato takmicenje ${id} \\(2 lista, \\d+ B\\)$`));
+    assert.match(linija, new RegExp(`^Sinhro: poslato takmicenje ${id} \\(1 lista, \\d+ B\\)$`));
     assert.equal(p.log.some((l) => l.includes(TOKEN)), false);
   } finally { await s.ugasi(); }
 });
@@ -233,7 +233,7 @@ test('imaPromena: false posle slanja, true posle izmene ocene', async () => {
     assert.equal(p.sinhro.stanje().poslednje, '2020-06-01 00:00:00');
     assert.equal(p.sinhro.imaPromena(), false);
     const takmId = p.podesavanja.aktivnoTakmicenjeId();
-    const o = p.baza.jedan('SELECT prijava_id, sprava_id FROM ocene LIMIT 1');
+    const o = p.baza.jedan('SELECT o.prijava_id, o.sprava_id FROM ocene o JOIN prijave pr ON pr.id = o.prijava_id WHERE pr.takmicenje_id = ? LIMIT 1', [takmId]);
     const ocene = napraviOcene(p.baza, p.podesavanja);
     ocene.sacuvaj(takmId, o.prijava_id, o.sprava_id, { d: '5,0', e: ['9,0', '9,0', '9,0', '9,0'], odbitak: '' }, true, 'ispravka u testu');
     assert.equal(p.sinhro.imaPromena(), true);
@@ -242,7 +242,11 @@ test('imaPromena: false posle slanja, true posle izmene ocene', async () => {
 
 test('snimakAktivnog: snimak ili null', () => {
   const p = pravi();
-  assert.equal(p.sinhro.snimakAktivnog().liste.length, 2);
+  assert.equal(p.sinhro.snimakAktivnog().liste.length, 1);
+  assert.deepEqual(p.sinhro.snimakAktivnog().liste.map((l) => l.pol), ['M']);
+  p.podesavanja.postaviPol('Z');
+  assert.deepEqual(p.sinhro.snimakAktivnog().liste.map((l) => l.pol), ['Z']);
+  p.podesavanja.postaviPol('M');
   p.podesavanja.postavi('aktivno_takmicenje_M', '');
   assert.equal(p.sinhro.snimakAktivnog(), null);
 });

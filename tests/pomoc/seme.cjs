@@ -1,4 +1,5 @@
-// Zajednicko seme za testove modela (POPIS 9.1): klubovi, takmicari, sifarnici, takmicenje.
+// Zajednicko seme za testove modela (POPIS 9.1): klubovi, takmicari, sifarnici, takmicenja po polu.
+// takm, kat, prog su ZSG (Z); takmM, katM, progM su MSG (M). Marko (muski) se prijavljuje u takmM.
 const S = '2026-01-01 00:00:00';
 
 function tokSeme(baza) {
@@ -14,14 +15,18 @@ function tokSeme(baza) {
     Dona: takmicar('004', 'Dona', 'Z', 2012, k2, null),
   };
   const muski = takmicar('099', 'Marko', 'M', 2011, k1, null);
-  const kat = ubaci('kategorije', { naziv: 'Kadet', redosled: 1 });
-  const prog = ubaci('programi', { naziv: 'C', redosled: 1 });
+  const kat = ubaci('kategorije', { naziv: 'Kadet', redosled: 1, pol: 'Z' });
+  const prog = ubaci('programi', { naziv: 'C', redosled: 1, pol: 'Z' });
+  const katM = ubaci('kategorije', { naziv: 'Kadet', redosled: 1, pol: 'M' });
+  const progM = ubaci('programi', { naziv: 'C', redosled: 1, pol: 'M' });
   const pr = ubaci('sprave', { pol: 'Z', naziv: 'Preskok', skracenica: 'PR', redosled: 1 });
   const gr = ubaci('sprave', { pol: 'Z', naziv: 'Greda', skracenica: 'GR', redosled: 2 });
   const pa = ubaci('sprave', { pol: 'M', naziv: 'Parter', skracenica: 'PA', redosled: 1 });
-  const takm = ubaci('takmicenja', { naziv: 'Test kup', datum: '2026-10-17', mesto: 'NS', broj_e_sudija: 4,
-    pravilo_e: 'odbaci_krajnje', ekipno_broji: 1 });
-  return { k1, k2, t, muski, kat, prog, pr, gr, pa, takm };
+  const takmicenje = (pol) => ubaci('takmicenja', { naziv: 'Test kup', datum: '2026-10-17', mesto: 'NS', broj_e_sudija: 4,
+    pravilo_e: 'odbaci_krajnje', ekipno_broji: 1, pol });
+  const takm = takmicenje('Z');
+  const takmM = takmicenje('M');
+  return { k1, k2, t, muski, kat, prog, katM, progM, pr, gr, pa, takm, takmM };
 }
 
 module.exports = { tokSeme };

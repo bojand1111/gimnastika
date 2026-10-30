@@ -36,6 +36,13 @@ const GRB_DIJALOG = {
   properties: ['openFile'],
   filters: [{ name: 'Slike', extensions: ['png', 'jpg', 'jpeg', 'svg', 'gif'] }],
 };
+// Privremeno (do zadatka 7): renderer jos zna stara imena lista sprava; lista sprava je po polu, ostale po izabranom delu.
+const STARE_VRSTE = {
+  kategorije: { tabela: 'kategorije', naziv: 'Kategorije', pol: null },
+  programi: { tabela: 'programi', naziv: 'Programi', pol: null },
+  sprave_m: { tabela: 'sprave', naziv: 'Sprave · muške', pol: 'M' },
+  sprave_z: { tabela: 'sprave', naziv: 'Sprave · ženske', pol: 'Z' },
+};
 const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.';
 
 // Model rezervne kopije nad bazom (main ga pravi i pre migracija, za kopiju pre_migracije).
@@ -79,6 +86,13 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     return r;
   }
   const aktivnoId = () => Number(aktivnoRed().id);
+
+  // [vrsta, pol] modela sifarnika za ime vrste iz renderera.
+  function vrstaIPol(vrsta) {
+    if (vrsta === 'sprave_m') return ['sprave', 'M'];
+    if (vrsta === 'sprave_z') return ['sprave', 'Z'];
+    return [vrsta, p.aktivniPol()];
+  }
 
   // Dijalog za izbor fajlova; sa roditeljem kao u fazi 2.
   async function izaberi(opcije) {
@@ -150,15 +164,25 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       sledeciIdBroj: () => t.sledeciIdBroj(),
     },
     sifarnici: {
-      vrste: () => ({ vrste: sifarnici.VRSTE, ikone: sifarnici.IKONE }),
-      lista: (vrsta) => s.lista(vrsta),
+      vrste: () => ({ vrste: STARE_VRSTE, ikone: sifarnici.IKONE }),
+      lista: (vrsta) => s.lista(...vrstaIPol(vrsta)),
       dodaj: (vrsta, u) => {
-        const id = s.dodaj(vrsta, u);
-        return { id, stavka: s.nadji(vrsta, id) };
+        const [v, pol] = vrstaIPol(vrsta);
+        const id = s.dodaj(v, u, pol);
+        return { id, stavka: s.nadji(v, id) };
       },
-      izmeni: (vrsta, id, u) => s.izmeni(vrsta, broj(id), u),
-      obrisi: (vrsta, id) => s.obrisi(vrsta, broj(id)),
-      redosled: (vrsta, ids) => s.redosled(vrsta, (ids || []).map(Number)),
+      izmeni: (vrsta, id, u) => {
+        const [v, pol] = vrstaIPol(vrsta);
+        return s.izmeni(v, broj(id), u, pol);
+      },
+      obrisi: (vrsta, id) => {
+        const [v, pol] = vrstaIPol(vrsta);
+        return s.obrisi(v, broj(id), pol);
+      },
+      redosled: (vrsta, ids) => {
+        const [v, pol] = vrstaIPol(vrsta);
+        return s.redosled(v, (ids || []).map(Number), pol);
+      },
     },
     podesavanja: {
       sva: () => {
@@ -182,21 +206,22 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     takmicenja: {
       sva: () => {
         const aid = p.aktivnoTakmicenjeId();
-        return tk.sva().map((r) => ({ ...r, status: tk.status(r, aid), stanje: pr.stanjePripreme(Number(r.id)) }));
+        return tk.sva(p.aktivniPol()).map((r) => ({ ...r, status: tk.status(r, aid), stanje: pr.stanjePripreme(Number(r.id)) }));
       },
       // ima_ocena (0|1): forma zakljucava broj E sudija kad su ocene vec unete.
       nadji: (id) => {
         const r = sGrbovima(tk.nadji(broj(id)));
         return r ? { ...r, ima_ocena: tk.imaOcena(Number(r.id)) ? 1 : 0 } : r;
       },
-      prazno: () => sGrbovima(tk.prazno()),
+      prazno: () => sGrbovima(tk.prazno(p.aktivniPol())),
       // Novo takmicenje odmah postaje aktivno (POPIS 4.3); renderer posle odgovora emituje app:aktivno.
       sacuvaj: (u, id) => {
         const staro = broj(id);
         const novo = staro === null;
-        const sid = tk.sacuvaj(u, staro);
-        // Pol takmicenja (prazan dok ga ne upisuje forma): tada vazi izabrani deo.
-        if (novo) p.postaviAktivno(sid, tk.nadji(sid)?.pol || p.aktivniPol());
+        // Novo takmicenje dobija izabrani deo (MSG ili ZSG) i u njemu postaje aktivno.
+        const pol = p.aktivniPol();
+        const sid = tk.sacuvaj(u, staro, pol);
+        if (novo) p.postaviAktivno(sid, pol);
         return { id: sid, novo, aktivno: novo };
       },
       izaberiGrb: async () => (await izaberi(GRB_DIJALOG))[0] ?? null,
@@ -221,8 +246,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       otvori: (id) => {
         const r = tk.nadji(broj(id));
         if (r === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
-        p.postaviAktivno(Number(r.id), r.pol || p.aktivniPol());
-        if (r.pol) p.postaviPol(r.pol); // otvaranje prikazuje deo kome takmicenje pripada
+        p.postaviAktivno(Number(r.id), r.pol);
+        p.postaviPol(r.pol); // otvaranje prikazuje deo kome takmicenje pripada
         const stanje = pr.stanjePripreme(Number(r.id));
         return { korak: stanje.korak, naziv: r.naziv, stanje };
       },
@@ -242,8 +267,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
           takmicari: t.svi(),
           prijavljeni: pr.prijavljeniTakmicari(Number(takm.id)),
           klubovi: k.svi(),
-          kategorije: s.lista('kategorije'),
-          programi: s.lista('programi'),
+          kategorije: s.lista('kategorije', takm.pol),
+          programi: s.lista('programi', takm.pol),
           sprave: { M: s.sprave('M'), Z: s.sprave('Z') },
           stanje,
           ukupno: stanje.prijava,

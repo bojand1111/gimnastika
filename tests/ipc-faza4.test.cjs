@@ -19,12 +19,15 @@ function pravi() {
   const moduli = napraviModule(baza, { dialog, fasciklaPodataka: () => os.tmpdir(), dnevnik: dn });
   return { baza, moduli };
 }
-// Seme sa aktivnim takmicenjem i prijavama: cetiri zene (Ana, Bea, Ceca, Dona) i jedan muskarac.
+// Seme sa aktivnim ZSG takmicenjem i prijavama cetiri zene (Ana, Bea, Ceca, Dona); jedan muskarac je prijavljen u MSG takmicenju.
 function sa4() {
   const o = pravi();
   const s = tokSeme(o.baza);
   o.moduli.takmicenja.otvori(String(s.takm));
-  o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona, s.muski]);
+  o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  o.moduli.takmicenja.otvori(String(s.takmM));
+  o.moduli.prijave.dodaj([s.muski]);
+  o.moduli.takmicenja.otvori(String(s.takm));
   const pid = {};
   const tid = { Ana: s.t.Ana, Bea: s.t.Bea, Ceca: s.t.Ceca, Dona: s.t.Dona, Marko: s.muski };
   for (const [ime, id] of Object.entries(tid)) {
