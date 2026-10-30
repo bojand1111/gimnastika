@@ -1,4 +1,5 @@
 import Ikona from '../komponente/Ikona.jsx';
+import IzborDela from '../okvir/IzborDela.jsx';
 import { konacnaE } from '../../electron/racun/ocena.mjs';
 import { prikaz } from '../../electron/racun/broj.mjs';
 
@@ -82,6 +83,7 @@ export default function Sistem() {
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end' }}>
             <label className="polje" style={{ width: 230 }}><span className="oznaka">Padajuća lista</span><select className="unos"><option>GK „Beograd“</option></select></label>
             <div className="polje"><span className="oznaka">Izbor</span><div className="izbor" role="group"><button type="button" aria-pressed="true">ŽSG</button><button type="button" aria-pressed="false">MSG</button></div></div>
+            <div className="polje"><span className="oznaka">Prekidač dela (meni)</span><div style={{ width: 204 }}><IzborDela pol="M" naPromenu={() => {}} /></div></div>
             <div style={{ display: 'flex', alignItems: 'center', height: 36, gap: 16 }}>
               <label className="kucica"><input type="checkbox" defaultChecked /><span>Član ekipe</span></label>
               <label className="kucica"><input type="checkbox" /><span>Van konkurencije</span></label>

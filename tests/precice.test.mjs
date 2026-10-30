@@ -41,3 +41,17 @@ test('obicna slova i prazna meta', () => {
   assert.equal(radnja(ev('p')), null);
   assert.equal(radnja({ key: 'F2', altKey: false, ctrlKey: false, target: null }), 'unos');
 });
+
+test('Alt+M i Alt+Z biraju deo aplikacije, i u poljima', () => {
+  assert.equal(radnja(ev('m', { altKey: true })), 'pol-m');
+  assert.equal(radnja(ev('Z', { altKey: true })), 'pol-z');
+  assert.equal(radnja(ev('m', { altKey: true }, 'INPUT')), 'pol-m');
+  assert.equal(radnja(ev('z', { altKey: true }, 'TEXTAREA')), 'pol-z');
+});
+
+test('M i Z bez Alt, i AltGr (Ctrl+Alt), ne biraju deo', () => {
+  assert.equal(radnja(ev('m')), null);
+  assert.equal(radnja(ev('z', {}, 'INPUT')), null);
+  assert.equal(radnja(ev('m', { altKey: true, ctrlKey: true })), null);
+  assert.equal(radnja(ev('z', { altKey: true, ctrlKey: true })), null);
+});

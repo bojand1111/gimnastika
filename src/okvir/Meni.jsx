@@ -1,5 +1,6 @@
 import Ikona from '../komponente/Ikona.jsx';
 import { url } from '../ruter.js';
+import IzborDela from './IzborDela.jsx';
 
 // [grupa, [[ruta, tekst, ikona, precica]]] kao u okvir.php
 const GRUPE = [
@@ -17,7 +18,7 @@ function aktivnaStavka(ekran) {
   return prvi;
 }
 
-export default function Meni({ ekran, verzija }) {
+export default function Meni({ ekran, verzija, pol, naPromenuPola }) {
   const aktivan = aktivnaStavka(ekran);
   return (
     <aside className="meni">
@@ -25,6 +26,7 @@ export default function Meni({ ekran, verzija }) {
         <span className="meni-znak"><Ikona ime="znak-aplikacije" velicina={22} /></span>
         <div className="meni-naziv"><b>Gimnastika</b><span>Vođenje takmičenja</span></div>
       </div>
+      <div className="meni-deo"><IzborDela pol={pol} naPromenu={naPromenuPola} /></div>
       <nav aria-label="Glavni meni">
         {GRUPE.map(([grupa, stavke]) => (
           <div key={grupa} style={{ display: 'contents' }}>

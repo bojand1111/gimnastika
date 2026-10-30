@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import gim from './gim.js';
 import { razlozi } from './ruter.js';
 import { radnja } from './precice.js';
 import Meni, { naslovEkrana } from './okvir/Meni.jsx';
 import Traka from './okvir/Traka.jsx';
-import Poruke from './okvir/Poruke.jsx';
+import Poruke, { obavesti } from './okvir/Poruke.jsx';
 import Sistem from './ekrani/Sistem.jsx';
 import Prazno from './ekrani/Prazno.jsx';
 import Klubovi from './ekrani/Klubovi.jsx';
@@ -51,6 +51,40 @@ function izvrsi(ev) {
 export default function App() {
   const [hash, postaviHash] = useState(location.hash);
   const [verzija, postaviVerziju] = useState('');
+  // Izabrani deo aplikacije: 'M' (MSG) ili 'Z' (ŽSG); null dok se ne procita.
+  const [pol, postaviPol] = useState(null);
+  const polRef = useRef(null);
+  polRef.current = pol;
+
+  // Promena dela: upis u glavnom procesu, pa Pocetna tog dela i obavestenje ekranima (app:pol, app:aktivno).
+  const promeniPol = useCallback(async (novi) => {
+    if (novi === polRef.current) return;
+    try {
+      const stvarni = await gim.pol.postavi(novi);
+      postaviPol(stvarni);
+      location.hash = '#/pocetna';
+      document.dispatchEvent(new Event('app:pol'));
+      document.dispatchEvent(new Event('app:aktivno'));
+    } catch (err) { obavesti(err.message, 'greska'); }
+  }, []);
+
+  useEffect(() => {
+    // Alt+M i Alt+Z rade i u polju za unos; podrazumevani postupak pregledaca se gasi.
+    const naTaster = (ev) => {
+      const r = radnja(ev);
+      if (r !== 'pol-m' && r !== 'pol-z') return;
+      ev.preventDefault();
+      promeniPol(r === 'pol-m' ? 'M' : 'Z');
+    };
+    document.addEventListener('keydown', naTaster);
+    return () => document.removeEventListener('keydown', naTaster);
+  }, [promeniPol]);
+
+  useEffect(() => {
+    // U obicnom browseru (bez window.gim) ostaje MSG.
+    if (!window.gim?.pol) { postaviPol('M'); return; }
+    gim.pol.daj().then(postaviPol).catch((err) => { postaviPol('M'); obavesti(err.message, 'greska'); });
+  }, []);
 
   useEffect(() => {
     const naPromeni = () => postaviHash(location.hash);
@@ -84,18 +118,18 @@ export default function App() {
   if (celaStrana) {
     return (
       <>
-        <Ekran />
+        {pol !== null && <Ekran key={pol} />}
         <Poruke />
       </>
     );
   }
   return (
     <div className="app">
-      <Meni ekran={ekran} verzija={verzija} />
+      <Meni ekran={ekran} verzija={verzija} pol={pol} naPromenuPola={promeniPol} />
       <div className="glavno">
         <Traka naslov={naslov} />
         <main className={FIKSNO.has(ekran) ? 'sadrzaj sadrzaj-fiksno' : 'sadrzaj'}>
-          {Ekran ? <Ekran /> : <Prazno ime={ekran} />}
+          {pol !== null && (Ekran ? <Ekran key={pol} /> : <Prazno key={pol} ime={ekran} />)}
         </main>
       </div>
       <Poruke />

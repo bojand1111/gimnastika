@@ -5,7 +5,7 @@ import { datumPrikaz } from '../../electron/racun/datum.mjs';
 import Azuriranje from './Azuriranje.jsx';
 import { obavesti } from './Poruke.jsx';
 
-// Gornja traka: naslov ekrana i aktivno takmicenje (cita se pri ucitavanju i na dogadjaj app:aktivno).
+// Gornja traka: naslov ekrana i aktivno takmicenje izabranog dela (cita se pri ucitavanju i na dogadjaje app:aktivno i app:pol).
 export default function Traka({ naslov }) {
   const [aktivno, postaviAktivno] = useState(null);
   useEffect(() => {
@@ -17,7 +17,12 @@ export default function Traka({ naslov }) {
       .catch((err) => obavesti(err.message, 'greska'));
     citaj();
     document.addEventListener('app:aktivno', citaj);
-    return () => { ziv = false; document.removeEventListener('app:aktivno', citaj); };
+    document.addEventListener('app:pol', citaj);
+    return () => {
+      ziv = false;
+      document.removeEventListener('app:aktivno', citaj);
+      document.removeEventListener('app:pol', citaj);
+    };
   }, []);
   return (
     <header className="traka">
