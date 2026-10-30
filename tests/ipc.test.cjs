@@ -291,3 +291,46 @@ test('takmicenja.sacuvaj: novo takmicenje dobija izabrani pol i u njemu postaje 
   assert.equal(moduli.podesavanja.aktivno(), null);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('takmicari: nadji, obrisi i sacuvaj tudjeg pola su odbijeni i ne menjaju redove', () => {
+  const { moduli, baza, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('M');
+  const nema = (f) => assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === 'Takmičar ne postoji.');
+  const stanje = () => JSON.stringify(baza.svi('SELECT * FROM takmicari ORDER BY id'));
+  const pre = stanje();
+  assert.equal(moduli.takmicari.nadji(String(s.t.Ana)), null);
+  assert.equal(Number(moduli.takmicari.nadji(String(s.muski)).id), s.muski);
+  nema(() => moduli.takmicari.obrisi(String(s.t.Ana)));
+  nema(() => moduli.takmicari.sacuvaj({ id_broj: '001', ime: 'Izmena', prezime: 'Test', godina_rodjenja: 2012, pol: 'Z' }, String(s.t.Ana)));
+  nema(() => moduli.takmicari.obrisi('99999'));
+  assert.equal(stanje(), pre);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('takmicari.sacuvaj: izmena pola takmicara bez prijava ga seli u drugi deo', () => {
+  const { moduli, baza, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
+  const u = { id_broj: '001', ime: 'Ana', prezime: 'Test', godina_rodjenja: 2012, pol: 'M', klub_id: String(s.k1), lekarski_do: '01.01.2027.' };
+  assert.deepEqual(moduli.takmicari.sacuvaj(u, String(s.t.Ana)), { id: s.t.Ana });
+  assert.equal(moduli.takmicari.svi().some((r) => Number(r.id) === s.t.Ana), false);
+  assert.equal(moduli.takmicari.nadji(String(s.t.Ana)), null, 'u ZSG delu vise ne postoji');
+  moduli.pol.postavi('M');
+  assert.ok(moduli.takmicari.svi().some((r) => Number(r.id) === s.t.Ana));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('takmicari.sacuvaj: novi takmicar dobija izabrani pol, pol iz renderera se zanemaruje', () => {
+  const { moduli, baza, dir } = pravi();
+  moduli.pol.postavi('Z');
+  const u = { id_broj: '500', ime: 'Nova', prezime: 'Osoba', godina_rodjenja: 2012, klub_id: '' };
+  for (const [i, pol] of ['M', 'X', undefined, null].entries()) {
+    const r = moduli.takmicari.sacuvaj({ ...u, id_broj: String(500 + i), pol }, null);
+    assert.equal(baza.vrednost('SELECT pol FROM takmicari WHERE id = ?', [r.id]), 'Z', `pol ${pol}`);
+  }
+  moduli.pol.postavi('M');
+  const m = moduli.takmicari.sacuvaj({ ...u, id_broj: '600', pol: 'Z' }, '');
+  assert.equal(baza.vrednost('SELECT pol FROM takmicari WHERE id = ?', [m.id]), 'M');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

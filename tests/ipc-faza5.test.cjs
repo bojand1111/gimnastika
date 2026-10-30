@@ -266,7 +266,6 @@ test('unos.podaci zanemaruje pol iz renderera', () => {
     assert.ok(d.redovi.every((r) => r.pol === 'Z'));
   }
   moduli.pol.postavi('M');
-  moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(s.takmM));
   const m = moduli.unos.podaci('Z');
   assert.equal(m.pol, 'M');

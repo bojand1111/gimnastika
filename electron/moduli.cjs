@@ -132,6 +132,13 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     return r;
   }
 
+  // Takmicar izabranog dela; nepostojeci i takmicar drugog pola je ista greska.
+  function takmicarDela(id) {
+    const r = t.nadji(id);
+    if (r === null || r.pol !== p.aktivniPol()) throw new GreskaKorisnika('Takmičar ne postoji.');
+    return r;
+  }
+
   function sGrbovima(t) {
     return t ? { ...t, grb_levo_url: grbUrl(t.grb_levo), grb_desno_url: grbUrl(t.grb_desno) } : t;
   }
@@ -168,9 +175,22 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     },
     takmicari: {
       svi: () => t.svi(p.aktivniPol()),
-      nadji: (id) => t.nadji(broj(id)),
-      sacuvaj: (u, id) => ({ id: t.sacuvaj(takmicarUnos(u), broj(id)) }),
-      obrisi: (id) => t.obrisi(broj(id)),
+      nadji: (id) => {
+        const r = t.nadji(broj(id));
+        return r !== null && r.pol === p.aktivniPol() ? r : null; // takmicar drugog dela je kao nepostojeci
+      },
+      // Novi takmicar dobija izabrani pol (iz renderera se ne uzima); izmena sme da promeni pol samo takmicaru ovog dela.
+      sacuvaj: (u, id) => {
+        const tid = broj(id);
+        if (tid !== null) takmicarDela(tid);
+        const unos = takmicarUnos(u);
+        return { id: t.sacuvaj(tid === null ? { ...unos, pol: p.aktivniPol() } : unos, tid) };
+      },
+      obrisi: (id) => {
+        const tid = broj(id);
+        takmicarDela(tid);
+        return t.obrisi(tid);
+      },
       sledeciIdBroj: () => t.sledeciIdBroj(),
     },
     sifarnici: {

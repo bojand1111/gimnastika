@@ -254,7 +254,6 @@ test('takmicenje.podaci: napredak i nastavi samo za pol takmicenja, link bez pol
   const { moduli, pid, s } = sSemom();
   // grupa postoji samo u ZSG; MSG takmicenje nema grupa pa nema ni napretka
   moduli.pol.postavi('M');
-  moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(s.takmM));
   const m = moduli.takmicenje.podaci();
   assert.equal(m.napredak, null);

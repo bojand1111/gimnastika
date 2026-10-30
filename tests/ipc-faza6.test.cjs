@@ -280,7 +280,6 @@ test('rang: pol iz renderera se zanemaruje, izbor je pol takmicenja', () => {
   assert.match(moduli.rang.stampa('M', '', '', 'viseboj').naziv, /ŽSG/);
   assert.equal(moduli.rang.bilten('M', '', '').disciplina, 'Ženska sportska gimnastika · Kadet · C program');
   moduli.pol.postavi('M');
-  moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(idM));
   assert.equal(moduli.rang.podaci('Z').izbor.pol, 'M');
   assert.match(moduli.rang.stampa('Z', '', '', 'viseboj').naziv, /MSG/);
