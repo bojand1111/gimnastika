@@ -244,6 +244,41 @@ test('uvoz: postojeci takmicar drugog pola je greska', () => {
   assert.equal(fajlM.redovi[0].takmicar_id, s.muski);
 });
 
+test('uvoz: isto ime drugog pola, druga godina je novi takmicar pola takmicenja', () => {
+  const { baza, s, uvoz } = nova();
+  // Marko Test je M (2011); u ZSG takmicenju red iste osobe sa godinom 2015 nije ista osoba
+  const fajl = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', [['Test', 'Marko', 'I', '01.02.2015.', 'pojedinac']]));
+  assert.equal(fajl.redovi[0].status, U.NOVI);
+  assert.equal(fajl.redovi[0].takmicar_id, null);
+  assert.equal(fajl.redovi[0].postupak, 'novi');
+  assert.equal(fajl.redovi[0].napomena, '');
+  const r = uvoz.upisi(s.takm, [fajl], { 0: { redovi: { 0: { uvezi: '1' } } } });
+  assert.equal(r.prijavljeno, 1);
+  assert.equal(r.novih, 1);
+  const novi = baza.jedan("SELECT * FROM takmicari WHERE prezime = 'Test' AND ime = 'Marko' AND godina_rodjenja = 2015");
+  assert.equal(novi.pol, 'Z');
+  assert.notEqual(Number(novi.id), s.muski);
+  assert.equal(baza.vrednost('SELECT pol FROM takmicari WHERE id = ?', [s.muski]), 'M');
+});
+
+test('uvoz: kandidat istog pola sa drugom godinom ima prednost nad istom godinom drugog pola', () => {
+  const { baza, s, uvoz } = nova();
+  const red = [['Test', 'Marko', 'I', '01.02.2011.', 'pojedinac']];
+  // bez kandidata istog pola: ista osoba drugog pola je greska
+  assert.equal(priprema(uvoz, s.takm, docxRedovi('Klub Jedan', red)).redovi[0].status, U.GRESKA);
+  // Marko Test (Z, 2013) isto ime, ista godina samo kod M Marka (2011): ishod prati kandidata istog pola
+  const zena = baza.ubaci('takmicari', { id_broj: '555', ime: 'Marko', prezime: 'Test', godina_rodjenja: 2013, pol: 'Z', kreirano: S, izmenjeno: S });
+  const r = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', red)).redovi[0];
+  assert.equal(r.status, U.SLICAN);
+  assert.equal(r.takmicar_id, zena);
+  assert.equal(r.postupak, 'novi');
+  assert.notEqual(r.napomena, 'takmičar je drugog pola');
+  // isti ishod kao kad drugog pola uopste nema u bazi
+  baza.izvrsi('DELETE FROM takmicari WHERE id = ?', [s.muski]);
+  const bez = priprema(uvoz, s.takm, docxRedovi('Klub Jedan', red)).redovi[0];
+  assert.deepEqual([bez.status, bez.takmicar_id, bez.postupak, bez.napomena], [r.status, r.takmicar_id, r.postupak, r.napomena]);
+});
+
 test('uvoz: nova kategorija dobija pol takmicenja', () => {
   const { baza, s, uvoz } = nova();
   const izbor = { 0: { oznake: { 0: { kategorija: 'novo', program: 'novo' } }, redovi: { 0: { uvezi: '1', postupak: 'novi' } } } };

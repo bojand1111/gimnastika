@@ -50,16 +50,23 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
     const prijavljeni = prijave.prijavljeniTakmicari(takmicenjeId);
     const kategorije = sifarnici.lista('kategorije', pol);
     const programi = sifarnici.lista('programi', pol);
-    const polovi = new Map(svi.map((t) => [Number(t.id), t.pol]));
+    const istiPol = svi.filter((t) => t.pol === pol);
 
     const oznake = [];
     const indeksOznake = new Map();
     const redovi = [];
     const videni = new Map();
     for (const r of p.redovi) {
-      let o = U.oceni(r, svi, prijavljeni, pol);
-      if (o.takmicar_id !== null && polovi.get(Number(o.takmicar_id)) !== pol) {
-        o = { status: U.GRESKA, takmicar_id: null, postupak: 'nista', napomena: 'takmičar je drugog pola' };
+      // Prvo se uparuje samo sa takmicarima istog pola. Tek kad njih nema, gleda se ceo spisak:
+      // ista osoba drugog pola je greska, a slican (druga godina) je novi takmicar ovog pola.
+      let o = U.oceni(r, istiPol, prijavljeni, pol);
+      if (r.greske.length === 0 && U.kandidati(r, istiPol, pol).length === 0) {
+        const drugi = U.oceni(r, svi, prijavljeni, pol);
+        if (drugi.status === U.POSTOJI) {
+          o = { status: U.GRESKA, takmicar_id: null, postupak: 'nista', napomena: 'takmičar je drugog pola' };
+        } else if (drugi.status === U.SLICAN) {
+          o = { status: U.NOVI, takmicar_id: null, postupak: 'novi', napomena: '' };
+        }
       }
       const kljuc = U.kljuc(r.prezime, r.ime);
       if (o.status !== U.GRESKA) {

@@ -55,6 +55,22 @@ test('aktivno takmicenje: prazno je null, postavljeno vraca red', () => {
   } finally { ocisti(dir); }
 });
 
+test('aktivno(M) je null kad red takmicenja ima prazan pol ili pol Z', () => {
+  const { baza, p, dir } = nova();
+  try {
+    const sad = Baza.sad();
+    const bez = baza.ubaci('takmicenja', { naziv: 'Bez pola', datum: '2026-10-25', kreirano: sad, izmenjeno: sad });
+    const z = baza.ubaci('takmicenja', { naziv: 'ZSG', datum: '2026-10-25', pol: 'Z', kreirano: sad, izmenjeno: sad });
+    p.postaviAktivno(bez, 'M');
+    assert.equal(p.aktivnoTakmicenjeId('M'), bez);
+    assert.equal(p.aktivno('M'), null);
+    p.postaviAktivno(z, 'M');
+    assert.equal(p.aktivno('M'), null);
+    p.postaviAktivno(z, 'Z');
+    assert.equal(p.aktivno('Z').naziv, 'ZSG');
+  } finally { ocisti(dir); }
+});
+
 test('sacuvajOpsta: nedozvoljen izbor ostaje, prag se ogranicava, organizator trim', () => {
   const { p, dir } = nova();
   try {
