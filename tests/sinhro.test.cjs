@@ -159,7 +159,7 @@ test('bez aktivnog takmicenja: poruka i nema zahteva', async () => {
   try {
     const p = pravi();
     podesi(p, s.url);
-    p.podesavanja.postavi('aktivno_takmicenje', '');
+    p.podesavanja.postavi('aktivno_takmicenje_M', '');
     const r = await p.sinhro.posalji();
     assert.deepEqual(r, { ok: false, liste: 0, greska: 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.' });
     assert.equal(p.sinhro.imaPromena(), false);
@@ -243,7 +243,7 @@ test('imaPromena: false posle slanja, true posle izmene ocene', async () => {
 test('snimakAktivnog: snimak ili null', () => {
   const p = pravi();
   assert.equal(p.sinhro.snimakAktivnog().liste.length, 2);
-  p.podesavanja.postavi('aktivno_takmicenje', '');
+  p.podesavanja.postavi('aktivno_takmicenje_M', '');
   assert.equal(p.sinhro.snimakAktivnog(), null);
 });
 

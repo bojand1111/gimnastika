@@ -89,8 +89,8 @@ function napravi(baza, podesavanja) {
     const tid = Number(takm.id);
     const sprave = baza.svi('SELECT * FROM sprave WHERE pol = ? ORDER BY redosled, id', [pol]);
     const sids = sprave.map((s) => Number(s.id));
-    const isti = podesavanja.daj('plasman_isti_rezultat', ISTI_DELI);
-    const nepotpun = podesavanja.daj('viseboj_nepotpun', 'ulazi');
+    const isti = podesavanja.dajPol('plasman_isti_rezultat', takm.pol, ISTI_DELI);
+    const nepotpun = podesavanja.dajPol('viseboj_nepotpun', takm.pol, 'ulazi');
 
     const redovi = baza.svi(
       `SELECT p.*, t.id_broj, t.ime, t.prezime, t.godina_rodjenja, t.pol, k.skracenica AS klub_skr, k.puno_ime AS klub_ime,

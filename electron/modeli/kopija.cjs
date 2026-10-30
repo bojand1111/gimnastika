@@ -25,6 +25,9 @@ const GRB_OBLIK = new RegExp('^grb/[A-Za-z0-9_-][A-Za-z0-9_.-]*$');
 const grbOk = (v) => GRB_OBLIK.test(String(v ?? '')) && !String(v).includes('..');
 // Podesavanja ovog racunara: ne dolaze iz kopije (sajt_token je tajna, sajt_url usmerava slanje rezultata).
 const ZIVI_KLJUCEVI = ['kopije_fascikla', 'sajt_url', 'sajt_token', 'sajt_poslednja_sinhronizacija'];
+// Grbovi u podesavanjima: stari zajednicki kljucevi i verzije po polu.
+const GRB_KLJUCEVI = ['grb_levo', 'grb_desno', 'grb_levo_M', 'grb_levo_Z', 'grb_desno_M', 'grb_desno_Z'];
+const GRB_NAVEDENI = GRB_KLJUCEVI.map((k) => `'${k}'`).join(', ');
 const OPIS_KLJUCEVI = ['aplikacija', 'verzija', 'baza_verzija', 'vreme', 'vrsta'];
 
 // Poredjenje a.b.c brojno (1.10.0 > 1.9.0); prazno ili nebrojno se racuna kao 0.
@@ -329,7 +332,7 @@ function napravi(baza, opcije) {
 
   // SQLite kopija se NE koristi kao baza: podaci se prepisuju u svezu bazu (migracije, bez okidaca i pogleda),
   // pa se ona proverava i zamenjuje. Nepoznate tabele, okidaci i pogledi iz kopije tako ne prelaze.
-  const MESNI_KLJUCEVI = [...ZIVI_KLJUCEVI, 'grb_levo', 'grb_desno'];
+  const MESNI_KLJUCEVI = [...ZIVI_KLJUCEVI, ...GRB_KLJUCEVI];
 
   function pripremiSqlite(izvor) {
     return (pripremljen) => {
@@ -362,7 +365,7 @@ function napravi(baza, opcije) {
           }
           // Grbovi iz podesavanja prelaze samo ako su oblika grb/<ime>
           if (tabele.includes('podesavanja')) {
-            const grb = b.svi("SELECT kljuc, vrednost FROM kopija.podesavanja WHERE kljuc IN ('grb_levo', 'grb_desno')");
+            const grb = b.svi(`SELECT kljuc, vrednost FROM kopija.podesavanja WHERE kljuc IN (${GRB_NAVEDENI})`);
             for (const r of grb) {
               if (r.vrednost !== '' && grbOk(r.vrednost)) b.izvrsi('INSERT INTO main.podesavanja (kljuc, vrednost) VALUES (?, ?)', [r.kljuc, r.vrednost]);
             }
@@ -406,8 +409,10 @@ function napravi(baza, opcije) {
           if (!grbOk(r.v)) db.prepare(`UPDATE takmicenja SET ${kolona} = '' WHERE id = ?`).run(r.id);
         }
       }
-      const p = db.prepare('SELECT vrednost FROM podesavanja WHERE kljuc = ?').get(kolona);
-      if (p && p.vrednost !== '' && !grbOk(p.vrednost)) db.prepare("UPDATE podesavanja SET vrednost = '' WHERE kljuc = ?").run(kolona);
+    }
+    for (const kljuc of GRB_KLJUCEVI) {
+      const p = db.prepare('SELECT vrednost FROM podesavanja WHERE kljuc = ?').get(kljuc);
+      if (p && p.vrednost !== '' && !grbOk(p.vrednost)) db.prepare("UPDATE podesavanja SET vrednost = '' WHERE kljuc = ?").run(kljuc);
     }
   }
 
@@ -418,7 +423,7 @@ function napravi(baza, opcije) {
       const redovi = db.prepare('SELECT vrednost FROM podesavanja WHERE kljuc = ?').all(k);
       if (redovi.length !== 1 || redovi[0].vrednost !== v) ispravno = false;
     }
-    for (const r of db.prepare("SELECT vrednost FROM podesavanja WHERE kljuc IN ('grb_levo', 'grb_desno')").all()) {
+    for (const r of db.prepare(`SELECT vrednost FROM podesavanja WHERE kljuc IN (${GRB_NAVEDENI})`).all()) {
       if (r.vrednost !== '' && !grbOk(r.vrednost)) ispravno = false;
     }
     const kolone = db.prepare('PRAGMA table_info(takmicenja)').all().map((c) => c.name.toLowerCase());

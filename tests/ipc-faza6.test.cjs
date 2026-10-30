@@ -177,7 +177,7 @@ test('rezultati(): vise takmicenja, izbor i fallback', () => {
   assert.equal(moduli.rang.rezultati(tid, 'smece').izabranoId, stari);
   assert.equal(moduli.rang.rezultati(tid, 987654).izabranoId, novo);
   assert.equal(r.sva[0].red, null);
-  baza.izvrsi("UPDATE podesavanja SET vrednost = '' WHERE kljuc = 'aktivno_takmicenje'");
+  baza.izvrsi("UPDATE podesavanja SET vrednost = '' WHERE kljuc = 'aktivno_takmicenje_M'");
   assert.equal(moduli.rang.rezultati(tid).izabranoId, novo);
   assert.throws(() => moduli.rang.podaci(), (e) => e instanceof GreskaKorisnika && /Nema aktivnog/.test(e.message));
   assert.throws(() => moduli.rang.stampa('Z'), (e) => /Nema aktivnog/.test(e.message));

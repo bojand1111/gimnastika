@@ -125,7 +125,7 @@ function napravi(baza, podesavanja) {
     const odbitak = odbitakTekst === '' ? (potvrdi ? 0 : null) : parsiraj(odbitakTekst, 'Odbitak');
 
     const svaE = e.every((v) => v !== null);
-    const E = svaE ? konacnaE(e, takm.pravilo_e, podesavanja.daj('e_zaokruzivanje', 'odseci')) : null;
+    const E = svaE ? konacnaE(e, takm.pravilo_e, podesavanja.dajPol('e_zaokruzivanje', takm.pol, 'odseci')) : null;
     const konacna = d !== null && E !== null ? konacnaOcena(d, E, odbitak ?? 0) : null;
 
     if (potvrdi) {

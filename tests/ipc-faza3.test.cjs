@@ -295,3 +295,20 @@ test('uvoz: prozor nudi sve podrzane vrste; pripremi cita PDF (asinhrono), xls i
   structuredClone(r);
   cisti(dir);
 });
+
+test('takmicenja.otvori i obrisi rade po polu takmicenja', () => {
+  const { baza, moduli, dir } = pravi();
+  const sad = '2026-10-30 10:00:00';
+  const m = baza.ubaci('takmicenja', { naziv: 'Kup M', datum: '2026-10-17', pol: 'M', kreirano: sad, izmenjeno: sad });
+  const z = baza.ubaci('takmicenja', { naziv: 'Kup Z', datum: '2026-10-17', pol: 'Z', kreirano: sad, izmenjeno: sad });
+  moduli.takmicenja.otvori(String(m));
+  moduli.takmicenja.otvori(String(z));
+  const pod = moduli.podesavanja;
+  assert.equal(pod.aktivno().id, z, 'otvaranje prebacuje na pol takmicenja');
+  baza.izvrsi("UPDATE podesavanja SET vrednost = 'M' WHERE kljuc = 'aktivni_pol'");
+  assert.equal(pod.aktivno().id, m, 'M deo pamti svoje aktivno');
+  moduli.takmicenja.obrisi(String(z));
+  assert.equal(pod.aktivno().id, m, 'brisanje Z takmicenja ne dira M aktivno');
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_Z'"), '');
+  cisti(dir);
+});

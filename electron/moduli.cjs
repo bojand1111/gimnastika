@@ -195,7 +195,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
         const staro = broj(id);
         const novo = staro === null;
         const sid = tk.sacuvaj(u, staro);
-        if (novo) p.postavi('aktivno_takmicenje', String(sid));
+        // Pol takmicenja (prazan dok ga ne upisuje forma): tada vazi izabrani deo.
+        if (novo) p.postaviAktivno(sid, tk.nadji(sid)?.pol || p.aktivniPol());
         return { id: sid, novo, aktivno: novo };
       },
       izaberiGrb: async () => (await izaberi(GRB_DIJALOG))[0] ?? null,
@@ -211,13 +212,17 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       obrisi: (id) => {
         const tid = broj(id);
         tk.obrisi(tid);
-        if (p.aktivnoTakmicenjeId() === tid) p.postavi('aktivno_takmicenje', '');
+        // Brise se samo aktivno mesto tog takmicenja, u delu u kome je bilo aktivno.
+        for (const pol of ['M', 'Z']) {
+          if (p.aktivnoTakmicenjeId(pol) === tid) p.postaviAktivno(null, pol);
+        }
       },
       // Aktivira (i zavrseno) takmicenje; renderer po koraku salje poruku i skrece (POPIS 4.5).
       otvori: (id) => {
         const r = tk.nadji(broj(id));
         if (r === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
-        p.postavi('aktivno_takmicenje', String(r.id));
+        p.postaviAktivno(Number(r.id), r.pol || p.aktivniPol());
+        if (r.pol) p.postaviPol(r.pol); // otvaranje prikazuje deo kome takmicenje pripada
         const stanje = pr.stanjePripreme(Number(r.id));
         return { korak: stanje.korak, naziv: r.naziv, stanje };
       },
@@ -388,7 +393,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
           sprave: sprave.map((x) => ({ id: x.id, naziv: x.naziv, skracenica: x.skracenica, ikona: x.ikona ?? '' })),
           brojSudija,
           pravilo: takm.pravilo_e,
-          zaokruzivanje: p.daj('e_zaokruzivanje', 'odseci'),
+          zaokruzivanje: p.dajPol('e_zaokruzivanje', takm.pol, 'odseci'),
         };
         if (sprava === null) {
           return {

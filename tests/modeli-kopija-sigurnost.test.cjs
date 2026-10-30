@@ -399,3 +399,18 @@ test('vrati sqlite: kljucevi sajta ostaju sa ovog racuna (i prazni ostaju prazni
     assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc LIKE 'sajt_%'")), 3);
   } finally { t.ukloni(); }
 });
+
+test('vrati sqlite: grb po polu iz kopije se cisti', () => {
+  const t = nova();
+  try {
+    t.baza.ubaci('takmicenja', { naziv: 'Kup', datum: '2026-10-17', kreirano: SAD, izmenjeno: SAD });
+    const kopija = t.k.napravi('rucna');
+    izmeniKopiju(kopija.putanja, (db) => {
+      db.prepare("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('grb_levo_Z', ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost").run('C:\\x.png');
+      db.prepare("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('grb_desno_M', ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost").run('grb/grb_desno_M.png');
+    });
+    t.k.vrati(kopija.putanja);
+    assert.equal(t.podesavanja.daj('grb_levo_Z'), '');
+    assert.equal(t.podesavanja.daj('grb_desno_M'), 'grb/grb_desno_M.png');
+  } finally { t.ukloni(); }
+});

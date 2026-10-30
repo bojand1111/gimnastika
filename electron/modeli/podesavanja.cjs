@@ -4,7 +4,9 @@ const path = require('node:path');
 const { GreskaKorisnika } = require('../greska.cjs');
 
 const PODRAZUMEVANO = {
-  aktivno_takmicenje: '',
+  aktivni_pol: 'M',
+  aktivno_takmicenje_M: '',
+  aktivno_takmicenje_Z: '',
   kopije_fascikla: '',
   lekarski_prag_dana: '30',
   e_zaokruzivanje: 'odseci',
@@ -25,6 +27,9 @@ const IZBORI = {
   lekarski_sprecava_prijavu: ['ne', 'da'],
 };
 
+// Podesavanja koja vaze posebno za MSG ('M') i ZSG ('Z'); cuvaju se kao <kljuc>_<pol>, a stari kljuc bez nastavka se nasledjuje.
+const POLNI_KLJUCEVI = ['e_zaokruzivanje', 'plasman_isti_rezultat', 'viseboj_nepotpun', 'lekarski_sprecava_prijavu', 'organizator', 'grb_levo', 'grb_desno'];
+const POLOVI = ['M', 'Z'];
 const GRBOVI = ['grb_levo', 'grb_desno'];
 const EKSTENZIJE = ['png', 'jpg', 'jpeg', 'svg', 'gif'];
 
@@ -47,14 +52,41 @@ function proveriAdresuSajta(adresa) {
 }
 
 function napravi(baza, fasciklaPodataka) {
-  function sva() {
+  function sirova() {
     const rez = { ...PODRAZUMEVANO };
     for (const r of baza.svi('SELECT kljuc, vrednost FROM podesavanja')) rez[r.kljuc] = r.vrednost ?? '';
     return rez;
   }
 
+  // Nepoznat ili prazan pol je 'M' (kljuc aktivni_pol postoji tek kad je nesto podeljeno ili izabrano).
+  function aktivniPol() {
+    const v = sirova().aktivni_pol;
+    return POLOVI.includes(v) ? v : 'M';
+  }
+
+  function postaviPol(pol) {
+    if (!POLOVI.includes(pol)) throw new GreskaKorisnika('Nepoznat pol.');
+    postavi('aktivni_pol', pol);
+  }
+
+  // Vrednost za pol: <kljuc>_<pol>, pa stari <kljuc>, pa PODRAZUMEVANO, pa podrazumevano.
+  function dajPol(kljuc, pol, podrazumevano = '') {
+    const s = sirova();
+    const polni = `${kljuc}_${pol}`;
+    if (Object.prototype.hasOwnProperty.call(s, polni)) return s[polni];
+    return Object.prototype.hasOwnProperty.call(s, kljuc) ? s[kljuc] : podrazumevano;
+  }
+
+  // Polna podesavanja dolaze pod obicnim imenom za trazeni pol, uz polje pol.
+  function sva(pol = aktivniPol()) {
+    const rez = sirova();
+    for (const k of POLNI_KLJUCEVI) rez[k] = dajPol(k, pol);
+    rez.pol = pol;
+    return rez;
+  }
+
   function daj(kljuc, podrazumevano = '') {
-    const s = sva();
+    const s = sirova();
     return Object.prototype.hasOwnProperty.call(s, kljuc) ? s[kljuc] : podrazumevano;
   }
 
@@ -69,28 +101,38 @@ function napravi(baza, fasciklaPodataka) {
       [kljuc, String(vrednost)]);
   }
 
-  function aktivnoTakmicenjeId() {
-    const id = parseInt(daj('aktivno_takmicenje'), 10);
+  function aktivnoTakmicenjeId(pol = aktivniPol()) {
+    const id = parseInt(daj(`aktivno_takmicenje_${pol}`), 10);
     return id > 0 ? id : null;
   }
 
-  // Red iz takmicenja ili null (i kad id pokazuje na obrisano takmicenje).
-  function aktivno() {
-    const id = aktivnoTakmicenjeId();
-    return id === null ? null : baza.jedan('SELECT * FROM takmicenja WHERE id = ?', [id]);
+  // Red iz takmicenja ili null (i kad id pokazuje na obrisano takmicenje ili takmicenje drugog pola).
+  // Red sa pol = '' (jos nepodeljen) prolazi dok zadaci podele ne zavrse prelaz.
+  function aktivno(pol = aktivniPol()) {
+    const id = aktivnoTakmicenjeId(pol);
+    if (id === null) return null;
+    const red = baza.jedan('SELECT * FROM takmicenja WHERE id = ?', [id]);
+    return red !== null && (red.pol === pol || red.pol === '') ? red : null;
+  }
+
+  // id = null brise aktivno takmicenje tog pola.
+  function postaviAktivno(id, pol) {
+    if (!POLOVI.includes(pol)) throw new GreskaKorisnika('Nepoznat pol.');
+    postavi(`aktivno_takmicenje_${pol}`, id === null ? '' : String(id));
   }
 
   // POPIS 4.3: sve se proverava pre prvog upisa, pa losa slika ne ostavlja pola sacuvano.
-  function sacuvajOpsta(p) {
+  function sacuvajOpsta(p, pol = aktivniPol()) {
+    if (!POLOVI.includes(pol)) throw new GreskaKorisnika('Nepoznat pol.');
     const upis = {};
     for (const [kljuc, dozvoljeno] of Object.entries(IZBORI)) {
-      if (dozvoljeno.includes(p[kljuc])) upis[kljuc] = p[kljuc];
+      if (dozvoljeno.includes(p[kljuc])) upis[`${kljuc}_${pol}`] = p[kljuc];
     }
     if (p.lekarski_prag_dana !== undefined) {
       const n = parseInt(p.lekarski_prag_dana, 10) || 0;
       upis.lekarski_prag_dana = String(Math.max(0, Math.min(365, n)));
     }
-    if (p.organizator !== undefined) upis.organizator = String(p.organizator ?? '').trim();
+    if (p.organizator !== undefined) upis[`organizator_${pol}`] = String(p.organizator ?? '').trim();
     // Rezultati uzivo (SPEC8 5): prazna adresa gasi slanje; inace mora biti http(s); zavrsna kosa crta se skida.
     if (p.sajt_url !== undefined) {
       const adresa = String(p.sajt_url ?? '').trim();
@@ -104,14 +146,14 @@ function napravi(baza, fasciklaPodataka) {
       const g = p[kljuc];
       if (g === undefined || g === null) continue;
       if (g.obrisi) {
-        upis[kljuc] = '';
+        upis[`${kljuc}_${pol}`] = '';
       } else if (g.putanja) {
         const ext = path.extname(String(g.putanja)).slice(1).toLowerCase();
         if (!EKSTENZIJE.includes(ext)) throw new GreskaKorisnika('Grb mora biti PNG, JPG, GIF ili SVG slika.');
-        const rel = `grb/${kljuc}.${ext}`;
+        const rel = `grb/${kljuc}_${pol}.${ext}`;
         if (!fs.existsSync(g.putanja)) throw new GreskaKorisnika('Izabrana slika više ne postoji.');
-        kopije.push({ izvor: g.putanja, cilj: path.join(fasciklaPodataka, 'grb', `${kljuc}.${ext}`) });
-        upis[kljuc] = rel;
+        kopije.push({ izvor: g.putanja, cilj: path.join(fasciklaPodataka, 'grb', `${kljuc}_${pol}.${ext}`) });
+        upis[`${kljuc}_${pol}`] = rel;
       }
     }
 
@@ -125,7 +167,10 @@ function napravi(baza, fasciklaPodataka) {
     });
   }
 
-  return { sva, daj, dajInt, postavi, aktivnoTakmicenjeId, aktivno, sacuvajOpsta };
+  return {
+    POLNI_KLJUCEVI, sva, daj, dajPol, dajInt, postavi, aktivniPol, postaviPol,
+    aktivnoTakmicenjeId, aktivno, postaviAktivno, sacuvajOpsta,
+  };
 }
 
-module.exports = { PODRAZUMEVANO, napravi };
+module.exports = { PODRAZUMEVANO, POLNI_KLJUCEVI, napravi };

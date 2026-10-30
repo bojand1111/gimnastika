@@ -100,7 +100,7 @@ function prijavi(baza, json, rez) {
     takmId = takmicenja.sacuvaj(json.takmicenje, null);
     rez.takmicenje_novo = true;
   }
-  if (podesavanja.aktivnoTakmicenjeId() === null) podesavanja.postavi('aktivno_takmicenje', takmId);
+  if (podesavanja.aktivnoTakmicenjeId() === null) podesavanja.postaviAktivno(takmId, podesavanja.aktivniPol());
 
   const kategorijaId = baza.vrednost('SELECT id FROM kategorije ORDER BY redosled, id LIMIT 1');
   const programId = baza.vrednost('SELECT id FROM programi ORDER BY redosled, id LIMIT 1');

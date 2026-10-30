@@ -133,10 +133,10 @@ test('uvoz primera: aktivno takmicenje se postavlja samo ako nije izabrano', () 
   const baza = nova();
   uvezi(baza, json);
   const id = Number(baza.vrednost('SELECT id FROM takmicenja'));
-  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje'"), String(id));
-  baza.izvrsi("UPDATE podesavanja SET vrednost = '999' WHERE kljuc = 'aktivno_takmicenje'");
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_M'"), String(id));
+  baza.izvrsi("UPDATE podesavanja SET vrednost = '999' WHERE kljuc = 'aktivno_takmicenje_M'");
   uvezi(baza, json);
-  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje'"), '999');
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_M'"), '999');
   baza.zatvori();
 });
 

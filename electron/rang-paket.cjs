@@ -76,22 +76,22 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
       const naziv = `${vrsta} · ${polNaziv(izbor.pol)} · ${izbor.kat_naziv} · ${izbor.prog_naziv}`;
       return {
         takm: takmStampa(takm), izbor, rez, tab: tabIzabran, sprava, polozeno, strane, naziv,
-        grb: grbUrl(takm.grb_levo ? takm.grb_levo : p.daj('grb_levo', '')),
+        grb: grbUrl(takm.grb_levo ? takm.grb_levo : p.dajPol('grb_levo', takm.pol, '')),
       };
     },
 
     bilten(pol, kat, prog) {
       const { takm, izbor, rez } = grupa(pol, kat, prog, 'Nema prijava za bilten.');
       const polozeno = rez.sprave.length > 4;
-      const organizator = takm.organizator ? takm.organizator : p.daj('organizator', '');
+      const organizator = takm.organizator ? takm.organizator : p.dajPol('organizator', takm.pol, '');
       const strane = straneBilten(stavkeBiltena(rez), {
         polozeno, organizator, zaglavlje: takm.zaglavlje_biltena ?? '', domacin: takm.domacin ?? '',
       });
       const disciplina = `${izbor.pol === 'M' ? 'Muška' : 'Ženska'} sportska gimnastika · ${izbor.kat_naziv} · ${izbor.prog_naziv}`;
       return {
         takm: takmStampa(takm), izbor, rez, polozeno, strane, disciplina, organizator,
-        grbLevo: grbUrl(takm.grb_levo ? takm.grb_levo : p.daj('grb_levo', '')),
-        grbDesno: grbUrl(takm.grb_desno ? takm.grb_desno : p.daj('grb_desno', '')),
+        grbLevo: grbUrl(takm.grb_levo ? takm.grb_levo : p.dajPol('grb_levo', takm.pol, '')),
+        grbDesno: grbUrl(takm.grb_desno ? takm.grb_desno : p.dajPol('grb_desno', takm.pol, '')),
       };
     },
   };
