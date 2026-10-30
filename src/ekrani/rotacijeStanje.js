@@ -1,4 +1,5 @@
 // Cisto stanje ekrana Rotacije (POPIS 5.1, 6.1, 6.3): bez React-a i bez IPC-a.
+import { razlozi } from '../ruter.js';
 // Stanje: { nerasporedjeni: [clan], grupe: [{ id, redosled_rot: [clan], ... }] }; grupaId 0 = neraspoređeni.
 
 // Kljuc kombinacije kategorija-program; null je 0 (kao PHP).
@@ -53,5 +54,12 @@ export function indeksZaAltStrelice(stanje, prijavaId, taster) {
   return null;
 }
 
-export const hashRotacija = (pol, rot, filter = '') =>
-  `#/rotacije?pol=${pol}&rot=${rot}${filter ? `&kp=${filter}` : ''}`;
+// Hash bez pola: ekran uvek prikazuje izabrani deo.
+export const hashRotacija = (rot, filter = '') =>
+  `#/rotacije?rot=${rot}${filter ? `&kp=${filter}` : ''}`;
+
+// Parametri iz hasha (rot, kp); rot i kp se dalje normalizuju na serveru i u prikazu. Stari pol= se zanemaruje.
+export function parRotacije(hash) {
+  const { rot, kp } = razlozi(hash).parametri;
+  return { rot: parseInt(rot, 10) || 1, kp: kp || '' };
+}

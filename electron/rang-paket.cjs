@@ -33,8 +33,8 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
   }
 
   return {
-    // Prvi argument (pol) renderer jos salje; zanemaruje se, pol je pol takmicenja.
-    podaci(_pol, kat, prog, tab) {
+    // Pol je uvek pol aktivnog takmicenja izabranog dela; renderer ga ne salje.
+    podaci(kat, prog, tab) {
       const takm = aktivnoRed();
       const izbor = model.izbor(takm, takm.pol, kat, prog);
       const rez = izbor.ima ? model.izracunaj(takm, izbor.pol, izbor.kat, izbor.prog) : null;
@@ -65,7 +65,7 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
       return { takmicar, sva, izabranoId };
     },
 
-    stampa(_pol, kat, prog, tab) {
+    stampa(kat, prog, tab) {
       const { takm, izbor, rez } = grupa(kat, prog, 'Nema prijava za štampu.');
       const tabIzabran = tabIz(tab, rez);
       const sprava = typeof tabIzabran === 'number' ? rez.sprave.find((x) => Number(x.id) === tabIzabran) : null;
@@ -82,7 +82,7 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
       };
     },
 
-    bilten(_pol, kat, prog) {
+    bilten(kat, prog) {
       const { takm, izbor, rez } = grupa(kat, prog, 'Nema prijava za bilten.');
       const polozeno = rez.sprave.length > 4;
       const organizator = takm.organizator ? takm.organizator : p.dajPol('organizator', takm.pol, '');

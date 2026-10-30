@@ -1,21 +1,20 @@
 import Ikona from '../../komponente/Ikona.jsx';
 import { hashEkrana, hashRang, odustaoRec } from '../rangStanje.js';
 
-// Zaglavlje kartice (tabovi i dugmad) i red filtera (POPIS 2.2). Tabovi i pol su hash linkovi.
+// Zaglavlje kartice (tabovi i dugmad) i red filtera (POPIS 2.2). Tabovi su hash linkovi; pol je samo za tekst.
 export default function RangTraka({ izbor, rez, tab, naKategoriju, naProgram }) {
   const { pol, kat, prog } = izbor;
   const tabId = (id) => String(tab) === String(id);
-  const polTab = tab === 'viseboj' || tab === 'ekipno' ? tab : 'viseboj';
-  const q = { pol, kat, prog };
+  const q = { kat, prog };
   return (
     <>
       <div className="rang-zaglavlje">
         <div role="tablist" aria-label="Vrsta rang liste" className="rang-tabovi">
           {(rez ? rez.sprave : []).map((s) => (
-            <a key={s.id} role="tab" aria-selected={tabId(s.id)} href={hashRang(pol, kat, prog, s.id)} className={`rang-tab ${tabId(s.id) ? 'aktivan' : ''}`}>{s.naziv}</a>
+            <a key={s.id} role="tab" aria-selected={tabId(s.id)} href={hashRang(kat, prog, s.id)} className={`rang-tab ${tabId(s.id) ? 'aktivan' : ''}`}>{s.naziv}</a>
           ))}
-          <a role="tab" aria-selected={tab === 'viseboj'} href={hashRang(pol, kat, prog, 'viseboj')} className={`rang-tab ${tab === 'viseboj' ? 'aktivan' : ''}`}>Višeboj</a>
-          <a role="tab" aria-selected={tab === 'ekipno'} href={hashRang(pol, kat, prog, 'ekipno')} className={`rang-tab ${tab === 'ekipno' ? 'aktivan' : ''}`}>Ekipno</a>
+          <a role="tab" aria-selected={tab === 'viseboj'} href={hashRang(kat, prog, 'viseboj')} className={`rang-tab ${tab === 'viseboj' ? 'aktivan' : ''}`}>Višeboj</a>
+          <a role="tab" aria-selected={tab === 'ekipno'} href={hashRang(kat, prog, 'ekipno')} className={`rang-tab ${tab === 'ekipno' ? 'aktivan' : ''}`}>Ekipno</a>
         </div>
         <div className="rang-dugmad">
           <a href={hashEkrana('bilten', q)} className="dugme">Bilten takmičenja</a>
@@ -25,10 +24,6 @@ export default function RangTraka({ izbor, rez, tab, naKategoriju, naProgram }) 
         </div>
       </div>
       <div className="rang-filter" id="rang-filter">
-        <div className="izbor" role="group" aria-label="Pol">
-          <a href={hashRang('Z', null, null, polTab)} className={pol === 'Z' ? 'izabrano' : ''} aria-current={pol === 'Z' ? 'true' : undefined}>ŽSG</a>
-          <a href={hashRang('M', null, null, polTab)} className={pol === 'M' ? 'izabrano' : ''} aria-current={pol === 'M' ? 'true' : undefined}>MSG</a>
-        </div>
         <label className="rang-polje"><span className="oznaka">Kategorija</span>
           <select className="unos rang-kat" aria-label="Kategorija" value={kat ?? 0} onChange={(ev) => naKategoriju(ev.target.value)}>
             {izbor.kategorije.map((k) => <option key={k.id} value={k.id}>{k.naziv}</option>)}

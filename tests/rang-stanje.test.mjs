@@ -1,20 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  hashEkrana, hashRang, tekstPodnozja, mestoPodaci, mestoIzOznake, sirinaKolone, nazivKolone, odustaoRec, mnozina,
+  hashEkrana, hashRang, parRang, parRezultati, tekstPodnozja, mestoPodaci, mestoIzOznake, sirinaKolone, nazivKolone, odustaoRec, mnozina,
 } from '../src/ekrani/rangStanje.js';
 
-test('hashRang: bez praznih vrednosti, sa i bez tab', () => {
-  assert.equal(hashRang('Z', null, null, 'viseboj'), '#/rang?pol=Z&tab=viseboj');
-  assert.equal(hashRang('M', 3, 7, 12), '#/rang?pol=M&kat=3&prog=7&tab=12');
-  assert.equal(hashRang('Z', 0, undefined, undefined), '#/rang?pol=Z&kat=0');
-  assert.equal(hashRang('Z', '', '', ''), '#/rang?pol=Z');
+test('hashRang: bez pola i praznih vrednosti, sa i bez tab', () => {
+  assert.equal(hashRang(null, null, 'viseboj'), '#/rang?tab=viseboj');
+  assert.equal(hashRang(3, 7, 12), '#/rang?kat=3&prog=7&tab=12');
+  assert.equal(hashRang(0, undefined, undefined), '#/rang?kat=0');
+  assert.equal(hashRang('', '', ''), '#/rang');
+  assert.ok(!hashRang(3, 7, 12).includes('pol'));
 });
 
 test('hashEkrana: redosled parametara i ispustanje praznih', () => {
-  assert.equal(hashEkrana('bilten', { pol: 'Z', kat: 2, prog: null }), '#/bilten?pol=Z&kat=2');
-  assert.equal(hashEkrana('rezultati', { t: 5, tk: null, pol: 'M', kat: 1, prog: 4 }), '#/rezultati?t=5&pol=M&kat=1&prog=4');
+  assert.equal(hashEkrana('bilten', { kat: 2, prog: null }), '#/bilten?kat=2');
+  assert.equal(hashEkrana('rezultati', { t: 5, tk: null, kat: 1, prog: 4 }), '#/rezultati?t=5&kat=1&prog=4');
   assert.equal(hashEkrana('rang', {}), '#/rang');
+});
+
+test('parRang: kat, prog i tab iz hasha, stari pol se zanemaruje', () => {
+  assert.deepEqual(parRang('#/rang?kat=3&prog=7&tab=12'), { kat: '3', prog: '7', tab: '12' });
+  assert.deepEqual(parRang('#/rang'), { kat: '', prog: '', tab: '' });
+  assert.deepEqual(parRang('#/rang?pol=Z&kat=3&tab=ekipno'), { kat: '3', prog: '', tab: 'ekipno' });
+  assert.ok(!('pol' in parRang('#/stampa?pol=M&kat=1')));
+});
+
+test('parRezultati: t, tk, kat i prog iz hasha, stari pol se zanemaruje', () => {
+  assert.deepEqual(parRezultati('#/rezultati?t=5&tk=2&kat=1&prog=4'), { t: '5', tk: '2', kat: '1', prog: '4' });
+  assert.deepEqual(parRezultati('#/rezultati?t=5&pol=M&kat=1&prog=4'), { t: '5', tk: '', kat: '1', prog: '4' });
+  assert.ok(!('pol' in parRezultati('#/rezultati?pol=Z&t=5')));
 });
 
 test('mestoPodaci: cetiri slucaja', () => {

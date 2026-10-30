@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import gim from '../gim.js';
-import { razlozi } from '../ruter.js';
 import Koraci from '../komponente/Koraci.jsx';
 import { najavi, obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
-import { indeksZaAltStrelice, premestiLokalno } from './rotacijeStanje.js';
+import { indeksZaAltStrelice, parRotacije, premestiLokalno } from './rotacijeStanje.js';
 import RotTraka from './rotacije/RotTraka.jsx';
 import RotKolona from './rotacije/RotKolona.jsx';
 import RotPodnozje from './rotacije/RotPodnozje.jsx';
 import DijalogGrupa from './rotacije/DijalogGrupa.jsx';
 
-// Parametri iz hasha: pol (Z|M), rot, kp (POPIS 4.2); rot i kp se dalje normalizuju na serveru i u prikazu.
-function izHasha() {
-  const { pol, rot, kp } = razlozi(location.hash).parametri;
-  return { pol: pol === 'M' ? 'M' : 'Z', rot: parseInt(rot, 10) || 1, kp: kp || '' };
-}
+// Parametri iz hasha: rot, kp (POPIS 4.2); pola nema, ekran prikazuje izabrani deo.
+const izHasha = () => parRotacije(location.hash);
 
 const bezVucene = (lista, vuceId) => lista.filter((c) => c.prijava_id !== vuceId);
 
@@ -46,9 +42,9 @@ export default function Rotacije() {
   // Sve podatke ekrana ucitava iznova; zastareo odgovor se odbacuje.
   const ucitaj = useCallback(async () => {
     const moj = ++brojac.current;
-    const { pol, rot } = parRef.current;
+    const { rot } = parRef.current;
     try {
-      const podaci = await gim.rotacije.podaci(pol, rot);
+      const podaci = await gim.rotacije.podaci(rot);
       if (moj !== brojac.current || !ziv.current) return;
       if (uLetu.current > 0) { odlozeno.current = true; return; } // zastareo odgovor bi pregazio lokalno stanje
       postaviD(podaci);
@@ -67,13 +63,13 @@ export default function Rotacije() {
     const naHash = () => {
       if (!location.hash.startsWith('#/rotacije')) return;
       const n = izHasha();
-      postaviPar((p) => (p.pol === n.pol && p.rot === n.rot && p.kp === n.kp ? p : n));
+      postaviPar((p) => (p.rot === n.rot && p.kp === n.kp ? p : n));
     };
     window.addEventListener('hashchange', naHash);
     return () => window.removeEventListener('hashchange', naHash);
   }, []);
-  // Promena pola ili rotacije ucitava iznova; filter kp je samo prikaz.
-  useEffect(() => { postaviIzabran(null); ucitaj(); }, [par.pol, par.rot, ucitaj]);
+  // Promena rotacije ucitava iznova; filter kp je samo prikaz.
+  useEffect(() => { postaviIzabran(null); ucitaj(); }, [par.rot, ucitaj]);
 
   // Posle premestanja kartica dobija fokus nazad (React je mozda premestio element).
   useEffect(() => {
@@ -196,7 +192,7 @@ export default function Rotacije() {
   async function nova() {
     if (radi.current) return;
     radi.current = true;
-    try { await radnja(() => gim.rotacije.dodaj(dRef.current.pol)); } finally { radi.current = false; }
+    try { await radnja(() => gim.rotacije.dodaj()); } finally { radi.current = false; }
   }
 
   async function zavrsi() {

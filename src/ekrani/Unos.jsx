@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import gim from '../gim.js';
-import { razlozi, url } from '../ruter.js';
+import { url } from '../ruter.js';
 import Ikona from '../komponente/Ikona.jsx';
 import { obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
 import {
-  hashUnos, napredakIzRedova, pocetniFokus, polja, prvoPraznoPolje,
+  hashUnos, napredakIzRedova, parUnos, pocetniFokus, polja, prvoPraznoPolje,
 } from './unosStanje.js';
 import { izPodataka, kolone } from './unos/redovi.js';
 import { napraviAkcije } from './unos/akcije.js';
@@ -15,12 +15,9 @@ import UnosRed from './unos/UnosRed.jsx';
 import UnosIzmene from './unos/UnosIzmene.jsx';
 import DijalogRazlog from './unos/DijalogRazlog.jsx';
 
-// Parametri hasha (POPIS 10.4): nezadati ostaju undefined, pa IPC bira "gde se stalo".
-function izHasha() {
-  const { pol, sprava, rot } = razlozi(location.hash).parametri;
-  return { pol: pol === 'M' || pol === 'Z' ? pol : undefined, sprava: sprava || undefined, rot: rot || undefined };
-}
-const istiPar = (a, b) => a.pol === b.pol && a.sprava === b.sprava && a.rot === b.rot;
+// Parametri hasha (POPIS 10.4): nezadati ostaju undefined, pa IPC bira "gde se stalo". Pola nema: dobija se iz izabranog dela.
+const izHasha = () => parUnos(location.hash);
+const istiPar = (a, b) => a.sprava === b.sprava && a.rot === b.rot;
 
 // Ekran Unos ocena: ucitava jednim pozivom, redovi se drze lokalno (POPIS 10.3).
 export default function Unos() {
@@ -53,9 +50,9 @@ export default function Unos() {
   const ucitaj = useCallback(async (opc = {}) => {
     await akcijeRef.current.isprazniNacrte();
     const moj = ++brojac.current;
-    const { pol, sprava, rot } = parRef.current;
+    const { sprava, rot } = parRef.current;
     try {
-      const podaci = await gim.unos.podaci(pol, sprava, rot);
+      const podaci = await gim.unos.podaci(sprava, rot);
       if (moj !== brojac.current || !ziv.current) return;
       const novi = izPodataka(podaci);
       redoviRef.current = novi;
@@ -63,9 +60,9 @@ export default function Unos() {
       postaviD(podaci);
       postaviGresku(false);
       const ima = Boolean(podaci.sprava);
-      parRef.current = { pol: podaci.pol, sprava: ima ? String(podaci.sprava.id) : undefined, rot: String(podaci.rot) };
+      parRef.current = { sprava: ima ? String(podaci.sprava.id) : undefined, rot: String(podaci.rot) };
       // Izabrane vrednosti u hash bez novog ucitavanja (replaceState ne okida hashchange).
-      const hash = hashUnos(podaci.pol, ima ? podaci.sprava.id : undefined, ima ? podaci.rot : undefined);
+      const hash = hashUnos(ima ? podaci.sprava.id : undefined, ima ? podaci.rot : undefined);
       if (location.hash.startsWith('#/unos') && location.hash !== hash) history.replaceState(null, '', hash);
       const z = opc.drzi ?? pocetni(novi, opc.pamti ?? null, podaci.brojSudija);
       if (z) { postaviTrenutni(z.id); zatrazi(z); }
@@ -144,13 +141,13 @@ export default function Unos() {
   const odbaci = d.pravilo === 'odbaci_krajnje';
   let telo;
   if (!sprava) {
-    telo = <div className="kartica"><div className="prazno-stanje"><h2>Nema sprava za ovaj pol</h2><p>Dodajte sprave u Podešavanjima.</p></div></div>;
+    telo = <div className="kartica"><div className="prazno-stanje"><h2>Nema sprava u ovom delu</h2><p>Dodajte sprave u Podešavanjima.</p></div></div>;
   } else if (!grupa) {
     telo = (
       <div className="kartica"><div className="prazno-stanje">
         <h2>{`Nijedna grupa nije na spravi ${sprava.naziv} u rotaciji ${rot}`}</h2>
         <p>Proverite početne sprave grupa na ekranu Rotacije.</p>
-        <a href={url('rotacije', { pol, rot })} className="dugme">Rotacije</a>
+        <a href={url('rotacije', { rot })} className="dugme">Rotacije</a>
       </div></div>
     );
   } else {

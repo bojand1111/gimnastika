@@ -5,7 +5,7 @@
 // Red je otvoren za unos kad je status 'nacrt' ili kad se ispravlja; inace su mu polja zakljucana.
 import { izUnosa, prikaz } from '../../electron/racun/broj.mjs';
 import { konacnaE, konacna } from '../../electron/racun/ocena.mjs';
-import { url } from '../ruter.js';
+import { razlozi, url } from '../ruter.js';
 
 export const NEMA = '–';
 
@@ -109,11 +109,17 @@ export const tekstOdustalo = (n, pol) => (n > 0 ? ` · ${n} ${pol === 'Z' ? 'odu
 
 export const procenat = (obradjeno, ukupno) => (ukupno > 0 ? Math.round((obradjeno * 100) / ukupno) : 0);
 
-// Parametri koji nisu zadati (undefined/null) ne ulaze u hash.
-export function hashUnos(pol, spravaId, rot) {
-  const p = { pol, sprava: spravaId, rot };
+// Parametri koji nisu zadati (undefined/null) ne ulaze u hash. Pola nema: ekran uvek prikazuje izabrani deo.
+export function hashUnos(spravaId, rot) {
+  const p = { sprava: spravaId, rot };
   for (const k of Object.keys(p)) if (p[k] === undefined || p[k] === null) delete p[k];
   return url('unos', p);
+}
+
+// Parametri iz hasha; nezadati ostaju undefined, pa server bira "gde se stalo". Stari pol= se zanemaruje.
+export function parUnos(hash) {
+  const { sprava, rot } = razlozi(hash).parametri;
+  return { sprava: sprava || undefined, rot: rot || undefined };
 }
 
 // Novi red iz odgovora IPC-a (prikaz ocene); ciste oznake ispravke i gresaka.

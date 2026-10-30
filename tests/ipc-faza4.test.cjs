@@ -49,7 +49,7 @@ test('guard: rotacije ima handler za svaku radnju', () => {
 test('bez aktivnog takmicenja svaka radnja baca poruku', () => {
   const { moduli } = pravi();
   const r = moduli.rotacije;
-  const pozivi = [() => r.podaci('Z', 1), () => r.dodaj('Z'), () => r.izmeni(1, 'x', 1), () => r.obrisi(1),
+  const pozivi = [() => r.podaci(1), () => r.dodaj('Z'), () => r.izmeni(1, 'x', 1), () => r.obrisi(1),
     () => r.premesti(1, 1, 0, 1), () => r.vrati(1, 1), () => r.pomeraj(true), () => r.zavrsi()];
   for (const f of pozivi) assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === NEMA_AKTIVNOG);
 });
@@ -62,7 +62,7 @@ test('podaci: pol i rotacija se svode, grupe nose spravu, redosled i ručni flag
   assert.equal(g2.pocetna_pozicija, 2);
   for (const [i, ime] of ['Ana', 'Bea', 'Ceca'].entries()) r.premesti(String(pid[ime]), String(g1.id), i, 1);
   r.premesti(pid.Ceca, g1.id, 0, '2');
-  const d = r.podaci('X', 9);
+  const d = r.podaci(9);
   assert.equal(d.pol, 'Z');
   assert.equal(d.rot, 2);
   assert.equal(d.brojSprava, 2);
@@ -80,12 +80,12 @@ test('podaci: pol i rotacija se svode, grupe nose spravu, redosled i ručni flag
   assert.deepEqual(d.nerasporedjeni.map((c) => c.prijava_id), [pid.Dona]);
   assert.equal(d.kombinacije.length, 1);
   assert.deepEqual(Object.keys(d.kombinacije[0]).sort(), ['kat', 'kid', 'pid', 'prog']);
-  assert.equal(r.podaci('Z', 0).rot, 1);
-  assert.equal(r.podaci('Z', 'abc').rot, 1);
+  assert.equal(r.podaci(0).rot, 1);
+  assert.equal(r.podaci('abc').rot, 1);
   // MSG deo ima jednu spravu (pol se bira sa pol.postavi, ne argumentom)
   moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(s.takmM));
-  assert.equal(r.podaci('Z', 1).brojSprava, 1);
+  assert.equal(r.podaci(1).brojSprava, 1);
   assert.equal(typeof d.stanje.prijava, 'number');
   assert.doesNotThrow(() => structuredClone(d));
 });
@@ -93,7 +93,7 @@ test('podaci: pol i rotacija se svode, grupe nose spravu, redosled i ručni flag
 test('kombinacije: null par ide prvo', () => {
   const { baza, moduli, s } = sa4();
   baza.izmeni('prijave', { kategorija_id: null, program_id: null }, 'takmicar_id = ?', [s.t.Dona]);
-  const k = moduli.rotacije.podaci('Z', 1).kombinacije;
+  const k = moduli.rotacije.podaci(1).kombinacije;
   assert.equal(k.length, 2);
   assert.deepEqual(k[0], { kid: null, kat: null, pid: null, prog: null });
   assert.equal(k[1].kat, 'Kadet');
@@ -105,15 +105,15 @@ test('premesti: string id-jevi i neraspoređeni (0, "", null)', () => {
   const g = r.dodaj('Z').grupa;
   r.premesti(String(pid.Ana), String(g.id), '0', '1');
   r.premesti(String(pid.Bea), String(g.id), 1, undefined);
-  assert.equal(r.podaci('Z', 1).grupe[0].clanovi.length, 2);
+  assert.equal(r.podaci(1).grupe[0].clanovi.length, 2);
   r.premesti(pid.Ana, '0', 0, 1);
   r.premesti(pid.Bea, '', 0, 1);
-  const d = r.podaci('Z', 1);
+  const d = r.podaci(1);
   assert.equal(d.grupe[0].clanovi.length, 0);
   assert.equal(d.nerasporedjeni.length, 4);
   r.premesti(pid.Ana, g.id, 0, 1);
   r.premesti(pid.Ana, null, 0, 1);
-  assert.equal(r.podaci('Z', 1).nerasporedjeni.length, 4);
+  assert.equal(r.podaci(1).nerasporedjeni.length, 4);
   assert.throws(() => r.premesti(pid.Ana, g.id, 0, 3), (e) => e instanceof GreskaKorisnika && /Rotacija mora biti između 1 i 2\./.test(e.message));
   assert.throws(() => r.premesti(pid.Marko, g.id, 0, 1), (e) => e instanceof GreskaKorisnika);
 });
@@ -124,7 +124,7 @@ test('premesti: grupaId "abc" je neraspoređeni, rotacija 2.5 se skraćuje', () 
   const g = r.dodaj('Z').grupa;
   r.premesti(pid.Ana, g.id, 0, 1);
   r.premesti(pid.Ana, 'abc', 0, 1);
-  const d = r.podaci('Z', 1);
+  const d = r.podaci(1);
   assert.equal(d.grupe[0].clanovi.length, 0);
   assert.equal(d.nerasporedjeni.length, 4);
   assert.doesNotThrow(() => r.premesti(pid.Bea, g.id, 0, 2.5));
@@ -135,30 +135,30 @@ test('izmeni, obrisi, vrati', () => {
   const r = moduli.rotacije;
   const g = r.dodaj('Z').grupa;
   r.izmeni(String(g.id), ' Moja ', '2');
-  const x = r.podaci('Z', 1).grupe[0];
+  const x = r.podaci(1).grupe[0];
   assert.equal(x.naziv, 'Moja');
   assert.equal(x.pocetna_pozicija, 2);
   assert.throws(() => r.izmeni(g.id, ' ', 1), (e) => e instanceof GreskaKorisnika && e.message === 'Naziv grupe je obavezan.');
   r.premesti(pid.Ana, g.id, 0, 1);
   r.premesti(pid.Bea, g.id, 1, 1);
   r.premesti(pid.Bea, g.id, 0, 2);
-  assert.equal(r.podaci('Z', 2).grupe[0].rucni_rot, true);
+  assert.equal(r.podaci(2).grupe[0].rucni_rot, true);
   r.vrati(String(g.id), '2');
-  assert.equal(r.podaci('Z', 2).grupe[0].rucni_rot, false);
+  assert.equal(r.podaci(2).grupe[0].rucni_rot, false);
   assert.throws(() => r.obrisi(g.id), (e) => e instanceof GreskaKorisnika && /Prvo je ispraznite/.test(e.message));
   r.premesti(pid.Ana, 0, 0, 1);
   r.premesti(pid.Bea, 0, 0, 1);
   r.obrisi(String(g.id));
-  assert.equal(r.podaci('Z', 1).grupe.length, 0);
+  assert.equal(r.podaci(1).grupe.length, 0);
 });
 
 test('pomeraj: PHP istinitost', () => {
   const { moduli } = sa4();
   const r = moduli.rotacije;
   assert.equal(r.pomeraj('0'), 0);
-  assert.equal(r.podaci('Z', 1).pomeraj, false);
+  assert.equal(r.podaci(1).pomeraj, false);
   assert.equal(r.pomeraj(true), 1);
-  assert.equal(r.podaci('Z', 1).pomeraj, true);
+  assert.equal(r.podaci(1).pomeraj, true);
   for (const v of ['', 0, false, null, undefined]) assert.equal(r.pomeraj(v), 0, String(v));
   assert.equal(r.pomeraj('1'), 1);
   assert.equal(r.pomeraj('da'), 1);
@@ -189,18 +189,18 @@ test('zavrsi: tri slucaja', () => {
 });
 
 // --- Izabrani pol (T4) ---
-test('rotacije: pol iz renderera se zanemaruje, sve ide za izabrani pol', () => {
+test('rotacije: sve ide za izabrani pol, dodatni argumenti se zanemaruju', () => {
   const o = sa4();
   const r = o.moduli.rotacije;
-  assert.equal(r.podaci('M', 1).pol, 'Z', 'ZSG deo ne moze da zatrazi MSG podatke');
-  assert.equal(r.podaci(undefined, 1).pol, 'Z');
-  assert.equal(r.podaci('M', 1).sprave.length, 2);
+  assert.equal(r.podaci(1, 'M').pol, 'Z', 'ZSG deo ne moze da zatrazi MSG podatke');
+  assert.equal(r.podaci(1).pol, 'Z');
+  assert.equal(r.podaci(1, 'M').sprave.length, 2);
   assert.equal(r.dodaj('M').grupa.pol, 'Z');
   assert.equal(o.baza.vrednost("SELECT COUNT(*) FROM grupe WHERE pol = 'M'"), 0);
   o.moduli.pol.postavi('M');
   o.moduli.takmicenja.otvori(String(o.s.takmM));
-  assert.equal(r.podaci('Z', 1).pol, 'M');
-  assert.deepEqual(r.podaci('Z', 1).sprave.map((x) => x.skracenica), ['PA']);
+  assert.equal(r.podaci(1, 'Z').pol, 'M');
+  assert.deepEqual(r.podaci(1, 'Z').sprave.map((x) => x.skracenica), ['PA']);
   assert.equal(r.dodaj('Z').grupa.pol, 'M');
 });
 

@@ -56,7 +56,7 @@ test('guard: unos ima handler za svaku radnju', () => {
 test('bez aktivnog takmicenja svaka radnja baca poruku', () => {
   const { moduli } = pravi();
   const u = moduli.unos;
-  const pozivi = [() => u.podaci('Z', 1, 1), () => u.nacrt(1, 1, ULAZ), () => u.potvrdi(1, 1, ULAZ, ''),
+  const pozivi = [() => u.podaci(1, 1), () => u.nacrt(1, 1, ULAZ), () => u.potvrdi(1, 1, ULAZ, ''),
     () => u.odustao(1, 1), () => u.vrati(1, 1)];
   for (const f of pozivi) assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === NEMA_AKTIVNOG);
 });
@@ -101,7 +101,7 @@ test('posle unosa svih na PR podaci() bira GR; izmene i napredak', () => {
   assert.equal(d.sprava.id, s.gr);
   assert.equal(d.rot, 2);
   assert.equal(d.napredak.ukupno, 3);
-  const pr = u.podaci('Z', s.pr, 1);
+  const pr = u.podaci(s.pr, 1);
   assert.equal(pr.sprava.id, s.pr);
   assert.equal(pr.napredak.obradjeno, 3);
   assert.equal(pr.redovi[0].status, 'uneto');
@@ -109,7 +109,7 @@ test('posle unosa svih na PR podaci() bira GR; izmene i napredak', () => {
   assert.equal(pr.redovi[0].e, '8,250');
   assert.deepEqual(pr.redovi[0].e_sudije, ['8,300', '8,100', '8,400', '8,200']);
   u.potvrdi(pid.Ana, s.pr, { d: '4,8', e: ['8,3', '7,9', '8,4', '8,2'], odbitak: '0,1' }, 'greška');
-  const i = u.podaci('Z', s.pr, 1).izmene;
+  const i = u.podaci(s.pr, 1).izmene;
   assert.equal(i.length, 1);
   assert.deepEqual(Object.keys(i[0]).sort(), ['id', 'ime', 'opis', 'prezime', 'razlog', 'vreme']);
   assert.match(i[0].opis, /E2 8,100 → 7,900/);
@@ -117,17 +117,17 @@ test('posle unosa svih na PR podaci() bira GR; izmene i napredak', () => {
 
 test('podaci("Z", 999, 9): nepoznata sprava i rotacija se biraju iz napretka', () => {
   const { moduli, s } = sa4();
-  const d = moduli.unos.podaci('Z', 999, 9);
+  const d = moduli.unos.podaci(999, 9);
   assert.equal(d.sprava.id, s.pr);
   assert.equal(d.rot, 1);
-  assert.equal(moduli.unos.podaci('Z', String(s.gr), '2').sprava.id, s.gr);
+  assert.equal(moduli.unos.podaci(String(s.gr), '2').sprava.id, s.gr);
 });
 
 test('podaci("M") bez grupa: svi prijavljeni, startni broj null poslednji', () => {
   const { moduli, baza, s, pid } = sa4(false);
   moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(s.takmM));
-  const d = moduli.unos.podaci('M');
+  const d = moduli.unos.podaci();
   assert.equal(d.pol, 'M');
   assert.equal(d.bezGrupa, true);
   assert.deepEqual(d.grupa, { id: 0, naziv: 'Svi prijavljeni' });
@@ -138,13 +138,13 @@ test('podaci("M") bez grupa: svi prijavljeni, startni broj null poslednji', () =
   // Redosled: startni broj, pa bez broja po prezimenu i imenu.
   moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(String(s.takm));
-  const z = moduli.unos.podaci('Z');
+  const z = moduli.unos.podaci();
   assert.equal(z.bezGrupa, true);
   assert.deepEqual(z.redovi.map((r) => r.ime), ['Test Ana', 'Test Bea', 'Test Ceca', 'Test Dona']);
   baza.izmeni('prijave', { startni_broj: 2 }, 'id = ?', [pid.Dona]);
   baza.izmeni('prijave', { startni_broj: 1 }, 'id = ?', [pid.Ceca]);
-  assert.deepEqual(moduli.unos.podaci('Z').redovi.map((r) => r.ime), ['Test Ceca', 'Test Dona', 'Test Ana', 'Test Bea']);
-  assert.equal(moduli.unos.podaci('Z').redovi[0].startni_broj, 1);
+  assert.deepEqual(moduli.unos.podaci().redovi.map((r) => r.ime), ['Test Ceca', 'Test Dona', 'Test Ana', 'Test Bea']);
+  assert.equal(moduli.unos.podaci().redovi[0].startni_broj, 1);
 });
 
 test('pol bez sprava je prazan prikaz', () => {
@@ -170,7 +170,7 @@ test('pol bez sprava je prazan prikaz', () => {
 test('clan koji ne radi spravu: radi false, status nacrt, ne ulazi u napredak', () => {
   const { moduli, pid, s } = sa4();
   moduli.prijave.sprava(pid.Bea, s.pr, false);
-  const d = moduli.unos.podaci('Z', s.pr, 1);
+  const d = moduli.unos.podaci(s.pr, 1);
   assert.equal(d.redovi.length, 3);
   const bea = d.redovi.find((r) => r.prijava_id === pid.Bea);
   assert.equal(bea.radi, false);
@@ -201,10 +201,10 @@ test('nacrt, potvrdi, odustao, vrati: string id-jevi i prikaz', () => {
   assert.equal(u.vrati(String(pid.Bea), sp).prikaz.status, 'nacrt');
   assert.throws(() => u.vrati(pid.Ceca, s.pr), (e) => e instanceof GreskaKorisnika && e.message === 'Nema šta da se vrati.');
   assert.doesNotThrow(() => structuredClone(p));
-  const d = u.podaci('Z', s.pr, 1);
+  const d = u.podaci(s.pr, 1);
   assert.deepEqual(d.napredak, { obradjeno: 1, ukupno: 3, odustalo: 0 });
   u.odustao(pid.Ceca, s.pr);
-  assert.deepEqual(u.podaci('Z', s.pr, 1).napredak, { obradjeno: 2, ukupno: 3, odustalo: 1 });
+  assert.deepEqual(u.podaci(s.pr, 1).napredak, { obradjeno: 2, ukupno: 3, odustalo: 1 });
 });
 
 test('ulaz bez e i d se tretira kao prazan', () => {
@@ -238,12 +238,12 @@ test('gde se stalo: A zavrsena na PR, B ceka na GR, podrazumevana sprava je GR u
 test('gde se stalo: rotacija 1 gotova daje rot 2, i kad URL trazi nepostojece vrednosti', () => {
   const { moduli, unesi, s } = sa2Grupe();
   unesi('Ana', s.pr); unesi('Bea', s.pr); unesi('Ceca', s.gr); unesi('Dona', s.gr);
-  const d = moduli.unos.podaci('Z', 999, 9);
+  const d = moduli.unos.podaci(999, 9);
   assert.equal(d.rot, 2);
   assert.equal(d.sprava.id, s.pr);
   assert.deepEqual(d.redovi.map((r) => r.ime), ['Test Ceca', 'Test Dona']);
-  assert.equal(moduli.unos.podaci('Z', s.pr, 0).rot, 2);
-  assert.equal(moduli.unos.podaci('Z', s.pr, 1).rot, 1);
+  assert.equal(moduli.unos.podaci(s.pr, 0).rot, 2);
+  assert.equal(moduli.unos.podaci(s.pr, 1).rot, 1);
 });
 
 test('gde se stalo: sve uneto, rot je poslednja, sprava je prva sa grupom', () => {
@@ -257,17 +257,17 @@ test('gde se stalo: sve uneto, rot je poslednja, sprava je prva sa grupom', () =
 });
 
 // --- Izabrani pol (T4) ---
-test('unos.podaci zanemaruje pol iz renderera', () => {
+test('unos.podaci: pol je pol takmicenja, dodatni argumenti se zanemaruju', () => {
   const { moduli, s } = sa4();
   for (const arg of [undefined, 'M', 'Z', 'X']) {
-    const d = moduli.unos.podaci(arg);
+    const d = moduli.unos.podaci(undefined, undefined, arg);
     assert.equal(d.pol, 'Z', `arg ${arg}`);
     assert.deepEqual(d.sprave.map((x) => x.skracenica), ['PR', 'GR']);
     assert.ok(d.redovi.every((r) => r.pol === 'Z'));
   }
   moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(s.takmM));
-  const m = moduli.unos.podaci('Z');
+  const m = moduli.unos.podaci();
   assert.equal(m.pol, 'M');
   assert.deepEqual(m.sprave.map((x) => x.skracenica), ['PA']);
   assert.deepEqual(m.redovi.map((r) => r.ime), ['Test Marko']);

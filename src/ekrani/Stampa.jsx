@@ -12,12 +12,12 @@ import ListDno from './stampa/ListDno.jsx';
 
 // Ekran Stampa rang liste (POPIS 4): cela strana bez menija, listovi A4 spremni za stampu.
 export default function Stampa() {
-  const d = useStampaPodaci('stampa', (p) => gim.rang.stampa(p.pol, p.kat, p.prog, p.tab));
+  const d = useStampaPodaci('stampa', (p) => gim.rang.stampa(p.kat, p.prog, p.tab));
   // Vreme se uzima jednom, pri prikazu podataka (POPIS 9.3)
   const vreme = useMemo(() => vremeStampe(new Date()), [d]);
   const polozeno = d ? d.polozeno : false;
   // Dok podaci stizu, Esc vraca sa parametrima iz hasha
-  const nazad = d ? hashRang(d.izbor.pol, d.izbor.kat, d.izbor.prog, d.tab) : hashEkrana('rang', izHasha());
+  const nazad = d ? hashRang(d.izbor.kat, d.izbor.prog, d.tab) : hashEkrana('rang', izHasha());
   const vrsta = d ? (d.sprava ? d.sprava.naziv : (d.tab === 'ekipno' ? 'Ekipno' : 'Višeboj')) : '';
   const st = useStampanje({ polozeno, ime: d ? imePdf(vrsta, d.takm.naziv, d.izbor.pol) : '', nazad, spremno: !!d });
   if (!d) return <div className="stampa-ekran" aria-busy="true" />;

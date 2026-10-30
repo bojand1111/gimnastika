@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   polja, proveriPolje, preracunaj, podaciReda, sledeciOtvoren, sledecePolje, sledeciRedSaPoljem,
-  prvoPraznoPolje, pocetniFokus, napredakIzRedova, tekstOdustalo, procenat, hashUnos, odustaoRec, primeniPrikaz,
+  prvoPraznoPolje, pocetniFokus, napredakIzRedova, tekstOdustalo, procenat, hashUnos, parUnos, odustaoRec, primeniPrikaz,
 } from '../src/ekrani/unosStanje.js';
 
 const red = (status, extra = {}) => ({ prijava_id: 1, status, ispravlja: false, vrednosti: {}, ...extra });
@@ -121,13 +121,27 @@ test('tekstOdustalo, procenat, odustaoRec', () => {
   assert.equal(odustaoRec('M'), 'Odustao');
 });
 
-test('hashUnos', () => {
-  assert.equal(hashUnos('Z', 3, 2), '#/unos?pol=Z&sprava=3&rot=2');
+test('hashUnos: bez pola', () => {
+  assert.equal(hashUnos(3, 2), '#/unos?sprava=3&rot=2');
+  assert.ok(!hashUnos(3, 2).includes('pol'));
 });
 
 test('hashUnos: nezadati parametri se izostavljaju', () => {
-  assert.equal(hashUnos('M'), '#/unos?pol=M');
-  assert.equal(hashUnos('M', 4), '#/unos?pol=M&sprava=4');
+  assert.equal(hashUnos(), '#/unos');
+  assert.equal(hashUnos(4), '#/unos?sprava=4');
+  assert.equal(hashUnos(undefined, null), '#/unos');
+});
+
+test('parUnos: sprava i rot iz hasha, nezadati su undefined', () => {
+  assert.deepEqual(parUnos('#/unos?sprava=3&rot=2'), { sprava: '3', rot: '2' });
+  assert.deepEqual(parUnos('#/unos'), { sprava: undefined, rot: undefined });
+  assert.deepEqual(parUnos('#/unos?sprava=&rot='), { sprava: undefined, rot: undefined });
+});
+
+test('parUnos: stari pol u hashu se zanemaruje', () => {
+  assert.deepEqual(parUnos('#/unos?pol=Z&sprava=3&rot=2'), { sprava: '3', rot: '2' });
+  assert.deepEqual(parUnos('#/unos?pol=M'), { sprava: undefined, rot: undefined });
+  assert.ok(!('pol' in parUnos('#/unos?pol=Z')));
 });
 
 test('primeniPrikaz: upis vrednosti, status, ciscenje oznaka', () => {

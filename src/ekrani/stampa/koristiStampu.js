@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { razlozi } from '../../ruter.js';
+import { parRang } from '../rangStanje.js';
 import { najavi, obavesti } from '../../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from '../aktivno.js';
 
-// Parametri iz hasha (pol, kat, prog, tab); izbor i tab normalizuje server.
-export function izHasha() {
-  const { pol = '', kat = '', prog = '', tab = '' } = razlozi(location.hash).parametri;
-  return { pol, kat, prog, tab };
-}
+// Parametri iz hasha (kat, prog, tab); izbor i tab normalizuje server.
+export const izHasha = () => parRang(location.hash);
 
 // Ucitava podatke ekrana cele strane. `ekran` je prvi deo hasha ('stampa' | 'bilten'), `pozovi(par)` zove IPC.
 // Bez prijava server baca "Nema prijava ..." (POPIS 4.1, 5.1): upozorenje i povratak na Rang liste.
@@ -22,7 +19,7 @@ export default function useStampaPodaci(ekran, pozovi) {
     const naHash = () => {
       if (!location.hash.startsWith(`#/${ekran}`)) return;
       const n = izHasha();
-      postaviPar((p) => (p.pol === n.pol && p.kat === n.kat && p.prog === n.prog && p.tab === n.tab ? p : n));
+      postaviPar((p) => (p.kat === n.kat && p.prog === n.prog && p.tab === n.tab ? p : n));
     };
     window.addEventListener('hashchange', naHash);
     return () => window.removeEventListener('hashchange', naHash);
@@ -46,7 +43,7 @@ export default function useStampaPodaci(ekran, pozovi) {
       }
     })();
     return () => { brojac.current += 1; };
-  }, [par.pol, par.kat, par.prog, par.tab]);
+  }, [par.kat, par.prog, par.tab]);
 
   return d;
 }

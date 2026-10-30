@@ -1,4 +1,5 @@
 // Cista logika ekrana Rang liste i Rezultati takmicara (POPIS 2.2, 3.2).
+import { razlozi } from '../ruter.js';
 
 // Hash ekrana; prazne vrednosti (null, undefined, '') se ispustaju, 0 ostaje (kat=0 je "bez kategorije").
 export function hashEkrana(ekran, parametri) {
@@ -10,7 +11,20 @@ export function hashEkrana(ekran, parametri) {
   return `#/${ekran}${tekst ? `?${tekst}` : ''}`;
 }
 
-export const hashRang = (pol, kat, prog, tab) => hashEkrana('rang', { pol, kat, prog, tab });
+// Hash Rang liste bez pola: ekran uvek prikazuje izabrani deo.
+export const hashRang = (kat, prog, tab) => hashEkrana('rang', { kat, prog, tab });
+
+// Parametri Ranga, Stampe i Biltena iz hasha; izbor i tab normalizuje server. Stari pol= se zanemaruje.
+export function parRang(hash) {
+  const { kat = '', prog = '', tab = '' } = razlozi(hash).parametri;
+  return { kat, prog, tab };
+}
+
+// Parametri Rezultata takmicara iz hasha (t, tk, kat, prog). Stari pol= se zanemaruje.
+export function parRezultati(hash) {
+  const { t = '', tk = '', kat = '', prog = '' } = razlozi(hash).parametri;
+  return { t, tk, kat, prog };
+}
 
 // Mesto: VK oznaka, bez mesta, prva tri (plocica) ili obicno.
 export function mestoPodaci(mesto, oznaka) {

@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import gim from '../gim.js';
 import Ikona from '../komponente/Ikona.jsx';
-import { razlozi } from '../ruter.js';
 import { najavi, obavesti } from '../okvir/Poruke.jsx';
 import { prikaz } from '../../electron/racun/broj.mjs';
 import { datumPrikaz } from '../../electron/racun/datum.mjs';
-import { hashEkrana, mestoIzOznake, mestoPodaci, odustaoRec, sirinaKolone } from './rangStanje.js';
+import { hashEkrana, mestoIzOznake, mestoPodaci, odustaoRec, parRezultati, sirinaKolone } from './rangStanje.js';
 import Mesto from './rang/Mesto.jsx';
 
-const izHasha = () => {
-  const { t = '', tk = '', pol = '', kat = '', prog = '' } = razlozi(location.hash).parametri;
-  return { t, tk, pol, kat, prog };
-};
+// Parametri iz hasha (t, tk, kat, prog); kat i prog samo vracaju na istu Rang listu.
+const izHasha = () => parRezultati(location.hash);
 
 // Ocene jedne sprave: precrtane E ocene su odbacene (POZICIONI indeksi nad E sudijama, kao PHP).
 function RedSprave({ s, det, n, pol, mesta }) {
@@ -96,7 +93,7 @@ function SvaTakmicenja({ sva, izabranoId, tid, par }) {
             const r = st.red;
             return (
               <tr key={st.prijava.id} className={aktivan ? 'izabran' : ''}>
-                <td><a href={hashEkrana('rezultati', { t: tid, tk: st.takm.id, pol: par.pol, kat: par.kat, prog: par.prog })} className={`rang-ime ${aktivan ? 'rez-aktivan' : ''}`}>{st.takm.naziv}</a></td>
+                <td><a href={hashEkrana('rezultati', { t: tid, tk: st.takm.id, kat: par.kat, prog: par.prog })} className={`rang-ime ${aktivan ? 'rez-aktivan' : ''}`}>{st.takm.naziv}</a></td>
                 <td><span className="broj">{datumPrikaz(st.takm.datum)}</span></td>
                 <td>{`${st.prijava.kategorija ?? '–'} · ${st.prijava.program ?? '–'}`}</td>
                 {sprave.map((s) => {
@@ -150,7 +147,7 @@ export default function Rezultati() {
   if (!d) return <section className="kartica rez-glava" aria-busy="true" />;
   const { takmicar, sva, izabranoId } = d;
   const izabrano = sva.find((s) => Number(s.takm.id) === izabranoId) ?? null;
-  const nazad = hashEkrana('rang', { pol: par.pol, kat: par.kat, prog: par.prog });
+  const nazad = hashEkrana('rang', { kat: par.kat, prog: par.prog });
 
   return (
     <>

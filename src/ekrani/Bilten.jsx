@@ -9,10 +9,10 @@ import ListDno from './stampa/ListDno.jsx';
 
 // Ekran Bilten (POPIS 5): veliko zaglavlje na prvoj strani, sekcije ekipno i viseboj sa ponovljenim zaglavljem.
 export default function Bilten() {
-  const d = useStampaPodaci('bilten', (p) => gim.rang.bilten(p.pol, p.kat, p.prog));
+  const d = useStampaPodaci('bilten', (p) => gim.rang.bilten(p.kat, p.prog));
   const polozeno = d ? d.polozeno : false;
   // Nazad bez taba (kao PHP)
-  const nazad = d ? hashRang(d.izbor.pol, d.izbor.kat, d.izbor.prog) : hashRang(izHasha().pol, izHasha().kat, izHasha().prog);
+  const nazad = d ? hashRang(d.izbor.kat, d.izbor.prog) : hashRang(izHasha().kat, izHasha().prog);
   const st = useStampanje({ polozeno, ime: d ? imePdf('bilten', d.takm.naziv, d.izbor.pol) : '', nazad, spremno: !!d });
   if (!d) return <div className="stampa-ekran" aria-busy="true" />;
 

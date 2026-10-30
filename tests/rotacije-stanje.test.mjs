@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  kp, imeKartice, naslovKartice, premestiLokalno, indeksZaAltStrelice, hashRotacija,
+  kp, imeKartice, naslovKartice, premestiLokalno, indeksZaAltStrelice, hashRotacija, parRotacije,
 } from '../src/ekrani/rotacijeStanje.js';
 
 const c = (id, extra = {}) => ({ prijava_id: id, ime: 'Ana', prezime: 'Pek', kategorija_id: 1, program_id: 2, ...extra });
@@ -88,8 +88,17 @@ test('indeksZaAltStrelice: drugi taster ili nepoznata prijava', () => {
   assert.equal(indeksZaAltStrelice(stanje(), 99, 'ArrowUp'), null);
 });
 
-test('hashRotacija: kp se izostavlja kad je prazan', () => {
-  assert.equal(hashRotacija('Z', 2, '1-2'), '#/rotacije?pol=Z&rot=2&kp=1-2');
-  assert.equal(hashRotacija('M', 1, ''), '#/rotacije?pol=M&rot=1');
-  assert.equal(hashRotacija('M', 1), '#/rotacije?pol=M&rot=1');
+test('hashRotacija: bez pola, kp se izostavlja kad je prazan', () => {
+  assert.equal(hashRotacija(2, '1-2'), '#/rotacije?rot=2&kp=1-2');
+  assert.equal(hashRotacija(1, ''), '#/rotacije?rot=1');
+  assert.equal(hashRotacija(1), '#/rotacije?rot=1');
+  assert.ok(!hashRotacija(3, '1-2').includes('pol'));
+});
+
+test('parRotacije: rot i kp iz hasha, stari pol se zanemaruje', () => {
+  assert.deepEqual(parRotacije('#/rotacije?rot=2&kp=1-2'), { rot: 2, kp: '1-2' });
+  assert.deepEqual(parRotacije('#/rotacije'), { rot: 1, kp: '' });
+  assert.deepEqual(parRotacije('#/rotacije?rot=abc'), { rot: 1, kp: '' });
+  assert.deepEqual(parRotacije('#/rotacije?pol=M&rot=3&kp=0-0'), { rot: 3, kp: '0-0' });
+  assert.ok(!('pol' in parRotacije('#/rotacije?pol=Z&rot=2')));
 });

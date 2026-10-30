@@ -53,3 +53,7 @@ test('lekarskiOznaka: nema, istekao, istice', () => {
     klasa: 'status-warn', tekst: 'Važi do', title: 'Važi na dan takmičenja (17.10.2026.), ali ističe ubrzo posle', datum: '25.10.2026.',
   });
 });
+
+test('hashNastavi: nijedan korak ne nosi pol', () => {
+  for (const korak of ['spremno', 'prijave', 'rotacije']) assert.ok(!hashNastavi(st({ korak })).includes('pol'), korak);
+});

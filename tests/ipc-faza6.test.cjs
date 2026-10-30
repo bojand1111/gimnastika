@@ -43,7 +43,7 @@ test('guard: rang i stampa imaju handler za svaku radnju', () => {
 
 test('podaci(): podrazumevani izbor, nepoznat tab je viseboj, prvi je Petrovic', () => {
   const { moduli } = sPrimerom();
-  const d = moduli.rang.podaci(undefined, undefined, undefined, 'nepoznat');
+  const d = moduli.rang.podaci(undefined, undefined, 'nepoznat');
   assert.equal(d.izbor.pol, 'Z');
   assert.equal(d.izbor.kat_naziv, 'Kadet');
   assert.equal(d.izbor.prog_naziv, 'C program');
@@ -51,8 +51,8 @@ test('podaci(): podrazumevani izbor, nepoznat tab je viseboj, prvi je Petrovic',
   assert.deepEqual(Object.keys(d.takm).sort(), ['ekipno_broji', 'id', 'naziv', 'pravilo_e']);
   assert.equal(d.rez.viseboj[0].prijava, Object.values(d.rez.prijave).find((p) => p.prezime === 'Petrović').id);
   const sid = d.rez.sprave[0].id;
-  assert.equal(moduli.rang.podaci('Z', '', '', String(sid)).tab, sid);
-  assert.equal(moduli.rang.podaci('Z', '', '', 'ekipno').tab, 'ekipno');
+  assert.equal(moduli.rang.podaci('', '', String(sid)).tab, sid);
+  assert.equal(moduli.rang.podaci('', '', 'ekipno').tab, 'ekipno');
   structuredClone(d);
 });
 
@@ -76,41 +76,41 @@ test('rezultati(): Petrovic ima jednu stavku, zbir 50300, izabrano je aktivno', 
 
 test('stampa(): bez prijava baca, viseboj ZSG 1 strana, MSG polozeno 2 strane po 6', () => {
   const { baza, moduli, idZ, idM } = sPrimerom();
-  const z = moduli.rang.stampa('Z', '', '', 'viseboj');
+  const z = moduli.rang.stampa('', '', 'viseboj');
   assert.equal(z.polozeno, false);
   assert.equal(z.strane.length, 1);
   assert.equal(z.naziv, 'Višeboj · ŽSG · Kadet · C program');
   assert.equal(z.grb, '');
   moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(idM));
-  const m = moduli.rang.stampa('M', '', '', 'viseboj');
+  const m = moduli.rang.stampa('', '', 'viseboj');
   assert.equal(m.polozeno, true);
   assert.equal(m.rez.viseboj.length, 10);
   assert.deepEqual(m.strane.map((s) => s.length), [6, 4]);
-  assert.equal(moduli.rang.stampa('M', '', '', 'ekipno').polozeno, false);
+  assert.equal(moduli.rang.stampa('', '', 'ekipno').polozeno, false);
   moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(String(idZ));
   const sprava = z.rez.sprave[0];
-  const sp = moduli.rang.stampa('Z', '', '', String(sprava.id));
+  const sp = moduli.rang.stampa('', '', String(sprava.id));
   assert.equal(sp.sprava.id, sprava.id);
   assert.equal(sp.naziv, `${sprava.naziv} · ŽSG · Kadet · C program`);
-  assert.equal(moduli.rang.stampa('Z', '', '', 'ekipno').naziv, 'Ekipno · ŽSG · Kadet · C program');
+  assert.equal(moduli.rang.stampa('', '', 'ekipno').naziv, 'Ekipno · ŽSG · Kadet · C program');
   structuredClone(m);
   baza.izvrsi('DELETE FROM prijave');
-  assert.throws(() => moduli.rang.stampa('Z'), (e) => e instanceof GreskaKorisnika && e.message === 'Nema prijava za štampu.');
-  assert.throws(() => moduli.rang.bilten('Z'), (e) => e instanceof GreskaKorisnika && e.message === 'Nema prijava za bilten.');
+  assert.throws(() => moduli.rang.stampa(), (e) => e instanceof GreskaKorisnika && e.message === 'Nema prijava za štampu.');
+  assert.throws(() => moduli.rang.bilten(), (e) => e instanceof GreskaKorisnika && e.message === 'Nema prijava za bilten.');
 });
 
 test('bilten(): polozeno po polu, disciplina, prva strana pocinje ekipom', () => {
   const { moduli, idM } = sPrimerom();
-  const z = moduli.rang.bilten('Z', '', '');
+  const z = moduli.rang.bilten('', '');
   assert.equal(z.polozeno, false);
   assert.equal(z.disciplina, 'Ženska sportska gimnastika · Kadet · C program');
   assert.equal(z.strane[0][0].tip, 'ekipa');
   assert.equal(z.strane.flat().length, z.rez.viseboj.length + z.rez.ekipno.reduce((n, e) => n + 1 + e.clanovi.length, 0));
   moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(idM));
-  const m = moduli.rang.bilten('M', '', '');
+  const m = moduli.rang.bilten('', '');
   assert.equal(m.polozeno, true);
   assert.equal(m.disciplina, 'Muška sportska gimnastika · Kadet · C program');
   assert.equal(m.strane[0][0].tip, 'ekipa');
@@ -190,8 +190,8 @@ test('rezultati(): vise takmicenja, izbor i fallback', () => {
   baza.izvrsi("UPDATE podesavanja SET vrednost = '' WHERE kljuc = 'aktivno_takmicenje_Z'");
   assert.equal(moduli.rang.rezultati(tid).izabranoId, novo);
   assert.throws(() => moduli.rang.podaci(), (e) => e instanceof GreskaKorisnika && /Nema aktivnog/.test(e.message));
-  assert.throws(() => moduli.rang.stampa('Z'), (e) => /Nema aktivnog/.test(e.message));
-  assert.throws(() => moduli.rang.bilten('Z'), (e) => /Nema aktivnog/.test(e.message));
+  assert.throws(() => moduli.rang.stampa(), (e) => /Nema aktivnog/.test(e.message));
+  assert.throws(() => moduli.rang.bilten(), (e) => /Nema aktivnog/.test(e.message));
 });
 
 test('rezultati(): takmicar bez prijava', () => {
@@ -206,12 +206,12 @@ test('rezultati(): takmicar bez prijava', () => {
 
 test('stampa(): strane za spravu i ekipno', () => {
   const { moduli } = sPrimerom();
-  const z = moduli.rang.stampa('Z', '', '', 'viseboj');
+  const z = moduli.rang.stampa('', '', 'viseboj');
   const sid = z.rez.sprave[0].id;
-  const sp = moduli.rang.stampa('Z', '', '', sid);
+  const sp = moduli.rang.stampa('', '', sid);
   assert.equal(sp.strane.length, 1);
   assert.equal(sp.strane[0].length, z.rez.po_spravi[sid].length);
-  const ek = moduli.rang.stampa('Z', '', '', 'ekipno');
+  const ek = moduli.rang.stampa('', '', 'ekipno');
   assert.equal(ek.strane.flat().length, z.rez.ekipno.length);
   for (const s of ek.strane) assert.ok(s.reduce((n, e) => n + 1 + e.clanovi.length, 0) <= 30);
 });
@@ -229,13 +229,13 @@ test('organizator i grb: rezervno iz podesavanja', () => {
     for (const [k, v] of [['organizator', 'Savez'], ['grb_levo', `grb/${levo}`], ['grb_desno', `grb/${desno}`]]) {
       baza.izvrsi('INSERT INTO podesavanja (kljuc, vrednost) VALUES (?, ?) ON CONFLICT(kljuc) DO UPDATE SET vrednost = excluded.vrednost', [k, v]);
     }
-    const b = moduli.rang.bilten('Z', '', '');
+    const b = moduli.rang.bilten('', '');
     assert.equal(b.organizator, 'Savez');
     assert.match(b.grbLevo, new RegExp(`${levo}[?]v=`));
     assert.match(b.grbDesno, new RegExp(`${desno}[?]v=`));
-    assert.match(moduli.rang.stampa('Z', '', '', 'viseboj').grb, new RegExp(levo));
+    assert.match(moduli.rang.stampa('', '', 'viseboj').grb, new RegExp(levo));
     baza.izvrsi("UPDATE takmicenja SET organizator = 'Klub X'");
-    assert.equal(moduli.rang.bilten('Z', '', '').organizator, 'Klub X');
+    assert.equal(moduli.rang.bilten('', '').organizator, 'Klub X');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -274,16 +274,16 @@ test('cistoIme: prazno, same tacke i samo .pdf daju Stampa.pdf', () => {
 });
 
 // --- Izabrani pol (T4) ---
-test('rang: pol iz renderera se zanemaruje, izbor je pol takmicenja', () => {
+test('rang: izbor je pol takmicenja, dodatni argumenti se zanemaruju', () => {
   const { moduli, idM } = sPrimerom();
-  assert.equal(moduli.rang.podaci('M').izbor.pol, 'Z');
-  assert.match(moduli.rang.stampa('M', '', '', 'viseboj').naziv, /ŽSG/);
-  assert.equal(moduli.rang.bilten('M', '', '').disciplina, 'Ženska sportska gimnastika · Kadet · C program');
+  assert.equal(moduli.rang.podaci(undefined, undefined, undefined, 'M').izbor.pol, 'Z');
+  assert.match(moduli.rang.stampa('', '', 'viseboj', 'M').naziv, /ŽSG/);
+  assert.equal(moduli.rang.bilten('', '', 'M').disciplina, 'Ženska sportska gimnastika · Kadet · C program');
   moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(idM));
-  assert.equal(moduli.rang.podaci('Z').izbor.pol, 'M');
-  assert.match(moduli.rang.stampa('Z', '', '', 'viseboj').naziv, /MSG/);
-  assert.equal(moduli.rang.bilten('Z', '', '').disciplina, 'Muška sportska gimnastika · Kadet · C program');
+  assert.equal(moduli.rang.podaci(undefined, undefined, undefined, 'Z').izbor.pol, 'M');
+  assert.match(moduli.rang.stampa('', '', 'viseboj', 'Z').naziv, /MSG/);
+  assert.equal(moduli.rang.bilten('', '', 'Z').disciplina, 'Muška sportska gimnastika · Kadet · C program');
 });
 
 test('rang.rezultati: takmicar drugog pola se ponasa kao da ne postoji', () => {

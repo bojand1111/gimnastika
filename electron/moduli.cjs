@@ -341,8 +341,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     },
     rotacije: {
       // Jedan poziv za ceo ekran Rotacije (POPIS 4.2).
-      // Prvi argument (pol) renderer jos salje; zanemaruje se, pol je pol takmicenja.
-      podaci: (_pol, rot) => {
+      // Pol je uvek pol aktivnog takmicenja izabranog dela; renderer ga ne salje.
+      podaci: (rot) => {
         const takm = aktivnoRed();
         const polIzbor = takm.pol;
         const sprave = s.sprave(polIzbor);
@@ -406,8 +406,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     },
     unos: {
       // Jedan poziv za ceo ekran Unos ocena (POPIS 4).
-      // Prvi argument (pol) renderer jos salje; zanemaruje se, pol je pol takmicenja.
-      podaci: (_pol, spravaUlaz, rotUlaz) => {
+      // Pol je uvek pol aktivnog takmicenja izabranog dela; renderer ga ne salje.
+      podaci: (spravaUlaz, rotUlaz) => {
         const takm = aktivnoRed();
         const tid = Number(takm.id);
         const pomeraj = Number(takm.pomeraj_redosled) === 1;

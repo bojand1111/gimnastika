@@ -5,6 +5,11 @@ import { koraci } from '../src/koraciStanje.js';
 const st = (o) => ({ prijava: 0, nepotpune: 0, nerasporedjeni: 0, nepotvrdjeni_klubovi: 0, korak: 'prijave', ...o });
 const stanja = (k) => k.map((x) => x.stanje);
 
+test('koraci: linkovi bez pola', () => {
+  const k = koraci({ prijava: 5, nepotpune: 0, nerasporedjeni: 0, nepotvrdjeni_klubovi: 0 }, 'prijave', 7);
+  for (const korak of k) assert.ok(!String(korak.link).includes('pol'), korak.kljuc);
+});
+
 test('koraci: bez takmicenja (nova forma)', () => {
   const k = koraci(null, 'podaci', null);
   assert.deepEqual(k.map((x) => x.kljuc), ['podaci', 'prijave', 'rotacije', 'pregled']);

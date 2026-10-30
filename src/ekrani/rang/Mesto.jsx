@@ -13,7 +13,7 @@ export const mestoCelija = (mesto, oznaka) => <Mesto podaci={mestoPodaci(mesto, 
 
 // Ime takmicara kao link na Rezultate (zadrzava filtere).
 export function ImeLink({ p, izbor, sivo = false }) {
-  const h = hashEkrana('rezultati', { t: p.takmicar_id, pol: izbor.pol, kat: izbor.kat, prog: izbor.prog });
+  const h = hashEkrana('rezultati', { t: p.takmicar_id, kat: izbor.kat, prog: izbor.prog });
   return <a href={h} className={`rang-ime${sivo ? ' sivo' : ''}`}>{`${p.prezime} ${p.ime}`}</a>;
 }
 
