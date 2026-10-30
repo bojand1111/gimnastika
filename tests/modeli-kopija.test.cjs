@@ -50,7 +50,7 @@ test('napravi: sqlite fajl sa kopija_opis (5 kljuceva), lista ga vraca prvim', (
     const o = Object.fromEntries(kljucevi.map((x) => [x.kljuc, x.vrednost]));
     assert.equal(o.aplikacija, 'gimnastika');
     assert.equal(o.verzija, '1.0.0');
-    assert.equal(o.baza_verzija, '004_redosled_po_rotaciji');
+    assert.equal(o.baza_verzija, '005_pol_po_delu');
     assert.equal(o.vrsta, 'rucna');
     assert.match(o.vreme, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
     const lista = t.k.lista();
@@ -183,5 +183,60 @@ test('vrati: pokvaren sqlite fajl ne dira zivu bazu', () => {
     assert.throws(() => t.k.vrati(path.join(t.dir, 'kopije', 'losa.sqlite')), GreskaKorisnika);
     assert.equal(brojKlubova(t.baza), 1);
     klub(t.baza, 'Radi', 'RAD');
+  } finally { t.ukloni(); }
+});
+
+// Kopija-fajl sa semom do migracije 004 (bez kolone pol), kao iz verzije 1.1.1.
+function staraKopija(dir) {
+  const putanja = path.join(dir, 'kopija_stara.sqlite');
+  const db = new DatabaseSync(putanja);
+  try {
+    const fascikla = path.join(__dirname, '..', 'electron', 'baza', 'migracije');
+    for (const f of fs.readdirSync(fascikla).filter((x) => /^00[1-4]_.*\.sql$/.test(x)).sort()) {
+      db.exec(fs.readFileSync(path.join(fascikla, f), 'utf8'));
+    }
+    db.exec(`INSERT INTO klubovi (id, puno_ime, skracenica, grad, kreirano, izmenjeno) VALUES (1, 'Soko', 'SOK', '', '${SAD}', '${SAD}')`);
+    db.exec(`INSERT INTO sprave (id, pol, naziv, skracenica, redosled, kreirano, izmenjeno) VALUES
+      (1, 'M', 'Parter', 'PA', 1, '${SAD}', '${SAD}'), (2, 'Z', 'Greda', 'GR', 1, '${SAD}', '${SAD}')`);
+    db.exec(`INSERT INTO takmicenja (id, naziv, datum, kreirano, izmenjeno) VALUES (1, 'Kup', '2026-11-01', '${SAD}', '${SAD}')`);
+    for (const [id, pol] of [[1, 'Z'], [2, 'Z'], [3, 'M']]) {
+      db.exec(`INSERT INTO takmicari (id, id_broj, ime, prezime, godina_rodjenja, pol, klub_id, kreirano, izmenjeno)
+        VALUES (${id}, 'T${id}', 'Ime${id}', 'Prez${id}', 2012, '${pol}', 1, '${SAD}', '${SAD}')`);
+      db.exec(`INSERT INTO prijave (id, takmicenje_id, takmicar_id, klub_id, startni_broj, kreirano, izmenjeno)
+        VALUES (${id}, 1, ${id}, 1, ${id}, '${SAD}', '${SAD}')`);
+      db.exec(`INSERT INTO ocene (id, prijava_id, sprava_id, d, e, konacna, kreirano, izmenjeno)
+        VALUES (${id}, ${id}, ${pol === 'M' ? 1 : 2}, 5000, 8000, 13000, '${SAD}', '${SAD}')`);
+      db.exec(`INSERT INTO ocene_e (ocena_id, sudija, vrednost) VALUES (${id}, 1, 8000)`);
+    }
+    db.exec(`INSERT INTO podesavanja (kljuc, vrednost) VALUES ('aktivno_takmicenje', '1')`);
+    db.exec('CREATE TABLE kopija_opis (kljuc TEXT PRIMARY KEY, vrednost TEXT)');
+    db.exec(`INSERT INTO kopija_opis (kljuc, vrednost) VALUES ('aplikacija', 'gimnastika'), ('verzija', '1.0.0'),
+      ('baza_verzija', '004_redosled_po_rotaciji'), ('vreme', '${SAD}'), ('vrsta', 'rucna')`);
+  } finally {
+    db.close();
+  }
+  return putanja;
+}
+
+test('vracanje kopije bez kolone pol deli takmicenje', () => {
+  const t = nova();
+  try {
+    const kopija = staraKopija(t.dir);
+    t.k.vrati(kopija);
+    const brojevi = (tabela) => Number(t.baza.vrednost(`SELECT COUNT(*) FROM ${tabela}`));
+    assert.equal(brojevi('takmicenja'), 2);
+    assert.equal(brojevi('prijave'), 3);
+    assert.equal(brojevi('ocene'), 3);
+    assert.equal(brojevi('ocene_e'), 3);
+    assert.equal(t.baza.vrednost("SELECT COUNT(*) FROM takmicenja WHERE pol = ''"), 0);
+    const z = t.baza.jedan("SELECT id FROM takmicenja WHERE pol = 'Z'");
+    const m = t.baza.jedan("SELECT id FROM takmicenja WHERE pol = 'M'");
+    assert.equal(z.id, 1, 'stari id ostaje polu sa vise prijava');
+    assert.equal(t.baza.vrednost('SELECT COUNT(*) FROM prijave WHERE takmicenje_id = ?', [z.id]), 2);
+    assert.equal(t.baza.vrednost('SELECT COUNT(*) FROM prijave WHERE takmicenje_id = ?', [m.id]), 1);
+    assert.equal(t.baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_Z'"), '1');
+    assert.equal(t.baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_M'"), String(m.id));
+    assert.equal(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc = 'aktivno_takmicenje'"), 0);
+    assert.deepEqual(t.baza.svi('PRAGMA foreign_key_check'), []);
   } finally { t.ukloni(); }
 });

@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { otvori } = require('../baza/baza.cjs');
 const { pocetniPodaci } = require('../baza/seme.cjs');
+const { podeliPolove } = require('../baza/podela-polova.cjs');
 const { GreskaKorisnika } = require('../greska.cjs');
 const zip = require('../uvoz/zip.cjs');
 const { podeli } = require('../racun/sql-delilac.mjs');
@@ -77,7 +78,7 @@ function oporaviStaro(putanjaBaze) {
 
 function napravi(baza, opcije) {
   const { fasciklaPodrazumevana, podesavanja, verzija, dnevnik } = opcije;
-  const posleVracanja = opcije.posleVracanja ?? (() => { baza.migriraj(); pocetniPodaci(baza); });
+  const posleVracanja = opcije.posleVracanja ?? (() => { baza.migriraj(); pocetniPodaci(baza); podeliPolove(baza); });
 
   // Trenutne vrednosti podesavanja ovog racunara, koje vracanje ne sme da promeni.
   function ziveVrednosti() {

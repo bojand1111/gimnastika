@@ -83,13 +83,16 @@ test('uvoz PHP zip-a: vrednosti, apostrof, NULL, hiljaditi delovi, preskocena po
     assert.deepEqual(t.baza.svi('SELECT sudija, vrednost FROM ocene_e ORDER BY sudija').map((x) => ({ ...x })),
       [{ sudija: 1, vrednost: 8700 }, { sudija: 2, vrednost: 8650 }]);
     assert.equal(t.baza.vrednost('SELECT grb_levo FROM takmicenja'), '');
-    assert.equal(t.podesavanja.daj('aktivno_takmicenje'), '1');
+    // prijava u kopiji je Z, pa aktivno takmicenje prelazi u ZSG deo (stari kljuc se brise)
+    assert.equal(t.podesavanja.daj('aktivno_takmicenje_Z'), '1');
+    assert.equal(t.podesavanja.daj('aktivno_takmicenje'), '');
+    assert.equal(t.baza.vrednost("SELECT pol FROM takmicenja WHERE id = 1"), 'Z');
     assert.equal(t.podesavanja.daj('organizator'), 'Savez');
     assert.equal(t.podesavanja.daj('kopije_fascikla'), '');
     assert.equal(t.podesavanja.daj('grb_levo'), '');
     assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc = 'grb_levo'")), 0);
     // migracije tabela je SQLite-ova, sa svim migracijama (migriraj posle uvoza)
-    assert.equal(t.baza.svi('SELECT ime FROM migracije').length, 4);
+    assert.equal(t.baza.svi('SELECT ime FROM migracije').length, 5);
     // sprave su iz kopije (pocetniPodaci nije zvan pre uvoza), pa ih je tacno jedna
     assert.equal(t.baza.vrednost('SELECT COUNT(*) FROM sprave'), 1);
     assert.equal(t.baza.vrednost('PRAGMA foreign_keys'), 1);

@@ -62,7 +62,7 @@ test('podaci: bez kopija, oblik se moze klonirati', () => {
     assert.equal(d.fascikla.podrazumevana, true);
     assert.equal(d.fascikla.nedostupna, false);
     assert.equal(d.verzija, '1.0.0');
-    assert.equal(d.bazaVerzija, '004_redosled_po_rotaciji');
+    assert.equal(d.bazaVerzija, '005_pol_po_delu');
     assert.equal(d.VRSTE.rucna, 'Ručna');
     structuredClone(d);
   } finally { t.ukloni(); }

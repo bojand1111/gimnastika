@@ -6,6 +6,7 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { otvori } = require('../electron/baza/baza.cjs');
 const { pocetniPodaci } = require('../electron/baza/seme.cjs');
+const { podeliPolove } = require('../electron/baza/podela-polova.cjs');
 const { napravi: napraviPodesavanja } = require('../electron/modeli/podesavanja.cjs');
 const { napravi: napraviKopiju, oporaviStaro } = require('../electron/modeli/kopija.cjs');
 const { GreskaKorisnika } = require('../electron/greska.cjs');
@@ -271,6 +272,7 @@ test('vrati sqlite: svi redovi i sqlite_sequence su isti, tudji okidac i tabela 
   const t = nova();
   try {
     napuni(t);
+    podeliPolove(t.baza); // vracanje poziva podeluPolova, pa kopija mora vec biti podeljena da stanje bude isto
     const pre = stanjeTabela(t.baza);
     const seqPre = t.baza.svi('SELECT name, seq FROM sqlite_sequence ORDER BY name').map((r) => ({ ...r }));
     assert.ok(seqPre.some((r) => r.name === 'klubovi' && r.seq === 3));

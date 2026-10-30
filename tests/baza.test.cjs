@@ -4,9 +4,9 @@ const { otvori, Baza } = require('../electron/baza/baza.cjs');
 
 test('migracije na praznoj bazi prave sve tabele i ponovo ne rade nista', () => {
   const b = otvori(':memory:');
-  assert.equal(b.naCekanju().length, 4);
+  assert.equal(b.naCekanju().length, 5);
   const prvi = b.migriraj();
-  assert.deepEqual(prvi, ['001_pocetna', '002_takmicenje_grb_domacin', '003_potvrde_klubova', '004_redosled_po_rotaciji']);
+  assert.deepEqual(prvi, ['001_pocetna', '002_takmicenje_grb_domacin', '003_potvrde_klubova', '004_redosled_po_rotaciji', '005_pol_po_delu']);
   assert.deepEqual(b.tabele().sort(), ['grupa_clanovi', 'grupa_redosled', 'grupe', 'izmene_ocena', 'kategorije', 'klubovi', 'migracije', 'ocene', 'ocene_e', 'podesavanja', 'potvrde_klubova', 'prijava_sprave', 'prijave', 'programi', 'sprave', 'takmicari', 'takmicenja']);
   assert.deepEqual(b.migriraj(), []);
   assert.deepEqual(b.naCekanju(), []);

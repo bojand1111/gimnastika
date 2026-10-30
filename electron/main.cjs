@@ -7,6 +7,7 @@ const { kopijaPreMigracije } = require('./kopija-paket.cjs');
 const { oporaviStaro } = require('./modeli/kopija.cjs');
 const { otvori } = require('./baza/baza.cjs');
 const { pocetniPodaci } = require('./baza/seme.cjs');
+const { podeliPolove } = require('./baza/podela-polova.cjs');
 const dnevnik = require('./dnevnik.cjs');
 const { registruj } = require('./ipc.cjs');
 const { createUpdater } = require('./updater.cjs');
@@ -79,6 +80,10 @@ function pokreni() {
     log(`migracije: ${primenjene.length ? primenjene.join(', ') : 'nema novih'}`);
     const seme = pocetniPodaci(baza);
     if (seme.sprave || seme.podesavanja) log(`seme: sprave ${seme.sprave}, podesavanja ${seme.podesavanja}`);
+    const podela = podeliPolove(baza);
+    if (podela.takmicenja || podela.kategorije || podela.programi) {
+      log(`podela polova: takmicenja ${podela.takmicenja} (podeljeno ${podela.podeljena}), kategorije ${podela.kategorije}, programi ${podela.programi}`);
+    }
     kopija = napraviKopijuModel(baza, { fasciklaPodataka, dnevnik });
   } catch (err) {
     dnevnik.greska('baza i migracije', err);
