@@ -1,0 +1,25 @@
+// Promena dela aplikacije (MSG/ZSG): ekrani prvo snime nacrte, tek onda se menja deo u glavnom procesu.
+
+// Ekrani slusaju app:pre-pol i u ev.detail.cekaj dodaju obecanje koje se zavrsava kad je snimanje gotovo.
+export async function pripremiPromenu(meta = document) {
+  const cekaj = [];
+  meta.dispatchEvent(new CustomEvent('app:pre-pol', { detail: { cekaj } }));
+  await Promise.all(cekaj);
+}
+
+// Vraca promeni(novi): pripremi, pa postavi(novi). Vraca novi deo, ili null kad nema posla
+// (isti deo ili je promena vec u toku: drugi pritisak za to vreme se ignorise).
+// Ako pripremi ili postavi puknu, greska ide dalje i deo ostaje stari.
+export function napraviPromenu({ trenutni, pripremi, postavi }) {
+  let uToku = false;
+  return async function promeni(novi) {
+    if (uToku || novi === trenutni()) return null;
+    uToku = true;
+    try {
+      await pripremi();
+      return await postavi(novi);
+    } finally {
+      uToku = false;
+    }
+  };
+}

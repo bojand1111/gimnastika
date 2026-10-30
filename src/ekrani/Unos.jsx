@@ -108,7 +108,11 @@ export default function Unos() {
     };
     window.addEventListener('hashchange', naHash);
     document.addEventListener('keydown', akcije.globalniTaster);
+    // Pre promene dela (MSG/ZSG) nacrti se salju dok je jos staro takmicenje aktivno.
+    const prePol = (ev) => { akcije.izlazAktivnog(); ev.detail.cekaj.push(akcije.isprazniNacrte()); };
+    document.addEventListener('app:pre-pol', prePol);
     return () => {
+      document.removeEventListener('app:pre-pol', prePol);
       window.removeEventListener('hashchange', naHash);
       document.removeEventListener('keydown', akcije.globalniTaster);
       akcije.izlazAktivnog();

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gim from './gim.js';
 import { razlozi } from './ruter.js';
 import { radnja } from './precice.js';
+import { napraviPromenu, pripremiPromenu } from './promenaDela.js';
 import Meni, { naslovEkrana } from './okvir/Meni.jsx';
 import Traka from './okvir/Traka.jsx';
 import Poruke, { obavesti } from './okvir/Poruke.jsx';
@@ -53,37 +54,45 @@ export default function App() {
   const [verzija, postaviVerziju] = useState('');
   // Izabrani deo aplikacije: 'M' (MSG) ili 'Z' (ŽSG); null dok se ne procita.
   const [pol, postaviPol] = useState(null);
-  const polRef = useRef(null);
-  polRef.current = pol;
+  const polRef = useRef(null); // trenutni deo; menja se samo iz primeniPol, nikad u renderu
+  const primeniPol = (p) => { polRef.current = p; postaviPol(p); };
 
-  // Promena dela: upis u glavnom procesu, pa Pocetna tog dela i obavestenje ekranima (app:pol, app:aktivno).
-  const promeniPol = useCallback(async (novi) => {
-    if (novi === polRef.current) return;
+  // Promena dela: ekrani prvo snime nacrte (app:pre-pol), pa upis u glavnom procesu; drugi pritisak za to vreme se ignorise.
+  const [promeni] = useState(() => napraviPromenu({
+    trenutni: () => polRef.current,
+    pripremi: () => pripremiPromenu(),
+    postavi: (novi) => gim.pol.postavi(novi),
+  }));
+
+  // Posle uspeha: Pocetna tog dela i obavestenje ekranima (app:pol, app:aktivno); pri gresci ostaje stari deo.
+  async function promeniPol(novi) {
     try {
-      const stvarni = await gim.pol.postavi(novi);
-      postaviPol(stvarni);
+      const stvarni = await promeni(novi);
+      if (stvarni === null) return;
+      primeniPol(stvarni);
       location.hash = '#/pocetna';
       document.dispatchEvent(new Event('app:pol'));
       document.dispatchEvent(new Event('app:aktivno'));
     } catch (err) { obavesti(err.message, 'greska'); }
-  }, []);
+  }
 
   useEffect(() => {
     // Alt+M i Alt+Z rade i u polju za unos; podrazumevani postupak pregledaca se gasi.
     const naTaster = (ev) => {
       const r = radnja(ev);
       if (r !== 'pol-m' && r !== 'pol-z') return;
+      if (document.querySelector('dialog[open]')) return; // otvoren dijalog ne sme da nestane usred unosa
       ev.preventDefault();
       promeniPol(r === 'pol-m' ? 'M' : 'Z');
     };
     document.addEventListener('keydown', naTaster);
     return () => document.removeEventListener('keydown', naTaster);
-  }, [promeniPol]);
+  }, []);
 
   useEffect(() => {
     // U obicnom browseru (bez window.gim) ostaje MSG.
-    if (!window.gim?.pol) { postaviPol('M'); return; }
-    gim.pol.daj().then(postaviPol).catch((err) => { postaviPol('M'); obavesti(err.message, 'greska'); });
+    if (!window.gim?.pol) { primeniPol('M'); return; }
+    gim.pol.daj().then(primeniPol).catch((err) => { primeniPol('M'); obavesti(err.message, 'greska'); });
   }, []);
 
   useEffect(() => {
