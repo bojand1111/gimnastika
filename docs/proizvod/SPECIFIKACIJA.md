@@ -6,6 +6,8 @@ Ovaj dokument opisuje šta aplikacija radi. Kako izgleda, vidi se u folderu `diz
 
 Desktop web aplikacija za vođenje takmičenja u sportskoj gimnastici (muška MSG i ženska ŽSG).
 
+- **MSG i ŽSG su dva odvojena dela jedne aplikacije.** Pol se bira jednom, prekidačem **MSG | ŽSG** na vrhu bočnog menija (Alt+M i Alt+Z), i svaki ekran prikazuje samo izabrani deo. Nijedan ekran nema svoj izbor ili filter pola.
+
 - Radi na **jednom laptopu u sali**, bez interneta. Ekran je 1366x768 ili veći.
 - Koristi je **jedna osoba, zapisničar**, koji tokom takmičenja prepisuje ocene sa papirnih sudijskih listića. Nema prijave korisnika ni uloga.
 - **Brzina unosa sa tastature je najvažnija stvar.** Tab i Enter kroz polja, bez nepotrebnog klikanja.
@@ -47,13 +49,13 @@ Nazivi tabela i kolona su predlog. Važno je šta se čuva i kako je povezano.
 
 **takmicari** (trajni karton): `id`, `id_broj` (jedinstven, unosi ga korisnik, npr. `00203`), `ime`, `prezime`, `godina_rodjenja`, `pol` (M/Ž), `klub_id`, `drzavljanstvo`, `lekarski_do` (datum). Opciono: `broj_licence`, `trener`, `kontakt_roditelja`.
 
-**kategorije**, **programi**: `id`, `naziv`, `redosled`. Liste koje korisnik sam uređuje.
+**kategorije**, **programi**: `id`, `pol` (M/Ž), `naziv`, `redosled`. Liste koje korisnik sam uređuje, posebne za MSG i za ŽSG.
 
 **sprave**: `id`, `pol` (M/Ž), `naziv`, `skracenica`, `ikona` (ime jedne od ikona iz `dizajn/ikone/` ili prazno), `redosled`. Redosled sprava je i redosled kolona u višeboju i redosled rotacija. Početne vrednosti:
 - muške: Parter (PA), Konj sa hvataljkama (KH), Karike (KA), Preskok (PR), Razboj (RA), Vratilo (VR)
 - ženske: Preskok (PR), Dvovisinski razboj (DR), Greda (GR), Parter (PA)
 
-**takmicenja**: `id`, `naziv`, `datum`, `mesto`, `broj_e_sudija` (1 do 6), `pravilo_e` (`odbaci_krajnje` ili `prosek_svih`), `ekipno_broji` (koliko najboljih ocena po spravi ulazi u ekipni zbir, podrazumevano 3), `pomeraj_redosled` (da/ne), `zavrseno` (da/ne), `zaglavlje_biltena` (slobodan tekst za prvi red biltena, može biti prazno), `organizator`, `domacin` (slobodan tekst, može se izabrati klub iz baze), `grb_levo` i `grb_desno` (slika po takmičenju; ako je prazno, koristi se grb iz podešavanja).
+**takmicenja**: `id`, `pol` (M/Ž; takmičenje pripada jednom delu), `naziv`, `datum`, `mesto`, `broj_e_sudija` (1 do 6), `pravilo_e` (`odbaci_krajnje` ili `prosek_svih`), `ekipno_broji` (koliko najboljih ocena po spravi ulazi u ekipni zbir, podrazumevano 3), `pomeraj_redosled` (da/ne), `zavrseno` (da/ne), `zaglavlje_biltena` (slobodan tekst za prvi red biltena, može biti prazno), `organizator`, `domacin` (slobodan tekst, može se izabrati klub iz baze), `grb_levo` i `grb_desno` (slika po takmičenju; ako je prazno, koristi se grb iz podešavanja). Kad na istom događaju nastupaju i muški i ženski takmičari, to su dva takmičenja (po jedno u MSG i u ŽSG), svako sa svojim podešavanjima, startnim brojevima i biltenom.
 
 **prijave** (takmičar na takmičenju): `id`, `takmicenje_id`, `takmicar_id`, `klub_id` (prepisan iz kartona u trenutku prijave, da stari rezultati ne promene klub kad takmičar pređe u drugi), `kategorija_id`, `program_id`, `clan_ekipe`, `van_konkurencije`, `startni_broj` (nije obavezan). Jedan takmičar može biti prijavljen samo jednom na isto takmičenje.
 
@@ -69,7 +71,7 @@ Nazivi tabela i kolona su predlog. Važno je šta se čuva i kako je povezano.
 
 **izmene_ocena** (zapis ispravki): `id`, `ocena_id`, `vreme`, `razlog`, `staro` i `novo` (sve vrednosti reda pre i posle, kao JSON tekst).
 
-**podesavanja**: ključ i vrednost (aktivno takmičenje, fascikla za kopije, prag upozorenja za lekarski u danima, podrazumevano 30).
+**podesavanja**: ključ i vrednost (izabrani deo, aktivno takmičenje svakog dela posebno, fascikla za kopije, prag upozorenja za lekarski u danima, podrazumevano 30, pravila obračuna i štampe posebno za MSG i za ŽSG).
 
 **migracije**: koje su migracije primenjene.
 
@@ -118,12 +120,14 @@ Višeboj ŽSG iz primera: Petrović Ana 50,300 (1.), Nikolić Teodora 49,700 (2.
 
 ## 5. Ekrani
 
-Za svaki ekran postoje `dizajn/slike/<ime>.png` i `dizajn/ekrani/<ime>.html`. Bočni meni i gornja traka su isti svuda. Gornja traka uvek prikazuje aktivno takmičenje.
+Za svaki ekran postoje `dizajn/slike/<ime>.png` i `dizajn/ekrani/<ime>.html`. Bočni meni i gornja traka su isti svuda. Gornja traka uvek prikazuje aktivno takmičenje izabranog dela.
+
+Na vrhu bočnog menija, ispod naziva programa, je prekidač **MSG | ŽSG** (Alt+M, Alt+Z). Izabrani deo važi za sve ekrane i pamti se posle ponovnog pokretanja. Svaki deo pamti svoje aktivno takmičenje, a promena dela vodi na Početnu tog dela. U izabranom delu postoje samo njegova takmičenja, takmičari, prijave, grupe, sprave, kategorije, programi, rang liste i bilteni. Klubovi i Rezervna kopija su zajednički za oba dela. Zato ekrani ispod ne biraju pol.
 
 Od verzije 1.1.0 tok pripreme (Početna, Takmičenja, Prijave, Rotacije i novi Pregled takmičenja) opisuje `docs/TOK-PRIPREME.md`; gde se razlikuje od ovog odeljka, važi taj dokument.
 
 ### 01 Početna (`01-pocetna`)
-- Kartica aktivnog takmičenja: naziv, datum, mesto, broj E sudija, broj prijavljenih, broj klubova, rotacija u toku. Link „Promeni aktivno takmičenje".
+- Kartica aktivnog takmičenja izabranog dela: naziv, datum, mesto, broj E sudija, broj prijavljenih, broj klubova, rotacija u toku. Link „Promeni aktivno takmičenje".
 - Dve velike pločice: „Unos ocena" (nastavlja tamo gde se stalo: sprava, rotacija, koliko je uneto) i „Rang liste".
 - Poslednja rezervna kopija (datum i vreme, oznaka ako je od danas) i dugme za novu kopiju.
 - Spisak prečica.
@@ -137,32 +141,32 @@ Od verzije 1.1.0 tok pripreme (Početna, Takmičenja, Prijave, Rotacije i novi P
 
 ### 03 Takmičari (`03-takmicari`)
 - Tabela: ID, prezime i ime, godište, pol, klub (skraćenica), lekarski važi do.
-- Pretraga (ime, prezime, ID) i filteri: klub, pol, godište.
+- Pretraga (ime, prezime, ID) i filteri: klub, godište. Lista ima samo takmičare izabranog dela, pa filtera pola nema.
 - Strelice gore i dole menjaju izabrani red, Enter otvara karton u formi desno.
-- Karton: ID broj, ime, prezime, godina rođenja, pol, klub (puno ime), državljanstvo, lekarski važi do. Opciono: broj licence, trener, kontakt roditelja.
+- Karton: ID broj, ime, prezime, godina rođenja, pol, klub (puno ime), državljanstvo, lekarski važi do. Opciono: broj licence, trener, kontakt roditelja. Novi takmičar dobija pol izabranog dela. Pogrešno unet pol postojećeg takmičara (koji nema prijave) ispravlja se u kartonu: čuvanjem takmičar prelazi u drugi deo.
 - **Lekarski:** ako ističe za 30 dana ili manje (prag je podešavanje), narandžasta oznaka „Ističe za N dana". Ako je istekao, crvena oznaka „Istekao". Isto i u formi pored polja.
 - Datum se kuca kao `dd.mm.gggg` (tačke se mogu izostaviti, pa `25102026` postaje `25.10.2026.`).
 
 ### 04 Podešavanja (`04-podesavanja`)
-- Četiri liste: kategorije, programi, sprave muške, sprave ženske.
+- Tri liste izabranog dela: kategorije, programi i sprave (drugi deo ima svoje), i pravila obračuna i štampe za taj deo. Opšta podešavanja računara (prag za lekarski, adresa i token sajta) su zajednička.
 - Svaka stavka: izmena na licu mesta (red postaje polje, Enter čuva, Esc otkazuje), brisanje, promena redosleda prevlačenjem.
 - Dodavanje na dnu liste: polje i „Dodaj" (Enter u polju dodaje). Sprava ima i skraćenicu i izbor ikone.
 
 ### 05 Takmičenja (`05-takmicenja`)
-- Lista: naziv i mesto, datum, broj E sudija, status. Status: „Aktivno" (ono koje je izabrano kao aktivno), „U pripremi", „Završeno".
-- „Aktiviraj" postavlja takmičenje kao aktivno. Aktivno može biti samo jedno.
-- Forma „Novo takmičenje": naziv, datum, mesto, broj E sudija (1 do 6), pravila (obračun E ocene, koliko ocena se broji za ekipu).
+- Lista (samo takmičenja izabranog dela): naziv i mesto, datum, broj E sudija, status. Status: „Aktivno" (ono koje je izabrano kao aktivno), „U pripremi", „Završeno".
+- „Aktiviraj" postavlja takmičenje kao aktivno. Aktivno može biti samo jedno u svakom delu.
+- Forma „Novo takmičenje" (novo takmičenje dobija pol izabranog dela): naziv, datum, mesto, broj E sudija (1 do 6), pravila (obračun E ocene, koliko ocena se broji za ekipu).
 - Broj E sudija se ne može menjati kad takmičenje već ima unete ocene.
 
 ### 06 Prijave (`06-prijave`)
-- Levo baza takmičara sa pretragom i filterima. Već prijavljeni su sivi sa oznakom „Prijavljen". Izbor kućicama, „Dodaj u prijave" (Enter).
+- Levo baza takmičara izabranog dela sa pretragom i filterima. Već prijavljeni su sivi sa oznakom „Prijavljen". Izbor kućicama, „Dodaj u prijave" (Enter).
 - Desno prijavljeni na aktivno takmičenje. Za svakog u redu: startni broj (nije obavezan), kategorija, program, sprave koje radi (dugmići sa skraćenicama, uključeno ili isključeno), član ekipe, van konkurencije. Svaka izmena se čuva odmah.
 - Nova prijava dobija podrazumevano sve sprave svog pola.
 - „Dodeli startne brojeve" dodeljuje redom onima koji ga nemaju.
 - **Upozorenje** ako lekarski ne važi na dan takmičenja: red je crvenkast, ispod imena piše do kada važi, a iznad tabele je traka sa punom porukom. Upozorenje ne sprečava prijavu.
 
 ### 07 Rotacije (`07-rotacije`)
-- Grupe pripadaju takmičenju i polu. Izbor kategorije i programa u traci je samo filter prikaza.
+- Grupe pripadaju takmičenju, a time i delu. Izbor kategorije i programa u traci je samo filter prikaza.
 - Kolone: „Neraspoređeni" i po jedna za svaku grupu. Zaglavlje grupe pokazuje na kojoj je spravi grupa u izabranoj rotaciji.
 - **Prevlačenje** kartice menja redosled u grupi ili prebacuje u drugu grupu. Dok se vuče, vidi se mesto gde će kartica pasti.
 - **Tastatura:** izabrana kartica se pomera sa Alt+strelica gore/dole (redosled) i Alt+strelica levo/desno (druga grupa).
@@ -172,7 +176,7 @@ Od verzije 1.1.0 tok pripreme (Početna, Takmičenja, Prijave, Rotacije i novi P
 
 ### 08 Unos ocena (`08-unos-ocena`). Najvažniji ekran
 
-- Izbor: pol, sprava, rotacija. Iz toga sledi grupa i spisak takmičara redom nastupa. Desno je napredak (obrađeno od ukupno, broj odustalih).
+- Izbor: sprava, rotacija (pol je pol izabranog dela). Iz toga sledi grupa i spisak takmičara redom nastupa. Desno je napredak (obrađeno od ukupno, broj odustalih).
 - Jedan takmičar je jedan red: redni broj, startni broj, ime sa klubom, kategorijom i programom, **D**, **E1..EN** (N je broj E sudija takmičenja), izračunata **E**, **odbitak**, **konačna**, status.
 - **Stanja reda** (vidi i `00-vizuelni-sistem`):
   - *uneto*: vrednosti su zaključane (izgledaju kao tekst), oznaka „Uneto", olovka za ispravku
@@ -194,7 +198,7 @@ Od verzije 1.1.0 tok pripreme (Početna, Takmičenja, Prijave, Rotacije i novi P
 
 ### 09 Rang liste (`09-rang-liste`)
 - Tabovi: po jedan za svaku spravu izabranog pola, zatim „Višeboj" i „Ekipno".
-- Filteri: pol, kategorija, program.
+- Filteri: kategorija, program. Pola nema: lista je uvek za izabrani deo.
 - Tab sprave: mesto, startni broj, takmičar, klub, D, E, odbitak, konačna.
 - Višeboj: mesto, startni broj, takmičar, klub, ocena po svakoj spravi, ukupno.
 - Ekipno: mesto, klub, zbir po spravi, ukupno, sa članovima ispod (kao u biltenu).
@@ -217,10 +221,10 @@ Od verzije 1.1.0 tok pripreme (Početna, Takmičenja, Prijave, Rotacije i novi P
 - Zaglavlje: prvi red je tekst iz podešavanja takmičenja (`zaglavlje_biltena`, može biti prazan), zatim organizator, „BILTEN", naziv takmičenja, disciplina sa kategorijom i programom, mesto i datum, domaćin (ako je upisan). Dva mesta za grb (slika se bira u formi takmičenja, a ako je nema, u podešavanjima; nije obavezna).
 - Delovi: „Rezultati ekipno", pa „Višeboj". Višeboj ima za svaku spravu D (jedna decimala), E i ocenu.
 - Podnožje: mesto i datum, „Strana X/Y".
-- Bilten se pravi za izabrani pol, kategoriju i program. Dugačke liste se prelamaju na više strana, zaglavlje tabele se ponavlja.
+- Bilten se pravi za izabrani deo, kategoriju i program. Dugačke liste se prelamaju na više strana, zaglavlje tabele se ponavlja.
 
 ### 10 Rezervna kopija (`10-rezervna-kopija`)
-- „Napravi rezervnu kopiju": pravi jedan fajl sa svim podacima.
+- „Napravi rezervnu kopiju": pravi jedan fajl sa svim podacima, za MSG i ŽSG zajedno.
 - „Vrati iz kopije": traži potvrdu, pre vraćanja automatski pravi kopiju trenutnog stanja, pa vraća.
 - Fascikla za kopije se može promeniti (na primer USB).
 - Lista prethodnih kopija: datum i vreme, fajl, veličina, vrsta (ručna, pre vraćanja, pre ažuriranja), „Vrati ovu".
@@ -230,6 +234,7 @@ Od verzije 1.1.0 tok pripreme (Početna, Takmičenja, Prijave, Rotacije i novi P
 
 | Prečica | Šta radi |
 |---|---|
+| Alt+M, Alt+Z | Prebaci na MSG, odnosno na ŽSG |
 | F2 | Unos ocena |
 | F4 | Rang liste |
 | Tab, Enter | Sledeće polje. U formama Enter na poslednjem polju čuva |

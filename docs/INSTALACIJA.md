@@ -47,6 +47,19 @@ Program sam proverava ima li nove verzije kad se pokrene, ako je računar na int
 
 Bez interneta ažuriranja nema, a program radi kao i do sada.
 
+### Prelaz na verziju sa odvojenim delovima MSG i ŽSG
+
+Od ove verzije MSG i ŽSG su dva odvojena dela programa (prekidač u bočnom meniju). Pri prvom pokretanju nove verzije program sam prevodi stare podatke; ručno se ništa ne radi, a ništa se ne briše.
+
+- **Prvo se pravi kopija „Pre migracije“.** Ako nešto pođe naopako, stanje pre prelaza je u toj kopiji (ekran **Rezervna kopija**, „Vrati ovu“).
+- **Takmičenje samo jednog pola** (sve prijave i grupe su MSG ili ŽSG) ostaje u tom delu.
+- **Mešovito takmičenje** (prijave ili grupe oba pola) deli se na dva. Stari zapis zadržava pol sa više prijava (kad je jednako, MSG). Drugi pol dobija novo takmičenje istog naziva sa svojim prijavama, ocenama, grupama i redosledom; podešavanja takmičenja i potvrde klubova se prepisuju u oba. Startni brojevi se ne menjaju.
+- **Prazno takmičenje** (bez prijava i grupa) pojavljuje se u oba dela. Višak se briše na ekranu **Takmičenja**.
+- **Kategorije i programi** se kopiraju u oba dela (isti nazivi i redosled). Višak se briše u **Podešavanjima**.
+- **Pravila obračuna i štampe** (zaokruživanje E, plasman, organizator, grbovi) u oba dela ostaju ista kakva su bila; posle se podešavaju posebno za svaki deo.
+- **Aktivno takmičenje** ostaje aktivno u delu kome pripada (ako je podeljeno, u oba dela). Klubovi su zajednički za oba dela.
+- **Vraćanje starije kopije** (iz prethodne verzije programa ili PHP zip) prolazi isti prelaz. Posle vraćanja treba proveriti da li svaki deo ima ono što se očekuje.
+
 ## 6. Ako nešto ne radi
 
 - **Poruka o grešci u programu.** Detalji se zapisuju u `%APPDATA%\Gimnastika\dnevnik.log`. Taj fajl poslati programeru.
@@ -56,7 +69,7 @@ Bez interneta ažuriranja nema, a program radi kao i do sada.
 
 ## 7. Rezultati uživo na sajtu
 
-Program može da šalje rang liste aktivnog takmičenja na sajt, da ih gledaoci prate uživo. Slanje ide posle svake potvrđene, odustale ili vraćene ocene (uz kratko odlaganje, pa više brzih izmena daje jedno slanje), pri startu programa ako ima izmena koje nisu poslate i na dugme „Pošalji sada“.
+Program može da šalje rang liste aktivnog takmičenja izabranog dela (MSG ili ŽSG) na sajt, da ih gledaoci prate uživo. Slanje ide posle svake potvrđene, odustale ili vraćene ocene (uz kratko odlaganje, pa više brzih izmena daje jedno slanje), pri startu programa ako ima izmena koje nisu poslate i na dugme „Pošalji sada“.
 
 Adresa i token se unose na ekranu Podešavanja, u kartici „Rezultati uživo na sajtu“ (adresu i token dobijate od onoga ko održava sajt). Posle unosa kliknite „Sačuvaj podešavanja“, pa „Proveri vezu“. Dugmad „Proveri vezu“ i „Pošalji sada“ koriste već sačuvane vrednosti. Adresa mora da počinje sa `https://`; `http://` je dozvoljen samo za probni server na istom računaru (`localhost`, `127.0.0.1`). Adresa ne sme da sadrži korisničko ime, lozinku ni upit. Kad unesete adresu i token, program sam šalje rezultate koji još nisu poslati.
 
