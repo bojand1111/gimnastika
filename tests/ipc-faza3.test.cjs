@@ -73,6 +73,7 @@ test('takmicenja.sacuvaj: novo postaje aktivno, izmena ne; obrisi prazni aktivno
 test('takmicenja.otvori vraca korak po POPIS 4.5', () => {
   const { baza, moduli, dir } = pravi();
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   assert.throws(() => moduli.takmicenja.otvori(999), /Takmičenje ne postoji\./);
   let r = moduli.takmicenja.otvori(String(s.takm));
   assert.equal(r.korak, 'prijave');
@@ -107,6 +108,7 @@ test('takmicenja.sacuvajGrb i ukloniGrb: nepostojece takmicenje', () => {
 test('takmicenja.otvori vraca korak spremno kad su grupe rasporedjene', () => {
   const { baza, moduli, dir } = pravi();
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
   moduli.prijave.dodaj([s.t.Ana]);
   const pid = moduli.prijave.podaci(null).prijave[0].id;
@@ -120,6 +122,7 @@ test('takmicenja.otvori vraca korak spremno kad su grupe rasporedjene', () => {
 test('prijave.ucesce: nevazeca vrednost baca GreskaKorisnika', () => {
   const { baza, moduli, dir } = pravi();
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
   moduli.prijave.dodaj([s.t.Ana]);
   const pid = moduli.prijave.podaci(null).prijave[0].id;
@@ -130,6 +133,7 @@ test('prijave.ucesce: nevazeca vrednost baca GreskaKorisnika', () => {
 test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
   const { baza, moduli, dir } = pravi();
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
   const d = moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Dona, s.muski]);
   // Marko je MSG takmicar: u ZSG takmicenju se preskace
@@ -139,7 +143,8 @@ test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
   assert.equal(p.takm.id, s.takm);
   assert.equal(p.ukupno, 3);
   assert.equal(p.prijave.length, 3);
-  assert.equal(p.takmicari.length, 5);
+  // samo ZSG takmicari (Marko je MSG), jer baza takmicara prati izabrani pol
+  assert.equal(p.takmicari.length, 4);
   assert.ok('klub_skr' in p.takmicari[0]);
   assert.deepEqual([...p.prijavljeni].sort((a, b) => a - b), [s.t.Ana, s.t.Bea, s.t.Dona].sort((a, b) => a - b));
   assert.deepEqual(p.kategorije.map((k) => k.id), [s.kat]);
@@ -152,13 +157,15 @@ test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
     'Test Bea: lekarski važi do 01.01.2026. i ne važi na dan takmičenja (17.10.2026.).',
     'Test Dona: nema unet lekarski pregled.',
   ]);
-  const z = moduli.prijave.podaci('Z');
-  assert.equal(z.prijave.length, 3);
-  assert.equal(z.ukupno, 3);
-  assert.equal(moduli.prijave.podaci('M').prijave.length, 0);
-  assert.equal(moduli.prijave.podaci('X').prijave.length, 3);
+  // pol iz renderera se zanemaruje: izabrani deo je ZSG, pa lista ostaje ista
+  for (const arg of ['Z', 'M', 'X']) {
+    const z = moduli.prijave.podaci(arg);
+    assert.equal(z.prijave.length, 3);
+    assert.equal(z.ukupno, 3);
+  }
   structuredClone(p);
   // MSG deo: Marko se prijavljuje u MSG takmicenju
+  moduli.pol.postavi('M');
   moduli.takmicenja.otvori(s.takmM);
   assert.deepEqual(moduli.prijave.dodaj([s.muski]).dodato, 1);
   const m = moduli.prijave.podaci(null);
@@ -172,6 +179,7 @@ test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
 test('prijave.noviTakmicar, izmeni, sprava, startni', () => {
   const { baza, moduli, dir } = pravi();
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
   assert.throws(() => moduli.prijave.noviTakmicar({ prezime: '', ime: '', id_broj: '001', godina_rodjenja: '1800', pol: '', klub_id: '0' }),
     /ID broj 001 već postoji\. Ime je obavezno\./);
@@ -196,6 +204,7 @@ test('prijave.noviTakmicar, izmeni, sprava, startni', () => {
 test('grbovi: sacuvajGrb vraca url, ukloniGrb, nadji i prazno', async () => {
   const { baza, moduli, dir } = pravi({ canceled: false, filePaths: ['a.png', 'b.png'] });
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   assert.equal(await moduli.takmicenja.izaberiGrb(), 'a.png');
   const slika = path.join(dir, 'izvor.png');
   fs.writeFileSync(slika, 'x');
@@ -215,6 +224,7 @@ test('grbovi: sacuvajGrb vraca url, ukloniGrb, nadji i prazno', async () => {
 test('uvoz.pripremi: neocekivana greska se loguje i vraca opstu poruku', async () => {
   const { baza, moduli, dir, dn } = pravi();
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
   // model pripremiFajl baca neocekivani TypeError (nije GreskaKorisnika)
   const uvozModel = require('../electron/modeli/uvoz.cjs');
@@ -233,6 +243,7 @@ test('uvoz: izaberiFajlove, pripremi (greske po fajlu), upisi', async () => {
   const { baza, moduli, dir, dn } = pravi({ canceled: false, filePaths: ['a.docx', 'b.xlsx'] });
   const s = tokSeme(baza);
   assert.deepEqual(await moduli.uvoz.izaberiFajlove(), ['a.docx', 'b.xlsx']);
+  moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
   const lose = path.join(dir, 'lose.docx');
   fs.writeFileSync(lose, 'nije zip');
@@ -252,6 +263,7 @@ test('takmicenja.nadji: ima_ocena je 0 dok nema unetih ocena, pa 1', (t) => {
   const { baza, moduli, dir } = pravi();
   t.after(() => cisti(dir));
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   assert.equal(moduli.takmicenja.nadji(String(s.takm)).ima_ocena, 0);
   const pid = baza.ubaci('prijave', { takmicenje_id: s.takm, takmicar_id: s.t.Ana, klub_id: s.k1, kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });
   baza.ubaci('ocene', { prijava_id: pid, sprava_id: s.pr, status: 'nacrt', kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });
@@ -290,6 +302,7 @@ test('uvoz: prozor nudi sve podrzane vrste; pripremi cita PDF (asinhrono), xls i
   await moduli.uvoz.izaberiFajlove();
   assert.deepEqual(opcije.filters, [{ name: 'Prijave', extensions: ['docx', 'doc', 'xlsx', 'xls', 'odt', 'ods', 'pdf'] }]);
   const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
   const { docPrimer } = require('./pomoc/doc-pisac.cjs');
   const docPut = docPrimer(path.join(dir, 'prijava.doc'));
@@ -313,14 +326,81 @@ test('takmicenja.otvori i obrisi rade po polu takmicenja', () => {
   const sad = '2026-10-30 10:00:00';
   const m = baza.ubaci('takmicenja', { naziv: 'Kup M', datum: '2026-10-17', pol: 'M', kreirano: sad, izmenjeno: sad });
   const z = baza.ubaci('takmicenja', { naziv: 'Kup Z', datum: '2026-10-17', pol: 'Z', kreirano: sad, izmenjeno: sad });
-  moduli.takmicenja.otvori(String(m));
-  moduli.takmicenja.otvori(String(z));
   const pod = moduli.podesavanja;
-  assert.equal(pod.aktivno().id, z, 'otvaranje prebacuje na pol takmicenja');
-  baza.izvrsi("UPDATE podesavanja SET vrednost = 'M' WHERE kljuc = 'aktivni_pol'");
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(m));
+  moduli.pol.postavi('Z');
+  moduli.takmicenja.otvori(String(z));
+  assert.equal(pod.aktivno().id, z, 'ZSG deo ima svoje aktivno');
+  moduli.pol.postavi('M');
   assert.equal(pod.aktivno().id, m, 'M deo pamti svoje aktivno');
+  moduli.pol.postavi('Z');
   moduli.takmicenja.obrisi(String(z));
+  moduli.pol.postavi('M');
   assert.equal(pod.aktivno().id, m, 'brisanje Z takmicenja ne dira M aktivno');
   assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivno_takmicenje_Z'"), '');
+  cisti(dir);
+});
+
+// --- Izabrani pol (T4) ---
+test('prijave.podaci: samo takmicari, sprave, kategorije i programi izabranog pola; pol iz renderera se zanemaruje', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
+  moduli.takmicenja.otvori(String(s.takm));
+  moduli.prijave.dodaj([s.t.Ana]);
+  for (const arg of [undefined, null, 'M', 'Z', 'X']) {
+    const p = moduli.prijave.podaci(arg);
+    assert.deepEqual(p.takmicari.map((r) => r.pol), ['Z', 'Z', 'Z', 'Z'], `arg ${arg}`);
+    assert.deepEqual(p.sprave.M, [], 'sprave drugog pola nema');
+    assert.equal(p.sprave.Z.length, 2);
+    assert.deepEqual(p.kategorije.map((k) => k.id), [s.kat]);
+    assert.deepEqual(p.programi.map((k) => k.id), [s.prog]);
+    assert.equal(p.prijave.length, 1);
+    assert.equal(moduli.prijave.lista(arg).length, 1);
+  }
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  moduli.prijave.dodaj([s.muski]);
+  const m = moduli.prijave.podaci('Z');
+  assert.deepEqual(m.takmicari.map((r) => Number(r.id)), [s.muski]);
+  assert.deepEqual(m.sprave.Z, []);
+  assert.deepEqual(m.sprave.M.map((x) => x.skracenica), ['PA']);
+  assert.deepEqual(m.kategorije.map((k) => k.id), [s.katM]);
+  assert.deepEqual(m.programi.map((k) => k.id), [s.progM]);
+  structuredClone(m);
+  cisti(dir);
+});
+
+test('prijave.noviTakmicar: pol je pol izabranog dela, pol iz renderera se zanemaruje', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  const r = moduli.prijave.noviTakmicar({ prezime: 'Novi', ime: 'Dino', id_broj: '200', godina_rodjenja: '2013', pol: 'Z', klub_id: '', lekarski_do: '' });
+  assert.equal(r.dodato, 1);
+  assert.equal(baza.vrednost('SELECT pol FROM takmicari WHERE id = ?', [r.takmicar_id]), 'M');
+  cisti(dir);
+});
+
+test('prijave: prijava drugog pola se ponasa kao da ne postoji', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  moduli.prijave.dodaj([s.muski]);
+  const tudja = Number(baza.vrednost('SELECT id FROM prijave WHERE takmicar_id = ?', [s.muski]));
+  moduli.pol.postavi('Z');
+  moduli.takmicenja.otvori(String(s.takm));
+  moduli.prijave.dodaj([s.t.Ana]);
+  const nema = (f) => assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === 'Prijava ne postoji.');
+  nema(() => moduli.prijave.izmeni(String(tudja), 'startni_broj', '5'));
+  nema(() => moduli.prijave.sprava(String(tudja), s.pa, true));
+  nema(() => moduli.prijave.ucesce(String(tudja), 'pojedinacno'));
+  nema(() => moduli.prijave.obrisi(String(tudja)));
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM prijave WHERE id = ?', [tudja]), 1);
+  // takmicar drugog pola se u izabranom delu preskace
+  const d = moduli.prijave.dodaj([s.muski]);
+  assert.equal(d.dodato, 0);
   cisti(dir);
 });

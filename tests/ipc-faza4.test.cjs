@@ -23,11 +23,13 @@ function pravi() {
 function sa4() {
   const o = pravi();
   const s = tokSeme(o.baza);
+  o.moduli.pol.postavi('Z');
   o.moduli.takmicenja.otvori(String(s.takm));
   o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  o.moduli.pol.postavi('M');
   o.moduli.takmicenja.otvori(String(s.takmM));
   o.moduli.prijave.dodaj([s.muski]);
-  o.moduli.takmicenja.otvori(String(s.takm));
+  o.moduli.pol.postavi('Z');
   const pid = {};
   const tid = { Ana: s.t.Ana, Bea: s.t.Bea, Ceca: s.t.Ceca, Dona: s.t.Dona, Marko: s.muski };
   for (const [ime, id] of Object.entries(tid)) {
@@ -53,7 +55,7 @@ test('bez aktivnog takmicenja svaka radnja baca poruku', () => {
 });
 
 test('podaci: pol i rotacija se svode, grupe nose spravu, redosled i ručni flag', () => {
-  const { moduli, pid } = sa4();
+  const { moduli, pid, s } = sa4();
   const r = moduli.rotacije;
   const g1 = r.dodaj('Z').grupa;
   const g2 = r.dodaj('Z').grupa;
@@ -78,9 +80,12 @@ test('podaci: pol i rotacija se svode, grupe nose spravu, redosled i ručni flag
   assert.deepEqual(d.nerasporedjeni.map((c) => c.prijava_id), [pid.Dona]);
   assert.equal(d.kombinacije.length, 1);
   assert.deepEqual(Object.keys(d.kombinacije[0]).sort(), ['kat', 'kid', 'pid', 'prog']);
-  assert.equal(r.podaci('M', 0).rot, 1);
+  assert.equal(r.podaci('Z', 0).rot, 1);
   assert.equal(r.podaci('Z', 'abc').rot, 1);
-  assert.equal(r.podaci('M', 1).brojSprava, 1);
+  // MSG deo ima jednu spravu (pol se bira sa pol.postavi, ne argumentom)
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  assert.equal(r.podaci('Z', 1).brojSprava, 1);
   assert.equal(typeof d.stanje.prijava, 'number');
   assert.doesNotThrow(() => structuredClone(d));
 });
@@ -163,6 +168,7 @@ test('zavrsi: tri slucaja', () => {
   const o = pravi();
   const s = tokSeme(o.baza);
   const r = o.moduli.rotacije;
+  o.moduli.pol.postavi('Z');
   o.moduli.takmicenja.otvori(String(s.takm));
   let z = r.zavrsi();
   assert.equal(z.ide, 'prijave');
@@ -180,4 +186,34 @@ test('zavrsi: tri slucaja', () => {
   assert.equal(z.ide, 'takmicenje');
   assert.equal(z.stanje.nerasporedjeni, 0);
   assert.doesNotThrow(() => structuredClone(z));
+});
+
+// --- Izabrani pol (T4) ---
+test('rotacije: pol iz renderera se zanemaruje, sve ide za izabrani pol', () => {
+  const o = sa4();
+  const r = o.moduli.rotacije;
+  assert.equal(r.podaci('M', 1).pol, 'Z', 'ZSG deo ne moze da zatrazi MSG podatke');
+  assert.equal(r.podaci(undefined, 1).pol, 'Z');
+  assert.equal(r.podaci('M', 1).sprave.length, 2);
+  assert.equal(r.dodaj('M').grupa.pol, 'Z');
+  assert.equal(o.baza.vrednost("SELECT COUNT(*) FROM grupe WHERE pol = 'M'"), 0);
+  o.moduli.pol.postavi('M');
+  o.moduli.takmicenja.otvori(String(o.s.takmM));
+  assert.equal(r.podaci('Z', 1).pol, 'M');
+  assert.deepEqual(r.podaci('Z', 1).sprave.map((x) => x.skracenica), ['PA']);
+  assert.equal(r.dodaj('Z').grupa.pol, 'M');
+});
+
+test('rotacije: grupa drugog pola se ponasa kao da ne postoji', () => {
+  const o = sa4();
+  const r = o.moduli.rotacije;
+  const zg = r.dodaj('Z').grupa;
+  o.moduli.pol.postavi('M');
+  o.moduli.takmicenja.otvori(String(o.s.takmM));
+  const nema = (f) => assert.throws(f, (e) => e instanceof GreskaKorisnika && /Grupa ne postoji/.test(e.message));
+  nema(() => r.izmeni(zg.id, 'X', 1));
+  nema(() => r.obrisi(zg.id));
+  nema(() => r.vrati(zg.id, 2));
+  assert.throws(() => r.premesti(o.pid.Marko, zg.id, 0, 1), GreskaKorisnika);
+  assert.equal(o.baza.vrednost('SELECT COUNT(*) FROM grupe WHERE id = ?', [zg.id]), 1);
 });

@@ -1,6 +1,7 @@
 // Model Rezultati (SQLite): cita prijave i ocene i predaje ih cistim funkcijama iz racun/. Oblici su iz POPIS 1.
 // Sve liste su nizovi u redosledu ranga (JS objekti sa celobrojnim kljucevima ne cuvaju redosled ubacivanja).
 const { napravi: napraviOcene } = require('./ocene.cjs');
+const { GreskaKorisnika } = require('../greska.cjs');
 const { KOLATOR } = require('./sortiranje.cjs');
 const { izBaze } = require('../racun/broj.mjs');
 const { odbaceniIndeksi } = require('../racun/ocena.mjs');
@@ -53,10 +54,13 @@ function napravi(baza, podesavanja) {
     }));
   }
 
-  // Izbor pola, kategorije i programa iz URL vrednosti (stringovi ili undefined), sa podrazumevanim iz prijava.
-  function izbor(takm, pol, kat, prog) {
-    const sve = kombinacije(Number(takm?.id ?? takm)); // objekat takmicenja ili njegov id
-    if (pol !== 'M' && pol !== 'Z') pol = sve.length > 0 ? sve[0].pol : 'Z';
+  // Izbor kategorije i programa iz URL vrednosti (stringovi ili undefined), sa podrazumevanim iz prijava.
+  // Pol je uvek pol takmicenja (drugi argument se ne koristi); takm je red takmicenja ili njegov id.
+  function izbor(takm, _pol, kat, prog) {
+    const tid = Number(takm?.id ?? takm);
+    const pol = takm?.pol === 'M' || takm?.pol === 'Z' ? takm.pol : baza.vrednost('SELECT pol FROM takmicenja WHERE id = ?', [tid]);
+    if (pol !== 'M' && pol !== 'Z') throw new GreskaKorisnika('Takmičenje ne postoji.');
+    const sve = kombinacije(tid);
     const komb = sve.filter((k) => k.pol === pol);
     let katId = kat === undefined || kat === null || kat === '' ? null : celo(kat);
     let progId = prog === undefined || prog === null || prog === '' ? null : celo(prog);

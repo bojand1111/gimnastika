@@ -1,6 +1,7 @@
 // Spisak modula i radnji koje renderer vidi kao window.gim. Preload gradi objekat odavde.
 const MODULI = {
   sistem: ['verzija'],
+  pol: ['daj', 'postavi'],
   klubovi: ['svi', 'nadji', 'sacuvaj', 'obrisi'],
   takmicari: ['svi', 'nadji', 'sacuvaj', 'obrisi', 'sledeciIdBroj'],
   sifarnici: ['vrste', 'lista', 'dodaj', 'izmeni', 'obrisi', 'redosled'],

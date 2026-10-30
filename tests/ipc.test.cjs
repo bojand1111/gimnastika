@@ -179,3 +179,115 @@ test('src/gim.js: greska postaje Error sa greske nizom (ili null)', async () => 
     if (prethodni === undefined) delete globalThis.window; else globalThis.window = prethodni;
   }
 });
+
+// --- Izabrani pol: svi ulazi rade samo za njega (T4) ---
+const { tokSeme } = require('./pomoc/seme.cjs');
+
+test('MODULI.pol: daj i postavi, i registruju se kanali', () => {
+  assert.deepEqual(MODULI.pol, ['daj', 'postavi']);
+  const { moduli, dir } = pravi();
+  const ipc = lazniIpc();
+  registruj(ipc, { pol: moduli.pol }, laznidnevnik(), { pol: MODULI.pol });
+  assert.ok(ipc.kanali['gim:pol:daj']);
+  assert.ok(ipc.kanali['gim:pol:postavi']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('pol.daj i pol.postavi: podrazumevano M, pamti izbor, nepoznat pol baca', () => {
+  const { moduli, baza, dir } = pravi();
+  assert.equal(moduli.pol.daj(), 'M');
+  assert.equal(moduli.pol.postavi('Z'), 'Z');
+  assert.equal(moduli.pol.daj(), 'Z');
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivni_pol'"), 'Z');
+  assert.throws(() => moduli.pol.postavi('X'), (e) => e instanceof GreskaKorisnika && e.message === 'Nepoznat pol.');
+  assert.throws(() => moduli.pol.postavi(undefined), GreskaKorisnika);
+  assert.equal(moduli.pol.daj(), 'Z', 'neuspeh ne menja izbor');
+  assert.equal(moduli.pol.postavi('M'), 'M');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('pol.postavi menja listu takmicenja i cuva aktivno takmicenje svakog dela', () => {
+  const { moduli, baza, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
+  moduli.takmicenja.otvori(String(s.takm));
+  moduli.pol.postavi('M');
+  assert.deepEqual(moduli.takmicenja.sva().map((r) => [Number(r.id), r.status]), [[s.takmM, 'priprema']]);
+  moduli.takmicenja.otvori(String(s.takmM));
+  assert.deepEqual(moduli.takmicenja.sva().map((r) => [Number(r.id), r.status]), [[s.takmM, 'aktivno']]);
+  moduli.pol.postavi('Z');
+  assert.deepEqual(moduli.takmicenja.sva().map((r) => [Number(r.id), r.status]), [[s.takm, 'aktivno']]);
+  assert.equal(Number(moduli.podesavanja.aktivno().id), s.takm);
+  moduli.pol.postavi('M');
+  assert.equal(Number(moduli.podesavanja.aktivno().id), s.takmM, 'MSG pamti svoje aktivno');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('takmicari.svi vraca samo izabrani pol', () => {
+  const { moduli, baza, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
+  assert.deepEqual(moduli.takmicari.svi().map((r) => r.pol), ['Z', 'Z', 'Z', 'Z']);
+  moduli.pol.postavi('M');
+  assert.deepEqual(moduli.takmicari.svi().map((r) => [Number(r.id), r.pol]), [[s.muski, 'M']]);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('sifarnici.lista (ne-sprave) i dodaj rade za izabrani pol', () => {
+  const { moduli, baza, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('M');
+  assert.deepEqual(moduli.sifarnici.lista('kategorije').map((r) => Number(r.id)), [s.katM]);
+  const d = moduli.sifarnici.dodaj('programi', { naziv: 'D' });
+  assert.equal(d.stavka.pol, 'M');
+  moduli.pol.postavi('Z');
+  assert.deepEqual(moduli.sifarnici.lista('programi').map((r) => Number(r.id)), [s.prog]);
+  // stavka drugog pola se ponasa kao da ne postoji
+  assert.throws(() => moduli.sifarnici.izmeni('programi', d.id, { naziv: 'X' }), GreskaKorisnika);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('brisanje aktivnog u ZSG ne dira MSG', () => {
+  const { moduli, baza, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  moduli.pol.postavi('Z');
+  moduli.takmicenja.otvori(String(s.takm));
+  moduli.takmicenja.obrisi(String(s.takm));
+  assert.equal(moduli.podesavanja.aktivno(), null, 'ZSG ostaje bez aktivnog');
+  moduli.pol.postavi('M');
+  assert.equal(Number(moduli.podesavanja.aktivno().id), s.takmM);
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM takmicenja WHERE id = ?', [s.takmM]), 1);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('takmicenja: id drugog pola se ponasa kao da ne postoji', () => {
+  const { moduli, baza, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('M');
+  const nema = (f) => assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === 'Takmičenje ne postoji.');
+  nema(() => moduli.takmicenja.otvori(String(s.takm)));
+  nema(() => moduli.takmicenja.obrisi(String(s.takm)));
+  nema(() => moduli.takmicenja.sacuvaj({ naziv: 'X', datum: '17.10.2026.', broj_e_sudija: '4', pravilo_e: 'odbaci_krajnje', ekipno_broji: '3' }, String(s.takm)));
+  nema(() => moduli.takmicenja.stanje(String(s.takm)));
+  nema(() => moduli.takmicenja.sacuvajGrb(String(s.takm), 'grb_levo', 'x.png'));
+  nema(() => moduli.takmicenja.ukloniGrb(String(s.takm), 'grb_levo'));
+  assert.equal(moduli.takmicenja.nadji(String(s.takm)), null);
+  assert.equal(Number(moduli.takmicenja.nadji(String(s.takmM)).id), s.takmM);
+  assert.equal(moduli.podesavanja.aktivno(), null, 'otvaranje tudjeg ne menja aktivno');
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM takmicenja'), 2, 'obrisi tudjeg nista ne brise');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('takmicenja.sacuvaj: novo takmicenje dobija izabrani pol i u njemu postaje aktivno', () => {
+  const { moduli, baza, dir } = pravi();
+  moduli.pol.postavi('Z');
+  const unos = { naziv: 'Kup', datum: '17.10.2026.', mesto: 'NS', broj_e_sudija: '4', pravilo_e: 'odbaci_krajnje', ekipno_broji: '3', pol: 'M' };
+  const r = moduli.takmicenja.sacuvaj(unos, null);
+  assert.equal(baza.vrednost('SELECT pol FROM takmicenja WHERE id = ?', [r.id]), 'Z', 'pol iz renderera se zanemaruje');
+  assert.equal(Number(moduli.podesavanja.aktivno().id), r.id);
+  moduli.pol.postavi('M');
+  assert.equal(moduli.podesavanja.aktivno(), null);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

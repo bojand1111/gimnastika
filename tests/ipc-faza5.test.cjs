@@ -25,10 +25,13 @@ function pravi() {
 function sa4(saGrupom = true) {
   const o = pravi();
   const s = tokSeme(o.baza);
+  o.moduli.pol.postavi('Z');
   o.moduli.takmicenja.otvori(String(s.takm));
   o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  o.moduli.pol.postavi('M');
   o.moduli.takmicenja.otvori(String(s.takmM));
   o.moduli.prijave.dodaj([s.muski]);
+  o.moduli.pol.postavi('Z');
   o.moduli.takmicenja.otvori(String(s.takm));
   const pid = {};
   const tid = { Ana: s.t.Ana, Bea: s.t.Bea, Ceca: s.t.Ceca, Dona: s.t.Dona, Marko: s.muski };
@@ -122,6 +125,7 @@ test('podaci("Z", 999, 9): nepoznata sprava i rotacija se biraju iz napretka', (
 
 test('podaci("M") bez grupa: svi prijavljeni, startni broj null poslednji', () => {
   const { moduli, baza, s, pid } = sa4(false);
+  moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(s.takmM));
   const d = moduli.unos.podaci('M');
   assert.equal(d.pol, 'M');
@@ -132,6 +136,7 @@ test('podaci("M") bez grupa: svi prijavljeni, startni broj null poslednji', () =
   assert.equal(d.redovi[0].ime, 'Test Marko');
   assert.equal(d.redovi[0].prijava_id, pid.Marko);
   // Redosled: startni broj, pa bez broja po prezimenu i imenu.
+  moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(String(s.takm));
   const z = moduli.unos.podaci('Z');
   assert.equal(z.bezGrupa, true);
@@ -142,10 +147,11 @@ test('podaci("M") bez grupa: svi prijavljeni, startni broj null poslednji', () =
   assert.equal(moduli.unos.podaci('Z').redovi[0].startni_broj, 1);
 });
 
-test('pol bez prijava zena je M; pol bez sprava je prazan prikaz', () => {
+test('pol bez sprava je prazan prikaz', () => {
   const { moduli, baza } = pravi();
   const s = tokSeme(baza);
-  moduli.takmicenja.otvori(String(s.takm));
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
   baza.izvrsi('DELETE FROM sprave WHERE pol = ?', ['M']);
   const d = moduli.unos.podaci();
   assert.equal(d.pol, 'M');
@@ -248,4 +254,22 @@ test('gde se stalo: sve uneto, rot je poslednja, sprava je prva sa grupom', () =
   assert.equal(d.rot, 2);
   assert.equal(d.sprava.id, s.pr);
   assert.equal(d.napredak.obradjeno, d.napredak.ukupno);
+});
+
+// --- Izabrani pol (T4) ---
+test('unos.podaci zanemaruje pol iz renderera', () => {
+  const { moduli, s } = sa4();
+  for (const arg of [undefined, 'M', 'Z', 'X']) {
+    const d = moduli.unos.podaci(arg);
+    assert.equal(d.pol, 'Z', `arg ${arg}`);
+    assert.deepEqual(d.sprave.map((x) => x.skracenica), ['PR', 'GR']);
+    assert.ok(d.redovi.every((r) => r.pol === 'Z'));
+  }
+  moduli.pol.postavi('M');
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  const m = moduli.unos.podaci('Z');
+  assert.equal(m.pol, 'M');
+  assert.deepEqual(m.sprave.map((x) => x.skracenica), ['PA']);
+  assert.deepEqual(m.redovi.map((r) => r.ime), ['Test Marko']);
 });

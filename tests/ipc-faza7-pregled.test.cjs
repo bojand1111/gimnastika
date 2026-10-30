@@ -32,10 +32,13 @@ function sPrimerom(opcije) {
 function sSemom(saGrupom = true) {
   const o = pravi();
   const s = tokSeme(o.baza);
+  o.moduli.pol.postavi('Z');
   o.moduli.takmicenja.otvori(String(s.takm));
   o.moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  o.moduli.pol.postavi('M');
   o.moduli.takmicenja.otvori(String(s.takmM));
   o.moduli.prijave.dodaj([s.muski]);
+  o.moduli.pol.postavi('Z');
   o.moduli.takmicenja.otvori(String(s.takm));
   const pid = {};
   for (const [ime, id] of Object.entries({ Ana: s.t.Ana, Bea: s.t.Bea, Ceca: s.t.Ceca, Dona: s.t.Dona, Marko: s.muski })) {
@@ -81,6 +84,7 @@ test('pocetna.podaci nad primerom: spremno, lekarski upozorenja, bez ostalih', (
   for (const ime of ['Simić Dunja', 'Nikolić Teodora']) assert.ok(imena.includes(ime), ime);
   assert.ok(!imena.includes('Stanković Luka'));
   structuredClone(d);
+  moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(baza.vrednost("SELECT id FROM takmicenja WHERE pol = 'M'")));
   const m = moduli.pocetna.podaci();
   assert.equal(m.stanje.korak, 'spremno');
@@ -122,9 +126,9 @@ test('pocetna.podaci: poslednjaKopija iz kopijaLista (prva), danas i tekst lokal
   structuredClone(d);
 });
 
-// PHP kod (takmicenje.php) zadrzava prvi pol kad su oba gotova, tj. Z.
-test('takmicenje.podaci nad primerom: oba pola gotova, ostaje Z (kao PHP), gotovo, nastavi null, #/unos', () => {
-  const { moduli } = sPrimerom();
+// Svako takmicenje ima svoj pol, pa i svoj napredak.
+test('takmicenje.podaci nad primerom: ZSG i MSG gotovi, svako sa svojim polom, nastavi null, #/unos', () => {
+  const { moduli, baza } = sPrimerom();
   const d = moduli.takmicenje.podaci();
   assert.equal(d.napredak.pol, 'Z');
   assert.equal(d.napredak.gotovo, true);
@@ -133,6 +137,12 @@ test('takmicenje.podaci nad primerom: oba pola gotova, ostaje Z (kao PHP), gotov
   assert.equal(d.unosHash, '#/unos');
   assert.equal(d.brojevi.prijava, d.stanje.prijava);
   structuredClone(d);
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(baza.vrednost("SELECT id FROM takmicenja WHERE pol = 'M'")));
+  const m = moduli.takmicenje.podaci();
+  assert.equal(m.napredak.pol, 'M');
+  assert.equal(m.napredak.gotovo, true);
+  assert.equal(m.nastavi, null);
 });
 
 test('takmicenje.podaci nad semom: Z u toku, nastavi na PR, uneto 0, hash sa pol sprava rot', () => {
@@ -148,7 +158,7 @@ test('takmicenje.podaci nad semom: Z u toku, nastavi na PR, uneto 0, hash sa pol
   assert.equal(d.nastavi.uneto, 0);
   assert.equal(d.nastavi.ukupno, 3);
   assert.equal(d.nastavi.pol, 'Z');
-  assert.equal(d.unosHash, `#/unos?pol=Z&sprava=${s.pr}&rot=1`);
+  assert.equal(d.unosHash, `#/unos?sprava=${s.pr}&rot=1`);
   assert.equal(d.danUNedelji, 'Subota');
   assert.equal(d.datumTekst, '17.10.2026.');
   assert.deepEqual(d.brojevi, { prijava: 4, klubova: 2 });
@@ -181,6 +191,7 @@ test('takmicenje.podaci: MSG takmicenje u toku, nastavi je na prvoj nezavrsenoj 
   }
   // Z deo je gotov; MSG takmicenje je zasebno i ima svoj napredak
   assert.equal(moduli.takmicenje.podaci().napredak.gotovo, true);
+  moduli.pol.postavi('M');
   moduli.takmicenja.otvori(String(s.takmM));
   const m = moduli.rotacije.dodaj('M').grupa;
   moduli.rotacije.premesti(pid.Marko, m.id, 0, 1);
@@ -191,7 +202,7 @@ test('takmicenje.podaci: MSG takmicenje u toku, nastavi je na prvoj nezavrsenoj 
   assert.equal(Number(d.nastavi.sprava.id), s.pa);
   assert.equal(d.nastavi.uneto, 0);
   assert.equal(d.nastavi.ukupno, 1);
-  assert.equal(d.unosHash, `#/unos?pol=M&sprava=${s.pa}&rot=1`);
+  assert.equal(d.unosHash, `#/unos?sprava=${s.pa}&rot=1`);
 });
 
 test('takmicenje.podaci: kad je prva sprava potpuno uneta, nastavi prelazi na drugu', () => {
@@ -206,5 +217,56 @@ test('takmicenje.podaci: kad je prva sprava potpuno uneta, nastavi prelazi na dr
   assert.equal(d.nastavi.rotacija, 2);
   assert.equal(d.nastavi.uneto, 0);
   assert.equal(d.nastavi.ukupno, 3);
-  assert.equal(d.unosHash, `#/unos?pol=Z&sprava=${s.gr}&rot=2`);
+  assert.equal(d.unosHash, `#/unos?sprava=${s.gr}&rot=2`);
+});
+
+// --- Izabrani pol (T4) ---
+test('PRECICE: prebacivanje na MSG i ZSG', () => {
+  const { PRECICE } = require('../electron/pregled-paket.cjs');
+  assert.deepEqual(PRECICE.slice(-2), [['Prebaci na MSG', ['Alt', 'M']], ['Prebaci na ŽSG', ['Alt', 'Z']]]);
+  assert.ok(pravi().moduli.pocetna.podaci().precice.some(([t, k]) => t === 'Prebaci na ŽSG' && k.join('+') === 'Alt+Z'));
+});
+
+test('pocetna.podaci: pol, lekarski i ostala samo za izabrani pol', () => {
+  const { moduli, baza } = sPrimerom();
+  for (const [naziv, pol] of [['Drugi ZSG kup', 'Z'], ['Drugi MSG kup', 'M']]) {
+    baza.ubaci('takmicenja', { naziv, datum: '2025-05-05', mesto: '', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje',
+      ekipno_broji: 1, pol, kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });
+  }
+  const z = moduli.pocetna.podaci();
+  assert.equal(z.pol, 'Z');
+  assert.deepEqual(z.ostala.map((r) => r.naziv), ['Drugi ZSG kup']);
+  const imenaZ = z.lekarski.map((r) => `${r.prezime} ${r.ime}`);
+  assert.ok(imenaZ.includes('Simić Dunja'));
+  assert.ok(!imenaZ.includes('Stanković Luka'));
+  assert.equal(moduli.pol.postavi('M'), 'M');
+  const m = moduli.pocetna.podaci();
+  assert.equal(m.pol, 'M');
+  assert.equal(m.takm.pol, 'M', 'MSG deo ima svoje aktivno takmicenje');
+  const imenaM = m.lekarski.map((r) => `${r.prezime} ${r.ime}`);
+  assert.ok(imenaM.includes('Stanković Luka'));
+  assert.ok(!imenaM.includes('Simić Dunja'));
+  assert.deepEqual(m.ostala.map((r) => r.naziv), ['Drugi MSG kup']);
+  structuredClone(m);
+});
+
+test('takmicenje.podaci: napredak i nastavi samo za pol takmicenja, link bez pol=', () => {
+  const { moduli, pid, s } = sSemom();
+  // grupa postoji samo u ZSG; MSG takmicenje nema grupa pa nema ni napretka
+  moduli.pol.postavi('M');
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  const m = moduli.takmicenje.podaci();
+  assert.equal(m.napredak, null);
+  assert.equal(m.nastavi, null);
+  assert.equal(m.unosHash, '#/unos');
+  const g = moduli.rotacije.dodaj('M').grupa;
+  moduli.rotacije.premesti(pid.Marko, g.id, 0, 1);
+  const m2 = moduli.takmicenje.podaci();
+  assert.equal(m2.napredak.pol, 'M');
+  assert.equal(m2.unosHash, `#/unos?sprava=${s.pa}&rot=1`);
+  moduli.pol.postavi('Z');
+  const z = moduli.takmicenje.podaci();
+  assert.equal(z.napredak.pol, 'Z');
+  assert.equal(z.unosHash, `#/unos?sprava=${s.pr}&rot=1`);
 });

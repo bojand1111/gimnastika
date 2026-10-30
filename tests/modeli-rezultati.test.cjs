@@ -139,7 +139,9 @@ test('izbor: podrazumevane vrednosti i nepostojeci kat', () => {
 
   // objekat takmicenja i id daju isto
   assert.deepEqual(r.izbor(n.takm(), undefined, undefined, undefined), iz);
-  assert.equal(r.izbor({ id: s.takm }, 'M').pol, 'M');
+  // pol je uvek pol takmicenja, argument pol se ne uzima u obzir
+  assert.equal(r.izbor({ id: s.takm }, 'M').pol, 'Z');
+  assert.equal(r.izbor(s.takmM, 'Z').pol, 'M');
 
   // nepostojeci kat i prog, nepoznat pol
   iz = r.izbor(s.takm, 'X', '999', '999');

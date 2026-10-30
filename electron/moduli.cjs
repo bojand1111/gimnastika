@@ -107,13 +107,12 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     e: (Array.isArray(u?.e) ? u.e : []).map((x) => String(x ?? '')),
     odbitak: String(u?.odbitak ?? ''),
   });
-  const sPolom = (pol) => (pol === 'M' || pol === 'Z' ? pol : null);
 
   // Prijave sa lek_ne_vazi (stanje nema | istekao na dan takmicenja) i tekstovima upozorenja (POPIS 6.3).
-  function prijaveSaLekarskim(takm, pol) {
+  function prijaveSaLekarskim(takm) {
     const prag = p.dajInt('lekarski_prag_dana', 30);
     const upozorenja = [];
-    const prijave = pr.lista(Number(takm.id), sPolom(pol)).map((r) => {
+    const prijave = pr.lista(Number(takm.id), takm.pol).map((r) => {
       const lek = lekarski(r.lekarski_do, prag, String(takm.datum));
       const neVazi = lek.stanje === 'nema' || lek.stanje === 'istekao';
       if (neVazi) {
@@ -126,8 +125,11 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     return { prijave, upozorenja };
   }
 
-  function postoji(id) {
-    if (tk.nadji(id) === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
+  // Takmicenje izabranog dela; nepostojece i takmicenje drugog pola je ista greska.
+  function takmicenjeDela(id) {
+    const r = tk.nadji(id);
+    if (r === null || r.pol !== p.aktivniPol()) throw new GreskaKorisnika('Takmičenje ne postoji.');
+    return r;
   }
 
   function sGrbovima(t) {
@@ -156,8 +158,16 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       sacuvaj: (u, id) => ({ id: k.sacuvaj(u, broj(id)) }),
       obrisi: (id) => k.obrisi(broj(id)),
     },
+    // Izabrani deo aplikacije: MSG ('M') ili ZSG ('Z'). Svi ostali ulazi rade za njega.
+    pol: {
+      daj: () => p.aktivniPol(),
+      postavi: (pol) => {
+        p.postaviPol(pol);
+        return p.aktivniPol();
+      },
+    },
     takmicari: {
-      svi: () => t.svi(),
+      svi: () => t.svi(p.aktivniPol()),
       nadji: (id) => t.nadji(broj(id)),
       sacuvaj: (u, id) => ({ id: t.sacuvaj(takmicarUnos(u), broj(id)) }),
       obrisi: (id) => t.obrisi(broj(id)),
@@ -210,7 +220,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       },
       // ima_ocena (0|1): forma zakljucava broj E sudija kad su ocene vec unete.
       nadji: (id) => {
-        const r = sGrbovima(tk.nadji(broj(id)));
+        const red = tk.nadji(broj(id));
+        const r = sGrbovima(red !== null && red.pol === p.aktivniPol() ? red : null);
         return r ? { ...r, ima_ocena: tk.imaOcena(Number(r.id)) ? 1 : 0 } : r;
       },
       prazno: () => sGrbovima(tk.prazno(p.aktivniPol())),
@@ -218,6 +229,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       sacuvaj: (u, id) => {
         const staro = broj(id);
         const novo = staro === null;
+        if (!novo) takmicenjeDela(staro);
         // Novo takmicenje dobija izabrani deo (MSG ili ZSG) i u njemu postaje aktivno.
         const pol = p.aktivniPol();
         const sid = tk.sacuvaj(u, staro, pol);
@@ -226,50 +238,50 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       },
       izaberiGrb: async () => (await izaberi(GRB_DIJALOG))[0] ?? null,
       sacuvajGrb: (id, polje, putanja) => {
-        postoji(broj(id));
+        takmicenjeDela(broj(id));
         const vrednost = tk.sacuvajGrb(broj(id), polje, putanja);
         return { vrednost, url: grbUrl(vrednost) };
       },
       ukloniGrb: (id, polje) => {
-        postoji(broj(id));
+        takmicenjeDela(broj(id));
         return tk.postaviGrb(broj(id), polje, '');
       },
       obrisi: (id) => {
         const tid = broj(id);
+        const r = takmicenjeDela(tid);
         tk.obrisi(tid);
-        // Brise se samo aktivno mesto tog takmicenja, u delu u kome je bilo aktivno.
-        for (const pol of ['M', 'Z']) {
-          if (p.aktivnoTakmicenjeId(pol) === tid) p.postaviAktivno(null, pol);
-        }
+        // Brise se samo aktivno mesto tog takmicenja u njegovom delu; drugi deo ostaje kakav je bio.
+        if (p.aktivnoTakmicenjeId(r.pol) === tid) p.postaviAktivno(null, r.pol);
       },
-      // Aktivira (i zavrseno) takmicenje; renderer po koraku salje poruku i skrece (POPIS 4.5).
+      // Aktivira (i zavrseno) takmicenje izabranog dela; renderer po koraku salje poruku i skrece (POPIS 4.5).
       otvori: (id) => {
-        const r = tk.nadji(broj(id));
-        if (r === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
+        const r = takmicenjeDela(broj(id));
         p.postaviAktivno(Number(r.id), r.pol);
-        p.postaviPol(r.pol); // otvaranje prikazuje deo kome takmicenje pripada
+        p.postaviPol(r.pol); // isti deo, pa je ovo bez efekta; ostaje kao sigurnost
         const stanje = pr.stanjePripreme(Number(r.id));
         return { korak: stanje.korak, naziv: r.naziv, stanje };
       },
-      stanje: (id) => pr.stanjePripreme(broj(id)),
+      stanje: (id) => pr.stanjePripreme(takmicenjeDela(broj(id)).id),
     },
     prijave: {
-      lista: (pol) => prijaveSaLekarskim(aktivnoRed(), pol).prijave,
+      // Argument pol iz renderera se zanemaruje (uklanja se u zadatku 6).
+      lista: () => prijaveSaLekarskim(aktivnoRed()).prijave,
       // Jedan poziv za ceo ekran Prijave (POPIS 6.3).
-      podaci: (pol) => {
+      podaci: () => {
         const takm = aktivnoRed();
-        const { prijave, upozorenja } = prijaveSaLekarskim(takm, pol);
+        const { prijave, upozorenja } = prijaveSaLekarskim(takm);
         const stanje = pr.stanjePripreme(Number(takm.id));
         return {
           takm,
           prijave,
           upozorenja,
-          takmicari: t.svi(),
+          takmicari: t.svi(takm.pol),
           prijavljeni: pr.prijavljeniTakmicari(Number(takm.id)),
           klubovi: k.svi(),
           kategorije: s.lista('kategorije', takm.pol),
           programi: s.lista('programi', takm.pol),
-          sprave: { M: s.sprave('M'), Z: s.sprave('Z') },
+          // Oblik ostaje { M, Z } dok ekran ne predje na jedan pol (zadatak 6); drugi pol je prazan.
+          sprave: { M: [], Z: [], [takm.pol]: s.sprave(takm.pol) },
           stanje,
           ukupno: stanje.prijava,
           sledeciIdBroj: t.sledeciIdBroj(),
@@ -288,7 +300,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       startni: () => ({ dodeljeno: pr.dodeliStartneBrojeve(aktivnoId()) }),
       // Novi takmicar iz ekrana Prijave; ostaje u bazi i kad prijava ne uspe (POPIS 6.5).
       noviTakmicar: (u) => {
-        const aid = aktivnoId();
+        const takm = aktivnoRed();
+        const aid = Number(takm.id);
         const tekst = (v) => String(v ?? '').trim();
         const klub = parseInt(u.klub_id, 10) || 0;
         const tid = t.sacuvaj({
@@ -296,7 +309,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
           ime: tekst(u.ime),
           prezime: tekst(u.prezime),
           godina_rodjenja: parseInt(u.godina_rodjenja, 10) || 0,
-          pol: tekst(u.pol),
+          pol: takm.pol, // pol iz renderera se zanemaruje
           klub_id: klub === 0 ? null : klub,
           drzavljanstvo: 'Srbija',
           lekarski_do: tekst(u.lekarski_do),
@@ -308,9 +321,10 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     },
     rotacije: {
       // Jedan poziv za ceo ekran Rotacije (POPIS 4.2).
-      podaci: (pol, rot) => {
+      // Prvi argument (pol) renderer jos salje; zanemaruje se, pol je pol takmicenja.
+      podaci: (_pol, rot) => {
         const takm = aktivnoRed();
-        const polIzbor = pol === 'M' ? 'M' : 'Z';
+        const polIzbor = takm.pol;
         const sprave = s.sprave(polIzbor);
         const brojSprava = Math.max(1, sprave.length);
         const rotacija = Math.max(1, Math.min(brojSprava, Math.trunc(Number(rot)) || 1));
@@ -342,9 +356,9 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
           stanje: pr.stanjePripreme(Number(takm.id)),
         };
       },
-      dodaj: (pol) => {
-        const aid = aktivnoId();
-        return { grupa: gr.nadji(gr.dodaj(aid, pol)) };
+      dodaj: () => {
+        const takm = aktivnoRed();
+        return { grupa: gr.nadji(gr.dodaj(Number(takm.id), takm.pol)) };
       },
       izmeni: (id, naziv, pocetnaPozicija) => gr.izmeni(aktivnoId(), broj(id), String(naziv ?? '').trim(), parseInt(pocetnaPozicija, 10) || 0),
       obrisi: (id) => gr.obrisi(aktivnoId(), broj(id)),
@@ -372,16 +386,12 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     },
     unos: {
       // Jedan poziv za ceo ekran Unos ocena (POPIS 4).
-      podaci: (polUlaz, spravaUlaz, rotUlaz) => {
+      // Prvi argument (pol) renderer jos salje; zanemaruje se, pol je pol takmicenja.
+      podaci: (_pol, spravaUlaz, rotUlaz) => {
         const takm = aktivnoRed();
         const tid = Number(takm.id);
         const pomeraj = Number(takm.pomeraj_redosled) === 1;
-        let pol = polUlaz;
-        if (pol !== 'M' && pol !== 'Z') {
-          const imaZ = Number(baza.vrednost(
-            'SELECT COUNT(*) FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id WHERE p.takmicenje_id = ? AND t.pol = ?', [tid, 'Z']));
-          pol = imaZ > 0 ? 'Z' : 'M';
-        }
+        const pol = takm.pol;
         const sprave = s.sprave(pol);
         const brojSprava = Math.max(1, sprave.length);
         const grupe = gr.lista(tid, pol);

@@ -24,18 +24,19 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
   }
 
   // Zajednicki deo stampe i biltena: aktivno takmicenje, izbor i rezultati (bez prijava baca `poruka`).
-  function grupa(pol, kat, prog, poruka) {
+  function grupa(kat, prog, poruka) {
     const takm = aktivnoRed();
-    const izbor = model.izbor(Number(takm.id), pol, kat, prog);
+    const izbor = model.izbor(takm, takm.pol, kat, prog);
     if (!izbor.ima) throw new GreskaKorisnika(poruka);
     const rez = model.izracunaj(takm, izbor.pol, izbor.kat, izbor.prog);
     return { takm, izbor, rez };
   }
 
   return {
-    podaci(pol, kat, prog, tab) {
+    // Prvi argument (pol) renderer jos salje; zanemaruje se, pol je pol takmicenja.
+    podaci(_pol, kat, prog, tab) {
       const takm = aktivnoRed();
-      const izbor = model.izbor(Number(takm.id), pol, kat, prog);
+      const izbor = model.izbor(takm, takm.pol, kat, prog);
       const rez = izbor.ima ? model.izracunaj(takm, izbor.pol, izbor.kat, izbor.prog) : null;
       const tabIzabran = rez ? tabIz(tab, rez) : (tab === 'ekipno' ? 'ekipno' : 'viseboj');
       return { takm: takmKratko(takm), izbor, rez, tab: tabIzabran };
@@ -44,7 +45,8 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
     // Radi i bez aktivnog takmicenja (POPIS 0.1).
     rezultati(takmicarId, tk) {
       const takmicar = t.nadji(broj(takmicarId));
-      if (!takmicar) throw new GreskaKorisnika('Takmičar ne postoji.');
+      // Takmicar drugog pola je u drugom delu aplikacije.
+      if (!takmicar || takmicar.pol !== p.aktivniPol()) throw new GreskaKorisnika('Takmičar ne postoji.');
       const prijave = baza.svi(
         `SELECT p.*, tk.naziv AS takm_naziv, tk.datum AS takm_datum, tk.mesto AS takm_mesto, kat.naziv AS kategorija, pr.naziv AS program
          FROM prijave p JOIN takmicenja tk ON tk.id = p.takmicenje_id
@@ -63,8 +65,8 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
       return { takmicar, sva, izabranoId };
     },
 
-    stampa(pol, kat, prog, tab) {
-      const { takm, izbor, rez } = grupa(pol, kat, prog, 'Nema prijava za štampu.');
+    stampa(_pol, kat, prog, tab) {
+      const { takm, izbor, rez } = grupa(kat, prog, 'Nema prijava za štampu.');
       const tabIzabran = tabIz(tab, rez);
       const sprava = typeof tabIzabran === 'number' ? rez.sprave.find((x) => Number(x.id) === tabIzabran) : null;
       const polozeno = tabIzabran !== 'ekipno' && sprava === null && rez.sprave.length > 4;
@@ -80,8 +82,8 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
       };
     },
 
-    bilten(pol, kat, prog) {
-      const { takm, izbor, rez } = grupa(pol, kat, prog, 'Nema prijava za bilten.');
+    bilten(_pol, kat, prog) {
+      const { takm, izbor, rez } = grupa(kat, prog, 'Nema prijava za bilten.');
       const polozeno = rez.sprave.length > 4;
       const organizator = takm.organizator ? takm.organizator : p.dajPol('organizator', takm.pol, '');
       const strane = straneBilten(stavkeBiltena(rez), {

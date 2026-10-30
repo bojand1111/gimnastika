@@ -9,6 +9,8 @@ const PRECICE = [
   ['Sledeće polje', ['Tab', 'Enter']],
   ['Otkaži izmenu', ['Esc']],
   ['Novi zapis', ['Alt', 'N']],
+  ['Prebaci na MSG', ['Alt', 'M']],
+  ['Prebaci na ŽSG', ['Alt', 'Z']],
 ];
 
 const p2 = (n) => String(n).padStart(2, '0');
@@ -30,39 +32,33 @@ function poslednja(lista) {
 // p: podesavanja; pr: prijave; tk: takmicenja; g: grupe; o: ocene; s: sifarnici.
 // sinhroStanje: () => stanje klijenta sajta (SPEC8) ili null. aktivnoRed baca GreskaKorisnika bez aktivnog takmicenja; kopijaLista: () => [{ime, vreme, ...}] najnovija prva.
 function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhroStanje = () => null }) {
-  // Prvi pol koji nije gotov (Z pa M); ako su oba gotova, ostaje poslednji sa grupama (POPIS 2.1).
+  // Napredak i sledeci unos samo za pol takmicenja (POPIS 2.1); bez grupa su oba null.
   function napredakINastavi(takm) {
     const tid = Number(takm.id);
     const pomeraj = Number(takm.pomeraj_redosled) === 1;
-    let napredak = null;
+    const pol = takm.pol;
+    const grupe = g.lista(tid, pol);
+    if (grupe.length === 0) return { napredak: null, nastavi: null };
+    const sprave = s.sprave(pol);
+    const napredak = { ...o.napredak(tid, pol, grupe, sprave, pomeraj), pol };
     let nastavi = null;
-    for (const pol of ['Z', 'M']) {
-      const grupe = g.lista(tid, pol);
-      if (grupe.length === 0) continue;
-      const sprave = s.sprave(pol);
-      const n = { ...o.napredak(tid, pol, grupe, sprave, pomeraj), pol };
-      if (napredak === null || !n.gotovo) {
-        napredak = n;
-        nastavi = null;
-        for (const [i, sp] of sprave.entries()) {
-          const gr = grupaNaSpravi(grupe, i + 1, n.rotacija, Math.max(1, sprave.length), pomeraj);
-          if (gr === null) continue;
-          const ids = gr.clanovi.map((c) => Number(c.prijava_id));
-          const oc = o.zaSpravu(Number(sp.id), ids);
-          const uneto = ids.filter((pid) => (oc[pid]?.status ?? 'nacrt') !== 'nacrt').length;
-          if (uneto < ids.length) {
-            nastavi = { sprava: sp, rotacija: n.rotacija, uneto, ukupno: ids.length, pol };
-            break;
-          }
-        }
-        if (!n.gotovo) break;
+    for (const [i, sp] of sprave.entries()) {
+      const gr = grupaNaSpravi(grupe, i + 1, napredak.rotacija, Math.max(1, sprave.length), pomeraj);
+      if (gr === null) continue;
+      const ids = gr.clanovi.map((c) => Number(c.prijava_id));
+      const oc = o.zaSpravu(Number(sp.id), ids);
+      const uneto = ids.filter((pid) => (oc[pid]?.status ?? 'nacrt') !== 'nacrt').length;
+      if (uneto < ids.length) {
+        nastavi = { sprava: sp, rotacija: napredak.rotacija, uneto, ukupno: ids.length, pol };
+        break;
       }
     }
     return { napredak, nastavi };
   }
 
+  // Pol se ne nosi u linku: ekran Unos ocena uzima izabrani deo.
   const urlUnos = (nastavi) => (nastavi
-    ? `#/unos?pol=${nastavi.pol}&sprava=${nastavi.sprava.id}&rot=${nastavi.rotacija}`
+    ? `#/unos?sprava=${nastavi.sprava.id}&rot=${nastavi.rotacija}`
     : '#/unos');
 
   return {
@@ -73,6 +69,7 @@ function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhr
         const takm = p.aktivno(pol);
         const aid = takm ? Number(takm.id) : null;
         return {
+          pol,
           takm,
           stanje: aid === null ? null : pr.stanjePripreme(aid),
           ostala: tk.sva(pol).filter((r) => Number(r.id) !== aid).map((r) => ({ ...r, stanje: pr.stanjePripreme(Number(r.id)) })),
