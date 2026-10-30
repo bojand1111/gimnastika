@@ -48,16 +48,17 @@ test('sirinaSprava: n*30 + (n-1)*3 + 16, najmanje jedna', () => {
   assert.equal(sirinaSprava(1), 46);
 });
 
-const sprave = {
-  Z: [{ skracenica: 'PA', naziv: 'Parter' }, { skracenica: 'GR', naziv: 'Greda' }],
-  M: [{ skracenica: 'PA', naziv: 'Parter' }, { skracenica: 'KO', naziv: 'Konj sa hvataljkama' }],
-};
+const sprave = [{ skracenica: 'PA', naziv: 'Parter' }, { skracenica: 'GR', naziv: 'Greda' }];
 
-test('legenda: Z pa M, ista skracenica se spaja, poslednja pobedjuje', () => {
-  assert.deepEqual(legenda(sprave, ''), ['PA parter', 'GR greda', 'KO konj sa hvataljkama']);
-  assert.deepEqual(legenda({ ...sprave, M: [{ skracenica: 'PA', naziv: 'Podna vezba' }] }, ''), ['PA podna vezba', 'GR greda']);
-  assert.deepEqual(legenda(sprave, 'M'), ['PA parter', 'KO konj sa hvataljkama']);
-  assert.deepEqual(legenda(sprave, 'Z'), ['PA parter', 'GR greda']);
+test('legenda: sprave izabranog dela po redosledu, skracenica i naziv malim slovima', () => {
+  assert.deepEqual(legenda(sprave), ['PA parter', 'GR greda']);
+  assert.deepEqual(legenda([{ skracenica: 'KO', naziv: 'Konj sa hvataljkama' }]), ['KO konj sa hvataljkama']);
+  assert.deepEqual(legenda([]), []);
+});
+
+test('legenda: ista skracenica se spaja, poslednja pobedjuje', () => {
+  const dupla = [{ skracenica: 'PA', naziv: 'Parter' }, { skracenica: 'PA', naziv: 'Podna vezba' }, { skracenica: 'GR', naziv: 'Greda' }];
+  assert.deepEqual(legenda(dupla), ['PA podna vezba', 'GR greda']);
 });
 
 test('porukaDalje: nista kad je sve u redu, inace tekst iz 6.2', () => {
@@ -80,7 +81,7 @@ test('jediniSlobodan: vec prijavljeni se ne broje', () => {
   assert.equal(jediniSlobodan([t(5)], new Set()), 5);
 });
 
-test('cipPrijava: jednina, mnozina i ukupno uz filter pola', () => {
+test('cipPrijava: jednina, mnozina i ukupno uz filter kluba', () => {
   assert.equal(cipPrijava(1, 4, false), '1 prijava');
   assert.equal(cipPrijava(0, 0, false), '0 prijave');
   assert.equal(cipPrijava(3, 9, false), '3 prijave');

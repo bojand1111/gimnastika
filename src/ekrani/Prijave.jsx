@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import gim from '../gim.js';
-import { razlozi } from '../ruter.js';
 import Koraci from '../komponente/Koraci.jsx';
 import DijalogTakmicar from '../komponente/DijalogTakmicar.jsx';
 import BazaTakmicara from './prijave/BazaTakmicara.jsx';
@@ -11,14 +10,8 @@ import { poljaUcesca } from '../../electron/racun/priprema.mjs';
 import * as uvozStanje from '../uvozStanje.js';
 import { obradiNemaAktivnog } from './aktivno.js';
 
-const polIzHasha = () => {
-  const p = razlozi(location.hash).parametri.pol;
-  return p === 'M' || p === 'Z' ? p : '';
-};
-
 // Ekran Prijave aktivnog takmicenja (POPIS 6): ucitava sve jednim pozivom i posle radnji ponovo cita.
 export default function Prijave() {
-  const [pol, postaviPol] = useState(polIzHasha);
   const [d, postaviD] = useState(null);
   const [klub, postaviKlubDrzac] = useState('');
   const [izabranId, postaviIzabran] = useState(null);
@@ -29,7 +22,6 @@ export default function Prijave() {
   const naCekanju = useRef(new Map()); // brojac izmena po redu i polju (optimisticki select)
   const radi = useRef({ dodaj: false, startni: false });
   const klubRef = useRef('');
-  const polRef = useRef(pol);
   const brojac = useRef(0);
   const dijalog = useRef(null);
   const fokusId = useRef(null);
@@ -57,14 +49,14 @@ export default function Prijave() {
     return obradiNemaAktivnog(e);
   }, []);
 
-  // Sve podatke ekrana ucitava iznova; zastarel odgovor se odbacuje.
-  const ucitaj = useCallback(async (p = polRef.current) => {
+  // Sve podatke ekrana ucitava iznova; zastarel odgovor se odbacuje. Server vraca samo izabrani deo.
+  const ucitaj = useCallback(async () => {
     const moj = ++brojac.current;
     try {
-      const podaci = await gim.prijave.podaci(p || null);
+      const podaci = await gim.prijave.podaci();
       if (moj !== brojac.current) return null;
       if (!ziv.current) return null;
-      postaviD({ ...podaci, polPodaci: p });
+      postaviD(podaci);
       postaviGresku(false);
       postaviIzabran(null); // oznaka novog reda traje do sledeceg ucitavanja
       uskladiKlub(podaci);
@@ -79,13 +71,8 @@ export default function Prijave() {
     }
   }, [uskladiKlub, nemaAktivnog]);
 
-  useEffect(() => {
-    const naHash = () => { if (location.hash.startsWith('#/prijave')) postaviPol(polIzHasha()); };
-    window.addEventListener('hashchange', naHash);
-    return () => window.removeEventListener('hashchange', naHash);
-  }, []);
   useEffect(() => { ziv.current = true; return () => { ziv.current = false; }; }, []);
-  useEffect(() => { polRef.current = pol; ucitaj(pol); }, [pol, ucitaj]);
+  useEffect(() => { ucitaj(); }, [ucitaj]);
 
   // Posle novog takmicara: izabran red, centriran, fokus na prvu spravu.
   useEffect(() => {
@@ -215,10 +202,10 @@ export default function Prijave() {
 
   function otvoriDijalog(klubLevo) {
     if (!d || !dijalog.current || dijalog.current.otvoren()) return;
-    dijalog.current.otvori({ klub: klubLevo, pol, idBroj: d.sledeciIdBroj });
+    dijalog.current.otvori({ klub: klubLevo, idBroj: d.sledeciIdBroj });
   }
 
-  // Novi takmicar: upis u bazu, prijava, pa osvezen prikaz bez filtera pola (kao PHP).
+  // Novi takmicar (dobija pol dela): upis u bazu, prijava, pa osvezen prikaz.
   async function noviTakmicar(unos) {
     const r = await gim.prijave.noviTakmicar(unos);
     dijalog.current.zatvori();
@@ -228,11 +215,10 @@ export default function Prijave() {
       ? `${ime} je upisan u bazu takmičara i prijavljen. Izaberite sprave i učešće.`
       : `${ime} je upisan u bazu takmičara, ali nije prijavljen: ${r.preskoceno.join('; ')}.`);
     let podaci;
-    try { podaci = await gim.prijave.podaci(null); } catch (e) { obavesti(e.message, 'greska'); return; }
+    try { podaci = await gim.prijave.podaci(); } catch (e) { obavesti(e.message, 'greska'); return; }
     brojac.current += 1;
-    postaviD({ ...podaci, polPodaci: '' });
+    postaviD(podaci);
     postaviReset((n) => n + 1);
-    if (pol !== '') { polRef.current = ''; postaviPol(''); location.hash = '#/prijave'; }
     if (r.prijava_id != null) {
       const red = podaci.prijave.find((p) => p.id === r.prijava_id);
       if (klubRef.current !== '' && red && String(red.klub_id ?? 0) !== klubRef.current) postaviKlub('', podaci.takm.id);
@@ -257,13 +243,12 @@ export default function Prijave() {
       </div>
     );
   }
-  const polD = d.polPodaci ?? pol; // pol za koji su podaci ucitani
   return (
     <>
       <Koraci stanje={d.stanje} tekuci="prijave" takmId={Number(d.takm.id)} />
       <div className="red red-rastegni raste prijave-ekran" id="prijave" onFocusCapture={naFokus}>
-        <BazaTakmicara d={d} pol={polD} naDodaj={dodaj} naNovi={otvoriDijalog} reset={reset} />
-        <TabelaPrijava d={d} pol={polD} klub={klub} naKlub={(k) => postaviKlub(k, d.takm.id)}
+        <BazaTakmicara d={d} naDodaj={dodaj} naNovi={otvoriDijalog} reset={reset} />
+        <TabelaPrijava d={d} klub={klub} naKlub={(k) => postaviKlub(k, d.takm.id)}
           izabranId={izabranId} akcije={akcije} />
       </div>
       <DijalogTakmicar ref={dijalog} klubovi={d.klubovi} naSnimi={noviTakmicar} />

@@ -4,7 +4,7 @@ import Ikona from './Ikona.jsx';
 import { obavesti } from '../okvir/Poruke.jsx';
 import { pomeri } from '../ekrani/redosled.js';
 
-const NAZIV_NOVE = { sprave_m: 'Nova sprava', sprave_z: 'Nova sprava', programi: 'Novi program', kategorije: 'Nova kategorija' };
+const NAZIV_NOVE = { sprave: 'Nova sprava', programi: 'Novi program', kategorije: 'Nova kategorija' };
 const BEZ = { id: null, naziv: '', skr: '', ikona: '' };
 
 // Jedna kartica liste: izmena na licu mesta, brisanje, dodavanje, redosled (prevlacenje i Alt+strelice).

@@ -6,7 +6,7 @@ function Upozorenje({ tekst }) {
   return <div role="alert" className="uvoz-upozorenje"><Ikona ime="upozorenje" velicina={16} /><span>{tekst}</span></div>;
 }
 
-// Jedan fajl uvoza: zaglavlje, upozorenja, podesavanja (klub, pol, oznake) i tabela redova (POPIS 7.7).
+// Jedan fajl uvoza: zaglavlje, upozorenja, podesavanja (klub, oznake) i tabela redova (POPIS 7.7). Novi takmicari dobijaju pol izabranog dela.
 export default function FajlKartica({ f, i, izbor, b, d, naPolje, naOznaku, naRed, naSve, naUkloni, zauzet }) {
   return (
     <section className="kartica" style={{ overflow: 'hidden' }}>
@@ -29,14 +29,6 @@ export default function FajlKartica({ f, i, izbor, b, d, naPolje, naOznaku, naRe
           <select className="unos" aria-label="Klub" value={izbor.klub_id} onChange={(ev) => naPolje('klub_id', ev.target.value)}>
             <option value="">bez kluba</option>
             {d.klubovi.map((k) => <option key={k.id} value={k.id}>{`${k.skracenica} · ${k.puno_ime}`}</option>)}
-          </select>
-        </label>
-        <label className="polje" style={{ width: 150 }}>
-          <span className="oznaka">Pol takmičara u fajlu</span>
-          <select className="unos uvoz-pol" data-pol-fajla={i} aria-label="Pol" value={izbor.pol} onChange={(ev) => naPolje('pol', ev.target.value)}>
-            <option value="">izaberite</option>
-            <option value="M">M · muški</option>
-            <option value="Z">Ž · ženski</option>
           </select>
         </label>
         {f.oznake.map((o, oi) => (

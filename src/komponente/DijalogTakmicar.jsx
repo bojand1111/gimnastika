@@ -1,16 +1,14 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import Polje from './Polje.jsx';
 import DatumPolje from './DatumPolje.jsx';
-import IzborPola from './IzborPola.jsx';
 
-const POLOVI = [{ vrednost: 'Z', tekst: 'Ž' }, { vrednost: 'M', tekst: 'M' }];
 
-// Dijalog "Novi takmicar" (POPIS 6.4). otvori({klub, pol, idBroj}) ga prikazuje; naSnimi(unos) vraca
-// obecanje, a greska servera ostaje u dijalogu. Esc zatvara (showModal).
+// Dijalog "Novi takmicar" (POPIS 6.4), bez pola: takmicar dobija pol izabranog dela na serveru.
+// otvori({klub, idBroj}) ga prikazuje; naSnimi(unos) vraca obecanje, a greska servera ostaje u dijalogu. Esc zatvara (showModal).
 const DijalogTakmicar = forwardRef(function DijalogTakmicar({ klubovi, naSnimi }, ref) {
   const dijalog = useRef(null);
   const prezimeRef = useRef(null);
-  const prazno = { prezime: '', ime: '', id_broj: '', godina_rodjenja: '', pol: 'Z', klub_id: '', lekarski_do: '' };
+  const prazno = { prezime: '', ime: '', id_broj: '', godina_rodjenja: '', klub_id: '', lekarski_do: '' };
   const [f, postaviF] = useState(prazno);
   const [greska, postaviGresku] = useState('');
   const [radi, postaviRadi] = useState(false);
@@ -18,8 +16,8 @@ const DijalogTakmicar = forwardRef(function DijalogTakmicar({ klubovi, naSnimi }
   useImperativeHandle(ref, () => ({
     otvoren: () => Boolean(dijalog.current && dijalog.current.open),
     zatvori: () => dijalog.current.close(),
-    otvori({ klub, pol, idBroj }) {
-      postaviF({ ...prazno, id_broj: idBroj, klub_id: klub, pol: pol === 'M' ? 'M' : 'Z' });
+    otvori({ klub, idBroj }) {
+      postaviF({ ...prazno, id_broj: idBroj, klub_id: klub });
       postaviGresku('');
       postaviRadi(false);
       dijalog.current.showModal();
@@ -55,12 +53,6 @@ const DijalogTakmicar = forwardRef(function DijalogTakmicar({ klubovi, naSnimi }
             value={f.id_broj} onChange={promeni('id_broj')} required />
           <Polje oznaka="Godina rođenja" name="godina_rodjenja" klasa="broj" stil={{ flex: '0 0 110px' }}
             value={f.godina_rodjenja} onChange={promeni('godina_rodjenja')} inputMode="numeric" maxLength={4} required />
-          <div className="polje"><span className="oznaka">Pol</span>
-            <div style={{ alignSelf: 'flex-start' }}>
-              <IzborPola id="dijalog-pol" oznaka="Pol" opcije={POLOVI} vrednost={f.pol}
-                naPromenu={(pol) => postaviF((x) => ({ ...x, pol }))} />
-            </div>
-          </div>
         </div>
         <div className="forma-red">
           <label className="polje"><span className="oznaka">Klub</span>

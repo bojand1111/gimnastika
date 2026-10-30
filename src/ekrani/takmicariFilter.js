@@ -1,13 +1,12 @@
-// Cista logika ekrana Takmicari: filteri liste i poruka o lekarskom u kartonu.
+// Cista logika ekrana Takmicari: filteri liste, poruka o lekarskom u kartonu i tekstovi o prebacivanju u drugi deo.
 import { odgovara } from '../pretraga.js';
 import { datumParsiraj, razlikaDana } from '../../electron/racun/datum.mjs';
 
-// Red je vidljiv ako ispunjava sve uslove (I). pol: 'M' | 'Z' | ''; klub i god su tekst.
-export function vidljiv(red, { upit, klub, pol, god }) {
+// Red je vidljiv ako ispunjava sve uslove (I); klub i god su tekst. Pola nema: server vraca samo izabrani deo.
+export function vidljiv(red, { upit, klub, god }) {
   const tekst = `${red.prezime} ${red.ime} ${red.ime} ${red.prezime} ${red.id_broj}`;
   if (!odgovara(tekst, upit)) return false;
   if (klub !== '' && String(red.klub_id ?? 0) !== klub) return false;
-  if (pol !== '' && red.pol !== pol) return false;
   if (god !== '' && String(red.godina_rodjenja) !== god) return false;
   return true;
 }
@@ -23,3 +22,15 @@ export function lekarskiPoruka(tekst, prag, danas) {
   if (dana <= Number(prag)) return { klasa: 'upozorenje', tekst: `Ističe za ${dana} dana` };
   return { klasa: '', tekst: '' };
 }
+
+// Naziv dela aplikacije za pol takmicara.
+export const deoNaziv = (pol) => (pol === 'Z' ? 'ŽSG' : 'MSG');
+
+// Napomena uz izbor pola u kartonu: samo kad se pol stvarno menja, jer takmicar tada prelazi u drugi deo.
+export function napomenaPola(sacuvanPol, noviPol) {
+  if ((sacuvanPol !== 'M' && sacuvanPol !== 'Z') || (noviPol !== 'M' && noviPol !== 'Z') || sacuvanPol === noviPol) return '';
+  return `Čuvanjem se takmičar prebacuje u ${deoNaziv(noviPol)}.`;
+}
+
+// Poruka posle uspesne promene pola: takmicar vise nije na listi ovog dela.
+export const porukaPrebacen = (ime, pol) => `Takmičar ${ime} je prebačen u ${deoNaziv(pol)}.`;

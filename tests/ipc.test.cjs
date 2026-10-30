@@ -334,3 +334,81 @@ test('takmicari.sacuvaj: novi takmicar dobija izabrani pol, pol iz renderera se 
   assert.equal(baza.vrednost('SELECT pol FROM takmicari WHERE id = ?', [m.id]), 'M');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+// --- Sifarnici i podesavanja po delu (T7) ---
+test('sifarnici.vrste: kategorije, programi i sprave bez starih imena sprave_m i sprave_z', () => {
+  const { moduli, dir } = pravi();
+  const v = moduli.sifarnici.vrste();
+  assert.deepEqual(Object.keys(v.vrste), ['kategorije', 'programi', 'sprave']);
+  assert.deepEqual(Object.values(v.vrste).map((m) => m.naziv), ['Kategorije', 'Programi', 'Sprave']);
+  assert.equal(Object.values(v.vrste).some((m) => 'pol' in m), false, 'pol nije deo opisa liste');
+  structuredClone(v);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('sifarnici: sprave rade za izabrani deo, stara imena sprave_m i sprave_z su nepoznata', () => {
+  const { moduli, baza, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
+  assert.deepEqual(moduli.sifarnici.lista('sprave').map((r) => Number(r.id)), [s.pr, s.gr]);
+  moduli.pol.postavi('M');
+  assert.deepEqual(moduli.sifarnici.lista('sprave').map((r) => Number(r.id)), [s.pa]);
+  const d = moduli.sifarnici.dodaj('sprave', { naziv: 'Karike', skracenica: 'KA' });
+  assert.equal(d.stavka.pol, 'M');
+  assert.deepEqual(moduli.sifarnici.lista('sprave').map((r) => r.skracenica), ['PA', 'KA']);
+  moduli.sifarnici.redosled('sprave', [d.id, s.pa, s.pr]); // tudja sprava (Z) se ignorise
+  assert.deepEqual(moduli.sifarnici.lista('sprave').map((r) => r.skracenica), ['KA', 'PA']);
+  assert.equal(baza.vrednost('SELECT redosled FROM sprave WHERE id = ?', [s.pr]), 1, 'ZSG redosled nije dodirnut');
+  // sprava drugog dela se ponasa kao da ne postoji
+  const nema = (f) => assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === 'Stavka ne postoji.');
+  nema(() => moduli.sifarnici.izmeni('sprave', s.pr, { naziv: 'X', skracenica: 'XX' }));
+  nema(() => moduli.sifarnici.obrisi('sprave', s.gr));
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM sprave WHERE pol = ?', ['Z']), 2);
+  for (const staro of ['sprave_m', 'sprave_z']) {
+    for (const f of [() => moduli.sifarnici.lista(staro), () => moduli.sifarnici.dodaj(staro, { naziv: 'X', skracenica: 'XX' }),
+      () => moduli.sifarnici.izmeni(staro, s.pr, { naziv: 'X' }), () => moduli.sifarnici.obrisi(staro, s.pr),
+      () => moduli.sifarnici.redosled(staro, [s.pr])]) {
+      assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === `Nepoznata lista: ${staro}`);
+    }
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('podesavanja.sva: samo pravila izabranog dela, bez sirovih kljuceva drugog dela', () => {
+  const { moduli, baza, dir } = pravi();
+  moduli.pol.postavi('Z');
+  moduli.podesavanja.sacuvajOpsta({ e_zaokruzivanje: 'zaokruzi', plasman_isti_rezultat: 'visa_e_pa_d', organizator: 'ZSG savez' });
+  const z = moduli.podesavanja.sva();
+  assert.equal(z.pol, 'Z');
+  assert.deepEqual([z.e_zaokruzivanje, z.plasman_isti_rezultat, z.organizator], ['zaokruzi', 'visa_e_pa_d', 'ZSG savez']);
+  const sirovi = Object.keys(z).filter((k) => /_(M|Z)$/.test(k));
+  assert.deepEqual(sirovi, [], 'nijedan kljuc sa nastavkom dela (ni M, ni Z)');
+  moduli.pol.postavi('M');
+  const m = moduli.podesavanja.sva();
+  assert.equal(m.pol, 'M');
+  assert.deepEqual([m.e_zaokruzivanje, m.plasman_isti_rezultat, m.organizator], ['odseci', 'deli', '']);
+  // cuvanje u MSG ne dira ZSG vrednosti u bazi
+  moduli.podesavanja.sacuvajOpsta({ e_zaokruzivanje: 'odseci', viseboj_nepotpun: 'ne_ulazi' });
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'e_zaokruzivanje_Z'"), 'zaokruzi');
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'viseboj_nepotpun_Z'"), null);
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'viseboj_nepotpun_M'"), 'ne_ulazi');
+  structuredClone(m);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('podesavanja: opsta podesavanja (prag, sajt) vaze u oba dela, grb je poseban po delu', () => {
+  const { moduli, baza, dir } = pravi();
+  const slika = path.join(dir, 'izvor.png');
+  fs.writeFileSync(slika, 'x');
+  moduli.pol.postavi('Z');
+  moduli.podesavanja.sacuvajOpsta({ lekarski_prag_dana: '45', sajt_url: 'https://sajt.rs', grb_levo: { putanja: slika } });
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'grb_levo_Z'"), 'grb/grb_levo_Z.png');
+  assert.equal(baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'grb_levo_M'"), null);
+  assert.ok(moduli.podesavanja.sva().grb_levo_url.includes('grb_levo_Z.png'));
+  moduli.pol.postavi('M');
+  const m = moduli.podesavanja.sva();
+  assert.equal(m.grb_levo_url, '', 'MSG nema ZSG grb');
+  assert.equal(m.lekarski_prag_dana, '45');
+  assert.equal(m.sajt_url, 'https://sajt.rs');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

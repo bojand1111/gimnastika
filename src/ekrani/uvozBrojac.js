@@ -1,5 +1,5 @@
 // Cista logika ekrana Uvoz (POPIS 7.8). izbor je po indeksu fajla:
-// { pol, klub_id, oznake: {oi: {kategorija, program}}, redovi: {ri: {uvezi, postupak}} }.
+// { klub_id, oznake: {oi: {kategorija, program}}, redovi: {ri: {uvezi, postupak}} }. Pola nema: novi takmicari dobijaju pol dela.
 
 // Pocetni izbor fajla: sve kao u PHP pregledu (kucice ukljucene gde je moguce, nova stavka unapred izabrana).
 export function pocetniIzbor(f) {
@@ -10,7 +10,7 @@ export function pocetniIzbor(f) {
   });
   const redovi = {};
   f.redovi.forEach((r, ri) => { redovi[ri] = { uvezi: r.postupak !== 'nista', postupak: r.postupak }; });
-  return { pol: f.pol ?? '', klub_id: f.klub_id != null ? String(f.klub_id) : '', oznake, redovi };
+  return { klub_id: f.klub_id != null ? String(f.klub_id) : '', oznake, redovi };
 }
 
 // Izabran red je "novi" kad nema izbora postupka (status novi) ili je postupak 'novi'.
@@ -40,16 +40,6 @@ export function prebroj(fajlovi, izbor) {
   return { poFajlu, ukupno: zbirPo('n'), novih: zbirPo('novih'), postojecih: zbirPo('postojecih') };
 }
 
-// Indeks prvog fajla bez izabranog pola koji ima bar jedan izabran novi red, ili null.
-export function nedostajePol(fajlovi, izbor) {
-  for (let i = 0; i < fajlovi.length; i++) {
-    if (izbor[i] && izbor[i].pol) continue;
-    const redovi = (izbor[i] && izbor[i].redovi) || {};
-    if (fajlovi[i].redovi.some((r, ri) => izabran(r, redovi[ri]) && jeNovi(r, redovi[ri]))) return i;
-  }
-  return null;
-}
-
 export function cipFajla(b) {
   return `za uvoz: ${b.n}${b.prijavljeni ? ` · već prijavljeni: ${b.prijavljeni}` : ''}${b.greske ? ` · ne mogu: ${b.greske}` : ''}`;
 }
@@ -65,7 +55,7 @@ export function zaUpis(izbor) {
   for (const [i, f] of Object.entries(izbor)) {
     const redovi = {};
     for (const [ri, r] of Object.entries(f.redovi)) redovi[ri] = { uvezi: r.uvezi ? '1' : '', postupak: r.postupak };
-    izlaz[i] = { pol: f.pol, klub_id: f.klub_id, oznake: f.oznake, redovi };
+    izlaz[i] = { klub_id: f.klub_id, oznake: f.oznake, redovi };
   }
   return izlaz;
 }

@@ -149,8 +149,8 @@ test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
   assert.deepEqual([...p.prijavljeni].sort((a, b) => a - b), [s.t.Ana, s.t.Bea, s.t.Dona].sort((a, b) => a - b));
   assert.deepEqual(p.kategorije.map((k) => k.id), [s.kat]);
   assert.deepEqual(p.programi.map((k) => k.id), [s.prog]);
-  assert.deepEqual(Object.keys(p.sprave).sort(), ['M', 'Z']);
-  assert.equal(p.sprave.Z.length, 2);
+  assert.ok(Array.isArray(p.sprave), 'sprave je lista sprava izabranog dela');
+  assert.equal(p.sprave.length, 2);
   assert.equal(p.sledeciIdBroj, '100');
   assert.deepEqual(Object.fromEntries(p.prijave.map((r) => [r.ime, r.lek_ne_vazi])), { Ana: false, Bea: true, Dona: true });
   assert.deepEqual(p.upozorenja.slice().sort(), [
@@ -352,8 +352,7 @@ test('prijave.podaci: samo takmicari, sprave, kategorije i programi izabranog po
   for (const arg of [undefined, null, 'M', 'Z', 'X']) {
     const p = moduli.prijave.podaci(arg);
     assert.deepEqual(p.takmicari.map((r) => r.pol), ['Z', 'Z', 'Z', 'Z'], `arg ${arg}`);
-    assert.deepEqual(p.sprave.M, [], 'sprave drugog pola nema');
-    assert.equal(p.sprave.Z.length, 2);
+    assert.deepEqual(p.sprave.map((x) => x.pol), ['Z', 'Z'], 'samo sprave izabranog dela');
     assert.deepEqual(p.kategorije.map((k) => k.id), [s.kat]);
     assert.deepEqual(p.programi.map((k) => k.id), [s.prog]);
     assert.equal(p.prijave.length, 1);
@@ -364,8 +363,7 @@ test('prijave.podaci: samo takmicari, sprave, kategorije i programi izabranog po
   moduli.prijave.dodaj([s.muski]);
   const m = moduli.prijave.podaci('Z');
   assert.deepEqual(m.takmicari.map((r) => Number(r.id)), [s.muski]);
-  assert.deepEqual(m.sprave.Z, []);
-  assert.deepEqual(m.sprave.M.map((x) => x.skracenica), ['PA']);
+  assert.deepEqual(m.sprave.map((x) => [x.pol, x.skracenica]), [['M', 'PA']]);
   assert.deepEqual(m.kategorije.map((k) => k.id), [s.katM]);
   assert.deepEqual(m.programi.map((k) => k.id), [s.progM]);
   structuredClone(m);

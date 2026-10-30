@@ -34,11 +34,10 @@ export function sirinaSprava(n) {
   return b * 30 + (b - 1) * 3 + 16;
 }
 
-// Legenda sprava ("PA parter"): bez filtera Z pa M; ista skracenica se spaja, poslednja pobedjuje.
-export function legenda(sprave, pol) {
-  const lista = pol === '' ? [...sprave.Z, ...sprave.M] : sprave[pol];
+// Legenda sprava ("PA parter") izabranog dela; ista skracenica se spaja, poslednja pobedjuje.
+export function legenda(sprave) {
   const m = new Map();
-  for (const s of lista) m.set(s.skracenica, String(s.naziv).toLowerCase());
+  for (const s of sprave) m.set(s.skracenica, String(s.naziv).toLowerCase());
   return [...m].map(([skr, naziv]) => `${skr} ${naziv}`);
 }
 
@@ -51,7 +50,7 @@ export function porukaDalje(stanje) {
   return fali.length ? `U prijavama još nije dovršeno: ${fali.join('; ')}.` : null;
 }
 
-// Cip sa brojem prijava u prikazu; uz filter (pol ili klub) i ukupan broj.
+// Cip sa brojem prijava u prikazu; uz filter kluba i ukupan broj.
 export function cipPrijava(n, ukupno, filtrirano) {
   return `${n} ${n === 1 ? 'prijava' : 'prijave'}${filtrirano ? ` · ukupno ${ukupno}` : ''}`;
 }

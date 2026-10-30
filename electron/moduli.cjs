@@ -36,13 +36,8 @@ const GRB_DIJALOG = {
   properties: ['openFile'],
   filters: [{ name: 'Slike', extensions: ['png', 'jpg', 'jpeg', 'svg', 'gif'] }],
 };
-// Privremeno (do zadatka 7): renderer jos zna stara imena lista sprava; lista sprava je po polu, ostale po izabranom delu.
-const STARE_VRSTE = {
-  kategorije: { tabela: 'kategorije', naziv: 'Kategorije', pol: null },
-  programi: { tabela: 'programi', naziv: 'Programi', pol: null },
-  sprave_m: { tabela: 'sprave', naziv: 'Sprave · muške', pol: 'M' },
-  sprave_z: { tabela: 'sprave', naziv: 'Sprave · ženske', pol: 'Z' },
-};
+// Sirovi kljucevi drugog dela (<kljuc>_M, <kljuc>_Z) ne idu u renderer: ekran vidi samo vrednosti izabranog dela.
+const sirovPolni = (kljucevi) => new RegExp(`^(?:${[...kljucevi, 'aktivno_takmicenje'].join('|')})_[MZ]$`);
 const NEMA_AKTIVNOG = 'Nema aktivnog takmičenja. Izaberite ga na ekranu Takmičenja.';
 
 // Model rezervne kopije nad bazom (main ga pravi i pre migracija, za kopiju pre_migracije).
@@ -86,13 +81,6 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     return r;
   }
   const aktivnoId = () => Number(aktivnoRed().id);
-
-  // [vrsta, pol] modela sifarnika za ime vrste iz renderera.
-  function vrstaIPol(vrsta) {
-    if (vrsta === 'sprave_m') return ['sprave', 'M'];
-    if (vrsta === 'sprave_z') return ['sprave', 'Z'];
-    return [vrsta, p.aktivniPol()];
-  }
 
   // Dijalog za izbor fajlova; sa roditeljem kao u fazi 2.
   async function izaberi(opcije) {
@@ -194,29 +182,24 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       sledeciIdBroj: () => t.sledeciIdBroj(),
     },
     sifarnici: {
-      vrste: () => ({ vrste: STARE_VRSTE, ikone: sifarnici.IKONE }),
-      lista: (vrsta) => s.lista(...vrstaIPol(vrsta)),
+      // Tri liste (kategorije, programi, sprave); sve rade za izabrani deo, pa opis liste nema pol.
+      vrste: () => ({
+        vrste: Object.fromEntries(Object.entries(sifarnici.VRSTE).map(([ime, m]) => [ime, { naziv: m.naziv }])),
+        ikone: sifarnici.IKONE,
+      }),
+      lista: (vrsta) => s.lista(vrsta, p.aktivniPol()),
       dodaj: (vrsta, u) => {
-        const [v, pol] = vrstaIPol(vrsta);
-        const id = s.dodaj(v, u, pol);
-        return { id, stavka: s.nadji(v, id) };
+        const id = s.dodaj(vrsta, u, p.aktivniPol());
+        return { id, stavka: s.nadji(vrsta, id) };
       },
-      izmeni: (vrsta, id, u) => {
-        const [v, pol] = vrstaIPol(vrsta);
-        return s.izmeni(v, broj(id), u, pol);
-      },
-      obrisi: (vrsta, id) => {
-        const [v, pol] = vrstaIPol(vrsta);
-        return s.obrisi(v, broj(id), pol);
-      },
-      redosled: (vrsta, ids) => {
-        const [v, pol] = vrstaIPol(vrsta);
-        return s.redosled(v, (ids || []).map(Number), pol);
-      },
+      izmeni: (vrsta, id, u) => s.izmeni(vrsta, broj(id), u, p.aktivniPol()),
+      obrisi: (vrsta, id) => s.obrisi(vrsta, broj(id), p.aktivniPol()),
+      redosled: (vrsta, ids) => s.redosled(vrsta, (ids || []).map(Number), p.aktivniPol()),
     },
     podesavanja: {
       sva: () => {
-        const sva = p.sva();
+        const sirovo = sirovPolni(p.POLNI_KLJUCEVI);
+        const sva = Object.fromEntries(Object.entries(p.sva()).filter(([k]) => !sirovo.test(k)));
         return { ...sva, grb_levo_url: grbUrl(sva.grb_levo), grb_desno_url: grbUrl(sva.grb_desno) };
       },
       sacuvajOpsta: (u) => {
@@ -284,7 +267,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
       stanje: (id) => pr.stanjePripreme(takmicenjeDela(broj(id)).id),
     },
     prijave: {
-      // Argument pol iz renderera se zanemaruje (uklanja se u zadatku 6).
+      // Renderer ne salje pol: lista je uvek aktivnog takmicenja izabranog dela.
       lista: () => prijaveSaLekarskim(aktivnoRed()).prijave,
       // Jedan poziv za ceo ekran Prijave (POPIS 6.3).
       podaci: () => {
@@ -300,8 +283,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
           klubovi: k.svi(),
           kategorije: s.lista('kategorije', takm.pol),
           programi: s.lista('programi', takm.pol),
-          // Oblik ostaje { M, Z } dok ekran ne predje na jedan pol (zadatak 6); drugi pol je prazan.
-          sprave: { M: [], Z: [], [takm.pol]: s.sprave(takm.pol) },
+          sprave: s.sprave(takm.pol),
           stanje,
           ukupno: stanje.prijava,
           sledeciIdBroj: t.sledeciIdBroj(),

@@ -7,7 +7,7 @@ import DatumPolje from '../komponente/DatumPolje.jsx';
 import IzborPola from '../komponente/IzborPola.jsx';
 import Tabela from '../komponente/Tabela.jsx';
 import { Greske, obavesti } from '../okvir/Poruke.jsx';
-import { vidljiv, lekarskiPoruka } from './takmicariFilter.js';
+import { vidljiv, lekarskiPoruka, napomenaPola, porukaPrebacen } from './takmicariFilter.js';
 import { datumPrikaz, danas } from '../../electron/racun/datum.mjs';
 import { lekarski, lekarskiOznaka } from '../../electron/racun/lekarski.mjs';
 
@@ -15,7 +15,7 @@ const PRAZNA = {
   id_broj: '', ime: '', prezime: '', godina_rodjenja: '', pol: '', klub_id: '', drzavljanstvo: 'Srbija',
   lekarski_do: '', broj_licence: '', trener: '', kontakt_roditelja: '',
 };
-const POLOVI_FILTER = [{ vrednost: '', tekst: 'Svi' }, { vrednost: 'M', tekst: 'M' }, { vrednost: 'Z', tekst: 'Ž' }];
+// Izbor pola postoji samo u kartonu postojeceg takmicara (ispravka pogresno unetog pola); novi dobija pol dela.
 const POLOVI_FORMA = [{ vrednost: 'M', tekst: 'Muški' }, { vrednost: 'Z', tekst: 'Ženski' }];
 
 // Red iz baze u vrednosti forme (sve tekst; lekarski kao dd.mm.gggg.).
@@ -36,7 +36,7 @@ export default function Takmicari() {
   const [izabranId, postaviIzabran] = useState(null);
   const [forma, postaviFormu] = useState(PRAZNA);
   const [greske, postaviGreske] = useState([]);
-  const [filter, postaviFilter] = useState({ upit: '', klub: '', pol: '', god: '' });
+  const [filter, postaviFilter] = useState({ upit: '', klub: '', god: '' });
   const formaRef = useRef(null);
   const idRef = useRef(null);
 
@@ -118,26 +118,32 @@ export default function Takmicari() {
 
   const promeni = (polje) => (ev) => postaviFormu((f) => ({ ...f, [polje]: ev.target.value }));
   const postaviPol = (pol) => postaviFormu((f) => ({ ...f, pol }));
+  const napomena = izabranId ? napomenaPola(takmicari.find((x) => x.id === izabranId)?.pol, forma.pol) : '';
   const filtriraj = (polje) => (ev) => postaviFilter((f) => ({ ...f, [polje]: ev.target.value }));
 
   async function sacuvaj(ev) {
     ev.preventDefault();
-    if (forma.pol !== 'M' && forma.pol !== 'Z') {
-      obavesti('Izaberite pol.', 'greska');
-      const prvo = document.querySelector('#izbor-pol button');
-      if (prvo) prvo.focus();
-      return;
-    }
+    const staro = izabranId ? takmicari.find((x) => x.id === izabranId) : null;
     try {
       const { id } = await gim.takmicari.sacuvaj({ ...forma }, izabranId);
       const lista = await ucitaj();
       const r = lista.find((x) => x.id === id);
+      if (!r) {
+        // Promenjen pol: takmicar je presao u drugi deo i vise nije na ovoj listi (inace lista nije ucitana, greska je vec prikazana).
+        if (staro && staro.pol !== forma.pol) {
+          obavesti(porukaPrebacen(`${forma.prezime.trim()} ${forma.ime.trim()}`, forma.pol));
+          novi();
+        }
+        return;
+      }
       postaviIzabran(id);
       postaviGreske([]);
-      if (r) postaviFormu(uFormu(r));
-      obavesti(`Takmičar ${r ? r.prezime : forma.prezime.trim()} ${r ? r.ime : forma.ime.trim()} je sačuvan.`);
+      postaviFormu(uFormu(r));
+      obavesti(`Takmičar ${r.prezime} ${r.ime} je sačuvan.`);
     } catch (e) {
       postaviGreske([e.message]); // vrednosti ostaju, lekarski kako je kucano
+      // Pol se ne menja (npr. takmicar ima prijave): izbor se vraca na sacuvani pol.
+      if (staro) postaviFormu((f) => ({ ...f, pol: staro.pol }));
     }
   }
 
@@ -169,7 +175,6 @@ export default function Takmicari() {
     { naslov: 'ID', sirina: 70, celija: (r) => <span className="sifra">{r.id_broj}</span> },
     { naslov: 'Prezime i ime', celija: (r) => `${r.prezime} ${r.ime}` },
     { naslov: 'God.', sirina: 66, celija: (r) => <span className="broj">{r.godina_rodjenja}</span> },
-    { naslov: 'Pol', sirina: 48, celija: (r) => (r.pol === 'Z' ? 'Ž' : r.pol) },
     { naslov: 'Klub', sirina: 62, celija: (r) => <span className="skr">{r.klub_skr ?? ''}</span> },
     {
       naslov: 'Lekarski važi do', sirina: 292,
@@ -211,8 +216,6 @@ export default function Takmicari() {
             <option value="">Svi klubovi</option>
             {klubovi.map((k) => <option key={k.id} value={String(k.id)}>{k.skracenica}</option>)}
           </select>
-          <IzborPola id="f-pol" oznaka="Pol" opcije={POLOVI_FILTER} vrednost={filter.pol}
-            naPromenu={(pol) => postaviFilter((f) => ({ ...f, pol }))} />
           <select className="unos" id="f-god" aria-label="Godište" style={{ width: 128 }}
             value={filter.god} onChange={filtriraj('god')}>
             <option value="">Sva godišta</option>
@@ -244,10 +247,13 @@ export default function Takmicari() {
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
             <Polje oznaka="ID broj" id="f-id_broj" klasa="broj" stil={{ width: 110, flex: 'none' }} unosRef={idRef}
               value={forma.id_broj} onChange={promeni('id_broj')} required />
-            <div className="polje"><span className="oznaka">Pol</span>
-              <IzborPola id="izbor-pol" oznaka="Pol" opcije={POLOVI_FORMA} vrednost={forma.pol} naPromenu={postaviPol} />
-            </div>
+            {izabranId && (
+              <div className="polje"><span className="oznaka">Pol</span>
+                <IzborPola id="izbor-pol" oznaka="Pol" opcije={POLOVI_FORMA} vrednost={forma.pol} naPromenu={postaviPol} />
+              </div>
+            )}
           </div>
+          {napomena && <p className="mali sivo" id="napomena-pola" style={{ margin: 0 }}>{napomena}</p>}
           <div style={{ display: 'flex', gap: 12 }}>
             <Polje oznaka="Ime" id="f-ime" poljeKlasa="raste" value={forma.ime} onChange={promeni('ime')} required />
             <Polje oznaka="Prezime" id="f-prezime" poljeKlasa="raste" value={forma.prezime} onChange={promeni('prezime')} required />

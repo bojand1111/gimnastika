@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ikona from '../../komponente/Ikona.jsx';
 import { vidljivTakmicar, jediniSlobodan } from '../prijaveFilter.js';
-import { url } from '../../ruter.js';
 
-const POLOVI = [['', 'Svi'], ['M', 'M'], ['Z', 'Ž']];
-
-// Leva kartica: baza takmicara sa pretragom, klubom i polom; Enter ili "Prijavi" prijavljuje oznacene.
-export default function BazaTakmicara({ d, pol, naDodaj, naNovi, reset }) {
+// Leva kartica: baza takmicara izabranog dela sa pretragom i klubom; Enter ili "Prijavi" prijavljuje oznacene.
+export default function BazaTakmicara({ d, naDodaj, naNovi, reset }) {
   const [upit, postaviUpit] = useState('');
   const [klub, postaviKlub] = useState('');
   const [oznaceni, postaviOznaceni] = useState(() => new Set());
@@ -14,19 +11,16 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi, reset }) {
   const pretraga = useRef(null);
 
   const prijavljeni = useMemo(() => new Set(d.prijavljeni.map(Number)), [d.prijavljeni]);
-  const redovi = useMemo(
-    () => d.takmicari.filter((t) => pol === '' || t.pol === pol),
-    [d.takmicari, pol]);
   const vidljivi = useMemo(
-    () => redovi.filter((t) => vidljivTakmicar(t, { upit, klub })), [redovi, upit, klub]);
+    () => d.takmicari.filter((t) => vidljivTakmicar(t, { upit, klub })), [d.takmicari, upit, klub]);
 
   useEffect(() => { if (pretraga.current) pretraga.current.focus(); }, []);
 
-  // Oznake iz drugog pola se odbacuju kad se promeni prikaz (ne smeju da se prijave).
+  // Oznake takmicara kojih vise nema na listi se odbacuju.
   useEffect(() => {
-    const ids = new Set(redovi.map((t) => t.id));
+    const ids = new Set(d.takmicari.map((t) => t.id));
     postaviOznaceni((s) => ([...s].every((id) => ids.has(id)) ? s : new Set([...s].filter((id) => ids.has(id)))));
-  }, [redovi]);
+  }, [d.takmicari]);
 
   // Spoljni reset (novi takmicar): prazna pretraga, svi klubovi, bez oznaka.
   useEffect(() => {
@@ -96,12 +90,6 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi, reset }) {
             <option value="">Svi klubovi</option>
             {d.klubovi.map((k) => <option key={k.id} value={String(k.id)}>{k.skracenica}</option>)}
           </select>
-          <div className="izbor" role="group" aria-label="Pol" id="f-pol">
-            {POLOVI.map(([v, tekst]) => (
-              <a key={v} href={url('prijave', v ? { pol: v } : {})} className={pol === v ? 'izabrano' : ''}
-                style={{ padding: '0 9px' }}>{tekst}</a>
-            ))}
-          </div>
         </div>
       </div>
       <div className="kartica-skrol" id="baza-lista" ref={lista} onKeyDown={izListe}>
@@ -113,7 +101,7 @@ export default function BazaTakmicara({ d, pol, naDodaj, naNovi, reset }) {
                 aria-label={`${t.prezime} ${t.ime}`} onChange={(ev) => promeniOznaku(t.id, ev.target.checked)} />
               <span style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', lineHeight: '17px' }}>
                 <span className="odseci">{t.prezime} {t.ime}</span>
-                <span className="mali sivo">{t.godina_rodjenja} · {t.pol === 'Z' ? 'Ž' : 'M'} · {t.klub_skr ?? ''}</span>
+                <span className="mali sivo">{t.godina_rodjenja} · {t.klub_skr ?? ''}</span>
               </span>
               {vec && <span className="sivo" title="Već prijavljen"><Ikona ime="kvacica" velicina={14} /></span>}
             </label>

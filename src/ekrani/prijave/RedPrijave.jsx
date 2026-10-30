@@ -44,7 +44,7 @@ function StartniBroj({ red, naSnimi }) {
 }
 
 // Jedan red prijave (POPIS 6.4); sve izmene idu preko akcija iz vlasnika ekrana.
-export default function RedPrijave({ p, izabran, kategorije, programi, sprave, pol, akcije }) {
+export default function RedPrijave({ p, izabran, kategorije, programi, sprave, akcije }) {
   const ime = `${p.prezime} ${p.ime}`;
   const uc = ucesceRed(p.clan_ekipe, p.van_konkurencije);
   const klase = [p.lek_ne_vazi && 'upozorenje-red', izabran && 'izabran'].filter(Boolean).join(' ');
@@ -67,14 +67,14 @@ export default function RedPrijave({ p, izabran, kategorije, programi, sprave, p
             ? <span className="odseci" style={{ fontSize: 12, fontWeight: 600, color: 'var(--bad)' }}>
               {p.lekarski_do ? `Lek. do ${datumPrikaz(p.lekarski_do)}` : 'Nema lekarskog'}</span>
             : <span className="mali sivo odseci">
-              {p.klub_skr || 'bez kluba'} · {p.godina_rodjenja}{pol === '' ? ` · ${p.pol === 'Z' ? 'Ž' : 'M'}` : ''}</span>}
+              {p.klub_skr || 'bez kluba'} · {p.godina_rodjenja}</span>}
         </span>
       </td>
       <td style={poStilu}>{polje('kategorija_id', 92, kategorije, p.kategorija_id)}</td>
       <td style={poStilu}>{polje('program_id', 96, programi, p.program_id)}</td>
       <td style={poStilu}>
         <div className="sprave-red">
-          {sprave[p.pol].map((s) => {
+          {sprave.map((s) => {
             const radi = p.sprave.includes(Number(s.id));
             return (
               <button key={s.id} type="button" className="sprava-dugme" aria-pressed={radi ? 'true' : 'false'}

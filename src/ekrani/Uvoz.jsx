@@ -5,7 +5,7 @@ import Koraci from '../komponente/Koraci.jsx';
 import FajlKartica from './uvoz/FajlKartica.jsx';
 import { najavi, obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
-import { nedostajePol, pocetniIzbor, prebroj, zaUpis, zbir } from './uvozBrojac.js';
+import { pocetniIzbor, prebroj, zaUpis, zbir } from './uvozBrojac.js';
 import * as uvozStanje from '../uvozStanje.js';
 
 const PRAZAN = 'Na ekranu Prijave kliknite „Uvezi iz fajla“ i izaberite prijavu kluba (Word, Excel, OpenDocument ili PDF).';
@@ -105,13 +105,6 @@ export default function Uvoz() {
 
   async function uvezi() {
     if (radiRef.current || brojevi.ukupno === 0) return;
-    const bezPola = nedostajePol(fajlovi, poIndeksu);
-    if (bezPola !== null) {
-      obavesti('Izaberite pol takmičara u fajlu: potreban je za nove takmičare.', 'greska');
-      const sel = document.querySelector(`[data-pol-fajla="${bezPola}"]`);
-      if (sel) sel.focus();
-      return;
-    }
     radiRef.current = true;
     postaviRadi(true);
     try {

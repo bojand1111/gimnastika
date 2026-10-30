@@ -3,20 +3,19 @@ import RedPrijave from './RedPrijave.jsx';
 import { grupisiPoKlubu, sirinaSprava, legenda, cipPrijava } from '../prijaveFilter.js';
 
 // Desna kartica: zaglavlje sa filterom kluba i akcijama, upozorenja, tabela po klubovima, podnozje.
-export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije }) {
+export default function TabelaPrijava({ d, klub, naKlub, izabranId, akcije }) {
   const { prijave, stanje, upozorenja, sprave } = d;
   const grupe = grupisiPoKlubu(prijave, stanje);
   const vidljive = klub === '' ? grupe : grupe.filter((g) => String(g.klubId) === klub);
   const broj = vidljive.reduce((n, g) => n + g.prijave.length, 0);
-  const najvise = Math.max(1, pol === '' ? Math.max(sprave.M.length, sprave.Z.length) : sprave[pol].length);
-  const spraveLegende = legenda(sprave, pol).join(' · ');
+  const najvise = Math.max(1, sprave.length);
+  const spraveLegende = legenda(sprave).join(' · ');
   const tekstLegende = ['Poj. = pojedinac', 'VK = van konkurencije', spraveLegende].join(' · ');
-  const naslov = `Prijavljeni${pol !== '' ? ` · ${pol === 'M' ? 'MSG' : 'ŽSG'}` : ''}`;
 
   return (
     <section className="kartica raste kartica-skriveno">
       <div className="kartica-zaglavlje">
-        <h2 className="kartica-naslov">{naslov}</h2>
+        <h2 className="kartica-naslov">Prijavljeni</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {stanje.redosled_klubova.length > 0 && (
             <select className="unos" id="p-klub" aria-label="Klub prijavljenih" title="Prikaži prijave jednog kluba"
@@ -27,7 +26,7 @@ export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije 
               ))}
             </select>
           )}
-          <span className="status" id="broj-prijava">{cipPrijava(broj, d.ukupno, pol !== '' || klub !== '')}</span>
+          <span className="status" id="broj-prijava">{cipPrijava(broj, d.ukupno, klub !== '')}</span>
           {upozorenja.length > 0 && (
             <span className="status status-bad"><Ikona ime="upozorenje" velicina={13} />
               {upozorenja.length} {upozorenja.length === 1 ? 'upozorenje' : 'upozorenja'}</span>
@@ -57,7 +56,7 @@ export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije 
             {prijave.length === 0 && (
               <tr><td colSpan={7} className="prazno">Još nema prijava. Označite takmičare levo i kliknite „Prijavi“.</td></tr>
             )}
-            {vidljive.map((g) => <GrupaKluba key={g.klubId} g={g} d={d} pol={pol} izabranId={izabranId} akcije={akcije} />)}
+            {vidljive.map((g) => <GrupaKluba key={g.klubId} g={g} d={d} izabranId={izabranId} akcije={akcije} />)}
           </tbody>
         </table>
       </div>
@@ -70,7 +69,7 @@ export default function TabelaPrijava({ d, pol, klub, naKlub, izabranId, akcije 
   );
 }
 
-function GrupaKluba({ g, d, pol, izabranId, akcije }) {
+function GrupaKluba({ g, d, izabranId, akcije }) {
   const k = d.stanje.klubovi[g.klubId];
   return (
     <>
@@ -92,7 +91,7 @@ function GrupaKluba({ g, d, pol, izabranId, akcije }) {
       </tr>
       {g.prijave.map((p) => (
         <RedPrijave key={p.id} p={p} izabran={p.id === izabranId} kategorije={d.kategorije} programi={d.programi}
-          sprave={d.sprave} pol={pol} akcije={akcije} />
+          sprave={d.sprave} akcije={akcije} />
       ))}
     </>
   );
