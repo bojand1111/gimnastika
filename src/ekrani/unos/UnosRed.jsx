@@ -4,7 +4,8 @@ import { odustaoRec, otvoren, polja } from '../unosStanje.js';
 
 const naziv = (ime) => (ime === 'd' ? 'D ocena' : ime === 'odbitak' ? 'Odbitak' : `${ime.toUpperCase()} ocena`);
 
-// Ćelija statusa (POPIS 5.3 i 6): čip, a za trenutni red u unosu dugme "Odustala|Odustao F8".
+// Ćelija statusa (POPIS 5.3 i 6): čip, a za trenutni red u unosu dugmad "Potvrdi" (isto kao Enter na odbitku)
+// i "Odustala|Odustao" (F8). Prečice su u opisu dugmeta, da kolona ostane uska.
 function Status({ red, trenutni, h }) {
   const id = red.prijava_id;
   if (red.status === 'ne_radi') return <span className="unos-status"><span className="status">–</span></span>;
@@ -26,8 +27,13 @@ function Status({ red, trenutni, h }) {
   if (trenutni && otvoren(red)) {
     return (
       <span className="unos-status">
-        <button type="button" className="dugme dugme-malo dugme-opasno odustao-dugme" tabIndex={-1} onClick={() => h.odustao(id)}>
-          {odustaoRec(red.pol)} <kbd>F8</kbd>
+        <button type="button" className="dugme dugme-malo dugme-glavno potvrdi-dugme" tabIndex={-1} title="Potvrdi (Enter na odbitku)"
+          onClick={() => h.potvrdi(id)}>
+          Potvrdi
+        </button>
+        <button type="button" className="dugme dugme-malo dugme-opasno odustao-dugme" tabIndex={-1} title={`${odustaoRec(red.pol)} (F8)`}
+          onClick={() => h.odustao(id)}>
+          {odustaoRec(red.pol)}
         </button>
       </span>
     );

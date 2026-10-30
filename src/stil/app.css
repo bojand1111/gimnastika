@@ -447,7 +447,7 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .unos-e { font-size: 16px; color: var(--ink-2); }
 .unos-red .vrati { padding: 0 6px; height: 28px; }
 .unos-red .ispravi { width: 28px; height: 28px; color: var(--link); }
-.unos-red .odustao-dugme kbd { margin-left: 2px; }
+.unos-red .potvrdi-dugme, .unos-red .odustao-dugme { padding: 0 8px; }
 .unos-dole { display: flex; gap: var(--gap); align-items: stretch; flex-shrink: 0; }
 .unos-precice { padding: 10px 14px; gap: 8px; }
 .unos-izmene { width: 470px; flex-shrink: 0; padding: 10px 14px; gap: 6px; }

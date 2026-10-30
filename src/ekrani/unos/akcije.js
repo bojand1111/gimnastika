@@ -169,6 +169,7 @@ export function napraviAkcije(ctx) {
       taster: (ev, id, ime) => obradiTaster(ev, id, ime, tasterCtx),
       fokus: (id) => { if (ctx.trenutni() !== id) ctx.postaviTrenutni(id); },
       ispravi,
+      potvrdi,
       odustao,
       vrati,
       ponovo: (id) => {
