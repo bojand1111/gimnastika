@@ -73,9 +73,10 @@ function UnosRed({ red, brojSudija, trenutni, kolone, h }) {
       <span className="unos-rb broj centar">{red.rb}</span>
       <span className="broj unos-startni">{red.startni_broj ?? ''}</span>
       <span className="unos-ime-kolona">
-        <span className="unos-ime-red"><span className="unos-ime">{red.ime}</span>{red.vk && <span className="status status-vk">VK</span>}</span>
-        <span className="mali sivo">{red.opis}</span>
+        <span className="unos-ime-red"><span className="unos-ime" title={red.ime}>{red.ime}</span>{red.vk && <span className="status status-vk">VK</span>}</span>
       </span>
+      <span className="unos-klub" title={red.klub}>{red.klub}</span>
+      <span className="unos-kat" title={red.kategorija}>{red.kategorija}</span>
       {red.status === 'ne_radi' && <span className="unos-pruga" style={{ gridColumn: `span ${brojSudija + 4}` }}><span>Ne radi ovu spravu</span></span>}
       {red.status === 'odustao' && (
         <span className="unos-pruga" style={{ gridColumn: `span ${brojSudija + 4}` }}>

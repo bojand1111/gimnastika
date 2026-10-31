@@ -93,6 +93,16 @@ test('podaci() bez parametara: pol Z, rotacija 1, prva sprava sa grupom i redovi
   assert.doesNotThrow(() => structuredClone(d));
 });
 
+test('podaci(): svaki red ima klub i kategoriju sa programom za kolone tabele', () => {
+  const { moduli, baza, pid, s } = sa4();
+  baza.izvrsi('UPDATE prijave SET kategorija_id = ?, program_id = ? WHERE id = ?', [s.kat, s.prog, pid.Ana]);
+  baza.izvrsi('UPDATE prijave SET kategorija_id = ?, program_id = NULL WHERE id = ?', [s.kat, pid.Bea]);
+  baza.izvrsi('UPDATE prijave SET kategorija_id = NULL, program_id = NULL WHERE id = ?', [pid.Ceca]);
+  const r = moduli.unos.podaci().redovi;
+  assert.deepEqual(r.map((x) => [x.ime, x.klub, x.kategorija]), [
+    ['Test Ana', 'JED', 'Kadet · C'], ['Test Bea', 'JED', 'Kadet'], ['Test Ceca', 'DVA', '']]);
+});
+
 test('zapisnici: list po spravi i rotaciji, isti redosled kao unos, bez ocena', () => {
   const { moduli, pid, s } = sa4();
   moduli.unos.potvrdi(pid.Ana, s.pr, ULAZ, '');

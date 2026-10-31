@@ -492,6 +492,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
             for (let j = 1; j <= brojSudija; j++) eSudije.push(o && o.e_sudije[j] !== undefined ? prikazBroja(o.e_sudije[j]) : '');
             redovi.push({
               ...osnovaReda(c, i),
+              klub: c.klub_skr ?? '',
+              kategorija: [c.kategorija, c.program].filter((x) => x).join(' · '),
               pol: c.pol,
               radi,
               status,

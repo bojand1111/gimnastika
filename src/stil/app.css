@@ -464,6 +464,10 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .unos-izmena-ime { font-weight: 600; }
 .unos-pruga-rec { font-weight: 600; }
 .unos-ime, .unos-ime-kolona .mali { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.unos-klub, .unos-kat { font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.unos-red.ceka .unos-klub, .unos-red.ceka .unos-kat { color: var(--ink-2); font-weight: 500; }
+/* Dugo ime prelazi u drugi red umesto da se sece */
+#unos .unos-ime { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .unos-ime-red { min-width: 0; }
 .unos-red .ocena.greska { border: 2px solid var(--bad); }
 .unos-red .ocena:focus { border: 2px solid var(--ink); }

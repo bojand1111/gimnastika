@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { kolone, izPodataka, vremeIzmene } from '../src/ekrani/unos/redovi.js';
 
 test('kolone: formula za 4 i 6 sudija', () => {
-  assert.equal(kolone(4), '36px 44px minmax(0,1fr) 64px 60px 60px 60px 60px 66px 60px 104px 146px');
-  assert.equal(kolone(6).split(' ').length, 4 + 6 + 4);
+  assert.equal(kolone(4), '36px 44px minmax(0,1fr) 52px minmax(0,0.6fr) 64px 60px 60px 60px 60px 66px 60px 88px 146px');
+  assert.equal(kolone(6).split(' ').length, 6 + 6 + 4);
 });
 
 test('izPodataka: redovi, ne_radi i racun nacrta', () => {

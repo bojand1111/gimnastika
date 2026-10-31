@@ -19,6 +19,8 @@ export function izPodataka(d) {
       ime: r.ime,
       pol: r.pol,
       opis: r.opis,
+      klub: r.klub ?? '',
+      kategorija: r.kategorija ?? '',
       vk: r.vk,
       radi: r.radi,
     };
@@ -27,8 +29,8 @@ export function izPodataka(d) {
   });
 }
 
-// Kolone mreze (POPIS 5): #, St. br., Takmicar, D, E1..EN, E, Odb., Konacna, Status.
-export const kolone = (brojSudija) => `36px 44px minmax(0,1fr) 64px ${'60px '.repeat(brojSudija)}66px 60px 104px 146px`;
+// Kolone mreze (POPIS 5): #, St. br., Takmicar, Klub, Kategorija, D, E1..EN, E, Odb., Konacna, Status.
+export const kolone = (brojSudija) => `36px 44px minmax(0,1fr) 52px minmax(0,0.6fr) 64px ${'60px '.repeat(brojSudija)}66px 60px 88px 146px`;
 
 // "vreme" u bazi je UTC (YYYY-MM-DD HH:MM:SS); prikaz je HH:mm lokalnog vremena racunara.
 export function vremeIzmene(vreme) {

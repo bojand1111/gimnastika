@@ -162,7 +162,7 @@ export default function Unos() {
           </div>
           <div className="kartica-skrol" role="table" aria-label="Unos ocena">
             <div className="unos-zaglavlje" role="row" style={{ gridTemplateColumns: mreza }}>
-              <span className="centar">#</span><span>St. br.</span><span>Takmičar</span><span className="centar">D</span>
+              <span className="centar">#</span><span>St. br.</span><span>Takmičar</span><span>Klub</span><span>Kategorija</span><span className="centar">D</span>
               {polja(brojSudija).slice(1, -1).map((p) => <span className="centar" key={p}>{p.toUpperCase()}</span>)}
               <span className="centar">E</span><span className="centar">Odb.</span><span className="desno">Konačna</span><span className="desno">Status</span>
             </div>
