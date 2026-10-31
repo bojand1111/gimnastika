@@ -34,7 +34,7 @@ function sPrimerom(opcije) {
 
 test('guard: rang i stampa imaju handler za svaku radnju', () => {
   const { moduli } = pravi();
-  assert.deepEqual(MODULI.rang, ['podaci', 'rezultati', 'stampa', 'bilten']);
+  assert.deepEqual(MODULI.rang, ['podaci', 'rezultati', 'stampa', 'bilten', 'bilteni']);
   assert.deepEqual(MODULI.stampa, ['stampaj', 'pdf']);
   const ipc = { kanali: {}, handle(k, fn) { this.kanali[k] = fn; } };
   registruj(ipc, moduli, dn, Object.fromEntries(Object.keys(moduli).map((k) => [k, MODULI[k]])));
@@ -116,6 +116,29 @@ test('bilten(): polozeno po polu, disciplina, prva strana pocinje ekipom', () =>
   assert.equal(m.strane[0][0].tip, 'ekipa');
   assert.equal(z.grbLevo, '');
   structuredClone(m);
+});
+
+test('bilteni(): ceo bilten, sekcija po kategoriji i programu redom', () => {
+  const { moduli, baza, idZ } = sPrimerom();
+  const jedan = moduli.rang.bilteni();
+  const b = moduli.rang.bilten('', '');
+  assert.equal(jedan.polozeno, false);
+  assert.equal(jedan.takm.naziv, b.takm.naziv);
+  assert.equal(jedan.sekcije.length, 1);
+  assert.equal(jedan.sekcije[0].disciplina, b.disciplina);
+  assert.deepEqual(jedan.sekcije[0].strane, b.strane);
+  // Druga kategorija ZSG (posle Kadet po redosledu) sa jednom prijavom.
+  const kat = baza.ubaci('kategorije', { naziv: 'Junior', redosled: 99, pol: 'Z', kreirano: '2026-10-31 10:00:00', izmenjeno: '2026-10-31 10:00:00' });
+  const pid = Number(baza.vrednost('SELECT id FROM prijave WHERE takmicenje_id = ? ORDER BY id LIMIT 1', [idZ]));
+  baza.izvrsi('UPDATE prijave SET kategorija_id = ? WHERE id = ?', [kat, pid]);
+  const dva = moduli.rang.bilteni();
+  assert.deepEqual(dva.sekcije.map((x) => x.disciplina), [
+    'Ženska sportska gimnastika · Kadet · C program', 'Ženska sportska gimnastika · Junior · C program']);
+  const brojPrijava = Number(baza.vrednost('SELECT COUNT(*) FROM prijave WHERE takmicenje_id = ?', [idZ]));
+  assert.equal(dva.sekcije.reduce((n, x) => n + x.rez.viseboj.length, 0), brojPrijava);
+  assert.doesNotThrow(() => structuredClone(dva));
+  baza.izvrsi('DELETE FROM prijave');
+  assert.throws(() => moduli.rang.bilteni(), (e) => e instanceof GreskaKorisnika && e.message === 'Nema prijava za bilten.');
 });
 
 // Stub prozor sa webContents.

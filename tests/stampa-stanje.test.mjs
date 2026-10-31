@@ -41,6 +41,8 @@ test('imePdf: bilten, rang lista, pol, bez nedozvoljenih znakova', () => {
   assert.equal(imePdf('bilten', 'A/B: "C"? <D>*|E\\F', 'Z'), 'Bilten-AB C DEF-ŽSG.pdf');
   assert.equal(imePdf('Ekipno', '  Kup   2026 ', 'Z'), 'Rang-lista-Kup 2026-Ekipno-ŽSG.pdf');
   assert.equal(imePdf('bilten', '', 'Z'), 'Bilten-ŽSG.pdf');
+  assert.equal(imePdf('ceo-bilten', 'Jesenji kup 2026', 'M'), 'Ceo-bilten-Jesenji kup 2026-MSG.pdf');
+  assert.equal(imePdf('zapisnici', 'Kup', 'Z'), 'Zapisnici-Kup-ŽSG.pdf');
 });
 
 const takm = { pravilo_e: 'odbaci_krajnje', ekipno_broji: 3 };

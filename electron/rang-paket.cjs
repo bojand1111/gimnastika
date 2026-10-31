@@ -32,6 +32,22 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
     return { takm, izbor, rez };
   }
 
+  // Bilten jedne kategorije i programa (koristi ga i ceo bilten).
+  function bilten(kat, prog) {
+    const { takm, izbor, rez } = grupa(kat, prog, 'Nema prijava za bilten.');
+    const polozeno = rez.sprave.length > 4;
+    const organizator = takm.organizator ? takm.organizator : p.dajPol('organizator', takm.pol, '');
+    const strane = straneBilten(stavkeBiltena(rez), {
+      polozeno, organizator, zaglavlje: takm.zaglavlje_biltena ?? '', domacin: takm.domacin ?? '',
+    });
+    const disciplina = `${izbor.pol === 'M' ? 'Muška' : 'Ženska'} sportska gimnastika · ${izbor.kat_naziv} · ${izbor.prog_naziv}`;
+    return {
+      takm: takmStampa(takm), izbor, rez, polozeno, strane, disciplina, organizator,
+      grbLevo: grbUrl(takm.grb_levo ? takm.grb_levo : p.dajPol('grb_levo', takm.pol, '')),
+      grbDesno: grbUrl(takm.grb_desno ? takm.grb_desno : p.dajPol('grb_desno', takm.pol, '')),
+    };
+  }
+
   return {
     // Pol je uvek pol aktivnog takmicenja izabranog dela; renderer ga ne salje.
     podaci(kat, prog, tab) {
@@ -83,18 +99,16 @@ function napravi({ baza, model, p, t, aktivnoRed, grbUrl }) {
     },
 
     bilten(kat, prog) {
-      const { takm, izbor, rez } = grupa(kat, prog, 'Nema prijava za bilten.');
-      const polozeno = rez.sprave.length > 4;
-      const organizator = takm.organizator ? takm.organizator : p.dajPol('organizator', takm.pol, '');
-      const strane = straneBilten(stavkeBiltena(rez), {
-        polozeno, organizator, zaglavlje: takm.zaglavlje_biltena ?? '', domacin: takm.domacin ?? '',
-      });
-      const disciplina = `${izbor.pol === 'M' ? 'Muška' : 'Ženska'} sportska gimnastika · ${izbor.kat_naziv} · ${izbor.prog_naziv}`;
-      return {
-        takm: takmStampa(takm), izbor, rez, polozeno, strane, disciplina, organizator,
-        grbLevo: grbUrl(takm.grb_levo ? takm.grb_levo : p.dajPol('grb_levo', takm.pol, '')),
-        grbDesno: grbUrl(takm.grb_desno ? takm.grb_desno : p.dajPol('grb_desno', takm.pol, '')),
-      };
+      return bilten(kat, prog);
+    },
+
+    // Ceo bilten: po jedna sekcija za svaku kategoriju i program aktivnog takmicenja, redom kao u izboru.
+    bilteni() {
+      const takm = aktivnoRed();
+      const komb = model.kombinacije(Number(takm.id), takm.pol);
+      if (komb.length === 0) throw new GreskaKorisnika('Nema prijava za bilten.');
+      const sekcije = komb.map((k) => bilten(Number(k.kategorija_id ?? 0), Number(k.program_id ?? 0)));
+      return { takm: sekcije[0].takm, pol: takm.pol, polozeno: sekcije.some((x) => x.polozeno), sekcije };
     },
   };
 }

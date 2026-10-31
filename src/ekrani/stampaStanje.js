@@ -27,13 +27,15 @@ export function vremeStampe(d) {
   return { puno: `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}. ${p(d.getHours())}:${p(d.getMinutes())}`, kratko };
 }
 
-// Podrazumevano ime PDF-a (POPIS 7). vrsta: 'bilten' ili naziv liste (Višeboj, Ekipno, naziv sprave).
+// Podrazumevano ime PDF-a (POPIS 7). vrsta: 'bilten', 'ceo-bilten', 'zapisnici' ili naziv liste (Višeboj, Ekipno, naziv sprave).
+const POSEBNA_IMENA = { bilten: 'Bilten', 'ceo-bilten': 'Ceo-bilten', zapisnici: 'Zapisnici' };
 export function imePdf(vrsta, naziv, pol) {
   const cisto = (t) => String(t ?? '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim();
   const polTekst = pol === 'M' ? 'MSG' : 'ŽSG';
-  const delovi = vrsta === 'bilten' ? ['Bilten'] : ['Rang-lista'];
+  const posebno = Object.hasOwn(POSEBNA_IMENA, vrsta);
+  const delovi = [posebno ? POSEBNA_IMENA[vrsta] : 'Rang-lista'];
   if (cisto(naziv) !== '') delovi.push(cisto(naziv));
-  if (vrsta !== 'bilten' && cisto(vrsta) !== '') delovi.push(cisto(vrsta));
+  if (!posebno && cisto(vrsta) !== '') delovi.push(cisto(vrsta));
   delovi.push(polTekst);
   return `${delovi.join('-')}.pdf`;
 }

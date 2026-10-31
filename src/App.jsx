@@ -21,14 +21,17 @@ import Rang from './ekrani/Rang.jsx';
 import Rezultati from './ekrani/Rezultati.jsx';
 import Stampa from './ekrani/Stampa.jsx';
 import Bilten from './ekrani/Bilten.jsx';
+import BiltenCeo from './ekrani/BiltenCeo.jsx';
+import Zapisnici from './ekrani/Zapisnici.jsx';
 import Pocetna from './ekrani/Pocetna.jsx';
 import Takmicenje from './ekrani/Takmicenje.jsx';
 import Kopija from './ekrani/Kopija.jsx';
 
-const EKRANI = { pocetna: Pocetna, takmicenje: Takmicenje, sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz, rang: Rang, rezultati: Rezultati, stampa: Stampa, bilten: Bilten, kopija: Kopija,
+const EKRANI = { pocetna: Pocetna, takmicenje: Takmicenje, sistem: Sistem, klubovi: Klubovi, takmicari: Takmicari, podesavanja: Podesavanja, takmicenja: Takmicenja, prijave: Prijave, rotacije: Rotacije, unos: Unos, uvoz: Uvoz, rang: Rang, rezultati: Rezultati, stampa: Stampa, bilten: Bilten, 'ceo-bilten': BiltenCeo, zapisnici: Zapisnici, kopija: Kopija,
   'takmicenja/novo': TakmicenjeForma, 'takmicenja/izmeni': TakmicenjeForma };
 // Ekrani cele strane (POPIS 9.1): bez menija i trake, body.stampa dok su otvoreni.
-const CELA_STRANA = new Set(['stampa', 'bilten']);
+const CELA_STRANA = new Set(['stampa', 'bilten', 'ceo-bilten', 'zapisnici']);
+const NASLOV_CELE_STRANE = { stampa: 'Štampa', bilten: 'Bilten', 'ceo-bilten': 'Ceo bilten', zapisnici: 'Prazni zapisnici' };
 // Ekrani ciju tabelu skroluje kartica, ne cela strana (PHP sadrzajKlasa).
 const FIKSNO = new Set(['klubovi', 'takmicari', 'takmicenja', 'prijave', 'rotacije', 'unos', 'rang']);
 
@@ -128,7 +131,7 @@ export default function App() {
 
   const { ekran } = razlozi(hash);
   const celaStrana = CELA_STRANA.has(ekran);
-  const naslov = celaStrana ? (ekran === 'bilten' ? 'Bilten' : 'Štampa') : naslovEkrana(ekran);
+  const naslov = celaStrana ? NASLOV_CELE_STRANE[ekran] : naslovEkrana(ekran);
   useEffect(() => { document.title = `${naslov} · Gimnastika`; }, [naslov]);
 
   useEffect(() => {

@@ -77,6 +77,19 @@ body.stampa { background: #8A8890; margin: 0; color: #111; font-family: 'Manrope
 .bi-sredina .gde { font-size: 12px; line-height: 16px; }
 .bi-mala-glava { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 1px solid #111; font-size: 12px; font-weight: 700; }
 
+/* Prazan zapisnik za spravu: visoki redovi za pisanje rukom */
+.zp-zaglavlje { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 2px solid #111; }
+.zp-takm { display: flex; flex-direction: column; min-width: 0; }
+.zp-takm b { font-size: 16px; line-height: 20px; font-weight: 800; }
+.zp-takm span { font-size: 12px; line-height: 16px; color: #4A4A4A; }
+.zp-sprava { flex: 1 1 0; text-align: center; font-size: 24px; line-height: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.zp-rot { display: flex; flex-direction: column; align-items: flex-end; }
+.zp-rot b { font-size: 16px; line-height: 20px; font-weight: 800; }
+.zp-rot span { font-size: 12px; line-height: 16px; }
+.zp-tab td { height: 32px; padding: 0 5px; font-size: 13px; }
+.zp-tab td.zp-ne-radi { color: #4A4A4A; font-style: italic; }
+.zp-vk { font-weight: 500; }
+
 @page { size: A4 portrait; margin: 0; }
 @media print {
   body.stampa { background: #fff; }

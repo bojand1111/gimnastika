@@ -28,6 +28,7 @@ export default function UnosTraka({ d, napredak }) {
             <span className="broj napredak-broj"><span id="napredak-obradjeno">{napredak.obradjeno}</span> / <span id="napredak-ukupno">{napredak.ukupno}</span></span>
             <span className="sek napredak-tekst">obrađeno<span id="napredak-odustalo">{tekstOdustalo(napredak.odustalo, pol)}</span></span>
           </div>
+          <a href="#/zapisnici" className="dugme dugme-malo" title="Prazni zapisnici za sve sprave i rotacije, za štampu">Prazni zapisnici</a>
         </>
       )}
     </div>

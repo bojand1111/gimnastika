@@ -47,7 +47,7 @@ function sa4(saGrupom = true) {
 
 test('guard: unos ima handler za svaku radnju', () => {
   const { moduli } = pravi();
-  assert.deepEqual(MODULI.unos, ['podaci', 'nacrt', 'potvrdi', 'odustao', 'vrati']);
+  assert.deepEqual(MODULI.unos, ['podaci', 'nacrt', 'potvrdi', 'odustao', 'vrati', 'zapisnici']);
   const ipc = { kanali: {}, handle(k, fn) { this.kanali[k] = fn; } };
   registruj(ipc, moduli, dn, Object.fromEntries(Object.keys(moduli).map((k) => [k, MODULI[k]])));
   for (const r of MODULI.unos) assert.ok(ipc.kanali[`gim:unos:${r}`], r);
@@ -57,7 +57,7 @@ test('bez aktivnog takmicenja svaka radnja baca poruku', () => {
   const { moduli } = pravi();
   const u = moduli.unos;
   const pozivi = [() => u.podaci(1, 1), () => u.nacrt(1, 1, ULAZ), () => u.potvrdi(1, 1, ULAZ, ''),
-    () => u.odustao(1, 1), () => u.vrati(1, 1)];
+    () => u.odustao(1, 1), () => u.vrati(1, 1), () => u.zapisnici()];
   for (const f of pozivi) assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === NEMA_AKTIVNOG);
 });
 
@@ -91,6 +91,32 @@ test('podaci() bez parametara: pol Z, rotacija 1, prva sprava sa grupom i redovi
   assert.deepEqual(d.napredak, { obradjeno: 0, ukupno: 3, odustalo: 0 });
   assert.deepEqual(d.izmene, []);
   assert.doesNotThrow(() => structuredClone(d));
+});
+
+test('zapisnici: list po spravi i rotaciji, isti redosled kao unos, bez ocena', () => {
+  const { moduli, pid, s } = sa4();
+  moduli.unos.potvrdi(pid.Ana, s.pr, ULAZ, '');
+  const z = moduli.unos.zapisnici();
+  assert.equal(z.pol, 'Z');
+  assert.equal(z.brojSudija, 4);
+  assert.equal(z.takm.naziv, 'Test kup');
+  // Grupa A pocinje na PR: rotacija 1 na PR, rotacija 2 na GR.
+  assert.deepEqual(z.listovi.map((l) => [l.sprava.id, l.rot]), [[s.pr, 1], [s.gr, 2]]);
+  const prvi = z.listovi[0];
+  assert.equal(prvi.sprava.naziv, 'Preskok');
+  assert.equal(prvi.grupa, moduli.unos.podaci(s.pr, 1).grupa.naziv);
+  assert.deepEqual(prvi.redovi.map((r) => [r.rb, r.prijava_id]), [[1, pid.Ana], [2, pid.Bea], [3, pid.Ceca]]);
+  assert.deepEqual(prvi.redovi.map((r) => r.ime), moduli.unos.podaci(s.pr, 1).redovi.map((r) => r.ime));
+  assert.deepEqual(Object.keys(prvi.redovi[0]).sort(), ['ime', 'opis', 'prijava_id', 'radi', 'rb', 'startni_broj', 'vk']);
+  assert.doesNotThrow(() => structuredClone(z));
+});
+
+test('zapisnici bez grupa: jedan list po spravi sa svim prijavljenima, rot null', () => {
+  const { moduli, s } = sa4(false);
+  const z = moduli.unos.zapisnici();
+  assert.deepEqual(z.listovi.map((l) => [l.sprava.id, l.rot, l.grupa]), [[s.pr, null, 'Svi prijavljeni'], [s.gr, null, 'Svi prijavljeni']]);
+  assert.deepEqual(z.listovi[0].redovi.map((r) => r.ime), moduli.unos.podaci(s.pr, 1).redovi.map((r) => r.ime));
+  assert.equal(z.listovi[0].redovi.length, 4);
 });
 
 test('posle unosa svih na PR podaci() bira GR; izmene i napredak', () => {

@@ -131,6 +131,39 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     return t ? { ...t, grb_levo_url: grbUrl(t.grb_levo), grb_desno_url: grbUrl(t.grb_desno) } : t;
   }
 
+  // Bez grupa: svi prijavljeni tog pola koji rade spravu; startni broj (bez njega na kraju), prezime, ime.
+  function sviNaSpravi(tid, pol, spravaId) {
+    const clanovi = baza.svi(
+      `SELECT p.id AS prijava_id, p.startni_broj, p.van_konkurencije, t.ime, t.prezime, t.pol,
+              k.skracenica AS klub_skr, kat.naziv AS kategorija, pr.naziv AS program
+       FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id
+       JOIN prijava_sprave ps ON ps.prijava_id = p.id AND ps.sprava_id = ?
+       LEFT JOIN klubovi k ON k.id = p.klub_id LEFT JOIN kategorije kat ON kat.id = p.kategorija_id
+       LEFT JOIN programi pr ON pr.id = p.program_id
+       WHERE p.takmicenje_id = ? AND t.pol = ?`, [spravaId, tid, pol]);
+    clanovi.sort((a, b) => {
+      const sa = a.startni_broj ?? null;
+      const sb = b.startni_broj ?? null;
+      if (sa !== sb) {
+        if (sa === null) return 1;
+        if (sb === null) return -1;
+        return sa - sb;
+      }
+      return KOLATOR.compare(a.prezime, b.prezime) || KOLATOR.compare(a.ime, b.ime) || a.prijava_id - b.prijava_id;
+    });
+    return clanovi;
+  }
+
+  // Zajednicki deo reda za Unos ocena i prazan zapisnik: redni broj, broj, ime i opis.
+  const osnovaReda = (c, i) => ({
+    rb: i + 1,
+    prijava_id: Number(c.prijava_id),
+    startni_broj: c.startni_broj ?? null,
+    ime: `${c.prezime} ${c.ime}`,
+    opis: [c.klub_skr, c.kategorija, c.program].filter((x) => x).join(' · '),
+    vk: Number(c.van_konkurencije) === 1,
+  });
+
   // klub_id iz forme je tekst; prazan ostaje prazan (bez kluba).
   const takmicarUnos = (u) => (u && !prazno(u.klub_id) ? { ...u, klub_id: Number(u.klub_id) } : u);
 
@@ -442,26 +475,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
         let grupa = grupaNaSpravi(grupe, pozicija, rot, brojSprava, pomeraj);
         const bezGrupa = grupe.length === 0;
         if (grupa === null && bezGrupa) {
-          // Bez grupa: svi prijavljeni tog pola koji rade spravu; startni broj (bez njega na kraju), prezime, ime.
-          const clanovi = baza.svi(
-            `SELECT p.id AS prijava_id, p.startni_broj, p.van_konkurencije, t.ime, t.prezime, t.pol,
-                    k.skracenica AS klub_skr, kat.naziv AS kategorija, pr.naziv AS program
-             FROM prijave p JOIN takmicari t ON t.id = p.takmicar_id
-             JOIN prijava_sprave ps ON ps.prijava_id = p.id AND ps.sprava_id = ?
-             LEFT JOIN klubovi k ON k.id = p.klub_id LEFT JOIN kategorije kat ON kat.id = p.kategorija_id
-             LEFT JOIN programi pr ON pr.id = p.program_id
-             WHERE p.takmicenje_id = ? AND t.pol = ?`, [Number(sprava.id), tid, pol]);
-          clanovi.sort((a, b) => {
-            const sa = a.startni_broj ?? null;
-            const sb = b.startni_broj ?? null;
-            if (sa !== sb) {
-              if (sa === null) return 1;
-              if (sb === null) return -1;
-              return sa - sb;
-            }
-            return KOLATOR.compare(a.prezime, b.prezime) || KOLATOR.compare(a.ime, b.ime) || a.prijava_id - b.prijava_id;
-          });
-          grupa = { id: 0, naziv: 'Svi prijavljeni', clanovi };
+          grupa = { id: 0, naziv: 'Svi prijavljeni', clanovi: sviNaSpravi(tid, pol, Number(sprava.id)) };
         }
         const redovi = [];
         const napredak = { obradjeno: 0, ukupno: 0, odustalo: 0 };
@@ -477,13 +491,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
             const eSudije = [];
             for (let j = 1; j <= brojSudija; j++) eSudije.push(o && o.e_sudije[j] !== undefined ? prikazBroja(o.e_sudije[j]) : '');
             redovi.push({
-              rb: i + 1,
-              prijava_id: pid,
-              startni_broj: c.startni_broj ?? null,
-              ime: `${c.prezime} ${c.ime}`,
+              ...osnovaReda(c, i),
               pol: c.pol,
-              opis: [c.klub_skr, c.kategorija, c.program].filter((x) => x).join(' · '),
-              vk: Number(c.van_konkurencije) === 1,
               radi,
               status,
               d: pk(o?.d),
@@ -520,6 +529,42 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
         oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), true, typeof razlog === 'string' ? razlog : '')),
       odustao: (prijavaId, spravaId) => posleOcene(oc.odustao(aktivnoId(), broj(prijavaId), broj(spravaId))),
       vrati: (prijavaId, spravaId) => posleOcene(oc.vrati(aktivnoId(), broj(prijavaId), broj(spravaId))),
+      // Prazni zapisnici za stampu: list za svaku spravu i rotaciju, clanovi istim redom kao na Unosu, bez ocena.
+      // Bez grupa: jedan list po spravi sa svim prijavljenima (rot null).
+      zapisnici: () => {
+        const takm = aktivnoRed();
+        const tid = Number(takm.id);
+        const pol = takm.pol;
+        const pomeraj = Number(takm.pomeraj_redosled) === 1;
+        const sprave = s.sprave(pol);
+        const brojSprava = Math.max(1, sprave.length);
+        const grupe = gr.lista(tid, pol);
+        const bezGrupa = grupe.length === 0;
+        const listovi = [];
+        for (const [i, sp] of sprave.entries()) {
+          const spId = Number(sp.id);
+          const rotacije = bezGrupa ? [null] : Array.from({ length: brojSprava }, (_, k) => k + 1);
+          for (const rot of rotacije) {
+            const g = rot === null
+              ? { naziv: 'Svi prijavljeni', clanovi: sviNaSpravi(tid, pol, spId) }
+              : grupaNaSpravi(grupe, i + 1, rot, brojSprava, pomeraj);
+            if (g === null || g.clanovi.length === 0) continue;
+            listovi.push({
+              sprava: { id: sp.id, naziv: sp.naziv },
+              rot,
+              grupa: g.naziv,
+              redovi: g.clanovi.map((c, j) => ({ ...osnovaReda(c, j), radi: oc.radiSpravu(Number(c.prijava_id), spId) })),
+            });
+          }
+        }
+        return {
+          takm: { id: takm.id, naziv: takm.naziv, mesto: takm.mesto ?? '', datum: takm.datum ?? '' },
+          pol,
+          brojSudija: Number(takm.broj_e_sudija),
+          brojSprava,
+          listovi,
+        };
+      },
     },
     rang: napraviRang({ baza, model: rez, p, t, aktivnoRed, grbUrl }),
     stampa: napraviStampu({ prozor: roditelj, dialog, fs, dokumenti }),
