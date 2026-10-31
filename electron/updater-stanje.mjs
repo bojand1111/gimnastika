@@ -4,6 +4,13 @@ const MREZA = ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAI
 const NEMA_VERZIJA = ['No published versions', 'Cannot find latest.yml', 'Unable to find latest version', 'status 404', 'HttpError: 404', '404 Not Found', 'HTTP 404'];
 const OPSTA_GRESKA = 'Ažuriranje nije uspelo. Pogledajte dnevnik.log.';
 
+// Tiha provera dok je program otvoren; ne dira ponudu ni preuzimanje koje je vec u toku.
+export const POVREMENA_PROVERA_MS = 30 * 60 * 1000;
+
+export function trebaPovremenaProvera(stanje) {
+  return !['checking', 'available', 'downloading', 'ready'].includes(stanje.stanje);
+}
+
 export function pocetno(verzija) {
   return { stanje: 'idle', trenutna: verzija, poruka: '' };
 }

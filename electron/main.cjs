@@ -63,6 +63,8 @@ function napraviProzor() {
     if (process.env.GIM_DEBUG === '1') ispisiRenderer();
     // Tiha provera 5 s posle ucitavanja, samo u instaliranom programu.
     if (app.isPackaged) setTimeout(() => azuriranje.check().catch((err) => dnevnik.greska('tiha provera', err)), 5000);
+    // Posle toga tiha provera na svakih 30 minuta dok je program otvoren.
+    if (app.isPackaged) azuriranje.povremeno((err) => dnevnik.greska('povremena provera', err));
   });
   // GIM_EKRAN=sistem otvara #/sistem (za proveru ekrana).
   const hash = process.env.GIM_EKRAN ? '/' + process.env.GIM_EKRAN : '';

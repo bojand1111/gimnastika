@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pocetno, sledece } from '../electron/updater-stanje.mjs';
+import { pocetno, sledece, trebaPovremenaProvera, POVREMENA_PROVERA_MS } from '../electron/updater-stanje.mjs';
+
+test('povremena provera: svakih 30 minuta, samo kad nema ponude ni preuzimanja u toku', () => {
+  assert.equal(POVREMENA_PROVERA_MS, 30 * 60 * 1000);
+  for (const s of ['idle', 'none', 'error']) assert.equal(trebaPovremenaProvera({ stanje: s }), true, s);
+  for (const s of ['checking', 'available', 'downloading', 'ready']) assert.equal(trebaPovremenaProvera({ stanje: s }), false, s);
+});
 
 test('pocetno stanje je idle', () => {
   assert.deepEqual(pocetno('0.1.0'), { stanje: 'idle', trenutna: '0.1.0', poruka: '' });

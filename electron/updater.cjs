@@ -1,6 +1,6 @@
 // Azuriranje iz GitHub Releases (electron-updater). Nista se ne preuzima ni ne instalira bez klika.
 // Provajder i repo dolaze iz resources/app-update.yml koji electron-builder upise iz publish bloka.
-const { pocetno, sledece } = require('./updater-stanje.mjs');
+const { pocetno, sledece, trebaPovremenaProvera, POVREMENA_PROVERA_MS } = require('./updater-stanje.mjs');
 
 const VAN_INSTALACIJE = 'Ažuriranje radi samo u instaliranom programu.';
 const kratko = (e) => String((e && e.message) || e).slice(0, 300);
@@ -47,6 +47,14 @@ function createUpdater({ app, send, dnevnik, preInstalacije }) {
         if (stanje.stanje === 'checking') primeni({ tip: 'error', poruka: kratko(err) });
       }
       return stanje;
+    },
+    // Pokrece povremenu tihu proveru; vraca funkciju koja je zaustavlja.
+    povremeno(naGresku) {
+      if (!updater) return () => {};
+      const t = setInterval(() => {
+        if (trebaPovremenaProvera(stanje)) this.check().catch(naGresku);
+      }, POVREMENA_PROVERA_MS);
+      return () => clearInterval(t);
     },
     async download() {
       if (!updater || stanje.stanje !== 'available') return stanje;
