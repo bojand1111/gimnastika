@@ -6,7 +6,7 @@ Ovaj dokument opisuje šta aplikacija radi. Kako izgleda, vidi se u folderu `diz
 
 Desktop web aplikacija za vođenje takmičenja u sportskoj gimnastici (muška MSG i ženska ŽSG).
 
-- **MSG i ŽSG su dva odvojena dela jedne aplikacije.** Pol se bira jednom, prekidačem **MSG | ŽSG** na vrhu bočnog menija (Alt+M i Alt+Z), i svaki ekran prikazuje samo izabrani deo. Nijedan ekran nema svoj izbor ili filter pola.
+- **MSG i ŽSG su dva odvojena dela jedne aplikacije.** Pol se bira jednom, prekidačem **MSG | ŽSG** na vrhu bočnog menija (Alt+M i Alt+Z), i svaki ekran prikazuje samo izabrani deo. Nijedan ekran nema svoj izbor ili filter pola, osim ispravke pola u kartonu takmičara.
 
 - Radi na **jednom laptopu u sali**, bez interneta. Ekran je 1366x768 ili veći.
 - Koristi je **jedna osoba, zapisničar**, koji tokom takmičenja prepisuje ocene sa papirnih sudijskih listića. Nema prijave korisnika ni uloga.
@@ -140,7 +140,7 @@ Od verzije 1.1.0 tok pripreme (Početna, Takmičenja, Prijave, Rotacije i novi P
 - Skraćenica je obavezna i jedinstvena.
 
 ### 03 Takmičari (`03-takmicari`)
-- Tabela: ID, prezime i ime, godište, pol, klub (skraćenica), lekarski važi do.
+- Tabela: ID, prezime i ime, godište, klub (skraćenica), lekarski važi do.
 - Pretraga (ime, prezime, ID) i filteri: klub, godište. Lista ima samo takmičare izabranog dela, pa filtera pola nema.
 - Strelice gore i dole menjaju izabrani red, Enter otvara karton u formi desno.
 - Karton: ID broj, ime, prezime, godina rođenja, pol, klub (puno ime), državljanstvo, lekarski važi do. Opciono: broj licence, trener, kontakt roditelja. Novi takmičar dobija pol izabranog dela. Pogrešno unet pol postojećeg takmičara (koji nema prijave) ispravlja se u kartonu: čuvanjem takmičar prelazi u drugi deo.

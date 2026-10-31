@@ -17,7 +17,7 @@ Posle prve instalacije baza je prazna: sprave i podešavanja su već upisani, a 
 1. Na starom računaru: ekran **Rezervna kopija**, dugme „Napravi rezervnu kopiju“. Zatim u listi „Prethodne kopije“ kod nove kopije kliknuti „Prikaži u fascikli“ i fajl prekopirati na USB.
 2. Na novom računaru: ekran **Rezervna kopija**, dugme „Vrati iz kopije“, izabrati fajl sa USB-a i potvrditi.
 
-Kopija iz starije verzije programa se vraća normalno. Kopija iz novije verzije se odbija: prvo treba ažurirati program. Pre vraćanja program sam pravi kopiju trenutnog stanja.
+Kopija iz starije verzije programa se vraća normalno. Kopija iz novije verzije se odbija: prvo treba ažurirati program. Pre vraćanja program sam pravi uobičajenu kopiju „Pre vraćanja“ (ne „Pre migracije“, čak i kad vraćena kopija prolazi prelaz na MSG i ŽSG).
 
 ## 3. Prenos iz stare PHP verzije
 
@@ -69,7 +69,7 @@ Od ove verzije MSG i ŽSG su dva odvojena dela programa (prekidač u bočnom men
 
 ## 7. Rezultati uživo na sajtu
 
-Program može da šalje rang liste aktivnog takmičenja izabranog dela (MSG ili ŽSG) na sajt, da ih gledaoci prate uživo. Slanje ide posle svake potvrđene, odustale ili vraćene ocene (uz kratko odlaganje, pa više brzih izmena daje jedno slanje), pri startu programa ako ima izmena koje nisu poslate i na dugme „Pošalji sada“.
+Program može da šalje rang liste aktivnog takmičenja izabranog dela (MSG ili ŽSG) na sajt, da ih gledaoci prate uživo. Slanje ide posle svake potvrđene, odustale ili vraćene ocene (uz kratko odlaganje, pa više brzih izmena daje jedno slanje), na dugme „Pošalji sada“ i pri startu programa ako ima izmena posle poslednjeg slanja. Vreme poslednjeg slanja je zajedničko za MSG i ŽSG, pa pri startu neposlate izmene drugog dela ne moraju biti uhvaćene: za njih koristite „Pošalji sada“ u tom delu.
 
 Adresa i token se unose na ekranu Podešavanja, u kartici „Rezultati uživo na sajtu“ (adresu i token dobijate od onoga ko održava sajt). Posle unosa kliknite „Sačuvaj podešavanja“, pa „Proveri vezu“. Dugmad „Proveri vezu“ i „Pošalji sada“ koriste već sačuvane vrednosti. Adresa mora da počinje sa `https://`; `http://` je dozvoljen samo za probni server na istom računaru (`localhost`, `127.0.0.1`). Adresa ne sme da sadrži korisničko ime, lozinku ni upit. Kad unesete adresu i token, program sam šalje rezultate koji još nisu poslati.
 
