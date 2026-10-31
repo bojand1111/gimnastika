@@ -71,14 +71,13 @@ export default function Takmicenje() {
             <a href={d.unosHash} className="velika-plocica velika-plocica-crvena" style={{ minHeight: 168 }} data-fokus ref={fokusRef}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Ikona ime="meni-unos-ocena" velicina={24} />
-                <kbd style={{ background: 'rgba(255,255,255,0.16)', borderColor: 'rgba(255,255,255,0.55)', color: '#fff' }}>F2</kbd>
               </span>
               <span className="velika-plocica-naslov">Unos ocena</span>
               <span style={{ fontSize: 15 }}>{tekstPlocice(napredak, nastavi)}</span>
             </a>
             <a href="#/rang" className="velika-plocica" style={{ minHeight: 168 }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Ikona ime="meni-rang-liste" velicina={24} /><kbd>F4</kbd>
+                <Ikona ime="meni-rang-liste" velicina={24} />
               </span>
               <span className="velika-plocica-naslov">Rang liste</span>
               <span className="sek" style={{ fontSize: 15 }}>Po spravi, višeboj i ekipno</span>

@@ -130,7 +130,6 @@ Od verzije 1.1.0 tok pripreme (Početna, Takmičenja, Prijave, Rotacije i novi P
 - Kartica aktivnog takmičenja izabranog dela: naziv, datum, mesto, broj E sudija, broj prijavljenih, broj klubova, rotacija u toku. Link „Promeni aktivno takmičenje".
 - Dve velike pločice: „Unos ocena" (nastavlja tamo gde se stalo: sprava, rotacija, koliko je uneto) i „Rang liste".
 - Poslednja rezervna kopija (datum i vreme, oznaka ako je od danas) i dugme za novu kopiju.
-- Spisak prečica.
 - Verzija aplikacije u dnu bočnog menija (čita se iz fajla `VERZIJA`).
 - Ako nema aktivnog takmičenja, umesto kartice stoji poruka i dugme „Napravi takmičenje".
 

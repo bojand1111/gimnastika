@@ -101,7 +101,7 @@ export default function Takmicenja() {
       <div className="kartica-zaglavlje">
         <h2 className="kartica-naslov">Sva takmičenja</h2>
         <a href={NOVO} className="dugme dugme-glavno" id="novi" data-fokus ref={noviRef} onKeyDown={izDugmeta}>
-          <Ikona ime="plus" velicina={16} /><span>Novo takmičenje</span><kbd>Alt+N</kbd>
+          <Ikona ime="plus" velicina={16} /><span>Novo takmičenje</span>
         </a>
       </div>
       <div className="kartica-skrol" onKeyDownCapture={uhvatiEnter}>

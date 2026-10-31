@@ -43,9 +43,7 @@ svg { flex-shrink: 0; }
 .meni-deo { padding: 10px 8px 0; }
 .izbor-deo { display: flex; width: 100%; }
 .izbor-deo button { flex: 1 1 0; justify-content: center; padding: 0 6px; }
-.izbor-deo kbd { font-size: 10px; padding: 0 4px; }
 .izbor-deo [aria-pressed="true"]:focus-visible { outline-color: #fff; outline-offset: -5px; }
-.izbor-deo [aria-pressed="true"] kbd { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.55); color: #fff; }
 .meni nav { display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; }
 .meni-grupa { padding: 14px 12px 6px; font-size: 11px; line-height: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .meni-stavka { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; border-radius: 12px; color: var(--ink-2); font-size: 14px; font-weight: 600; }

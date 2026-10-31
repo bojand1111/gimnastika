@@ -111,7 +111,7 @@ export default function BazaTakmicara({ d, naDodaj, naNovi, reset }) {
       <div className="baza-podnozje">
         <span className="sek" style={{ fontSize: 13 }} id="izabrano">Izabrano: {oznaceni.size}</span>
         <button type="button" className="dugme dugme-glavno" id="dodaj" style={{ padding: '0 10px' }}
-          onClick={() => dodaj([...oznaceni])}><span>Prijavi</span><kbd>Enter</kbd></button>
+          onClick={() => dodaj([...oznaceni])}><span>Prijavi</span></button>
       </div>
     </section>
   );

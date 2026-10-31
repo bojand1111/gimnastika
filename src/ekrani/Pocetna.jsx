@@ -9,7 +9,6 @@ import { porukaNapravljena } from './kopijaStanje.js';
 import KartaAktivnog from './pocetna/KartaAktivnog.jsx';
 import Lekarski from './pocetna/Lekarski.jsx';
 import PoslednjaKopija from './pocetna/PoslednjaKopija.jsx';
-import Precice from './pocetna/Precice.jsx';
 
 const IDE = { prijave: '#/prijave', rotacije: '#/rotacije', spremno: '#/takmicenje' };
 
@@ -122,7 +121,6 @@ export default function Pocetna() {
       <div className="kolona" style={{ width: 340, flexShrink: 0 }}>
         <Lekarski lekarski={d.lekarski} />
         <PoslednjaKopija kopija={d.poslednjaKopija} zauzeto={zauzeto} naNapravi={napraviKopiju} />
-        <Precice precice={d.precice} />
       </div>
     </div>
   );

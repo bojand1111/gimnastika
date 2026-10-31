@@ -19,7 +19,7 @@ export default function RangTraka({ izbor, rez, tab, naKategoriju, naProgram }) 
         <div className="rang-dugmad">
           <a href={hashEkrana('bilten', q)} className="dugme">Bilten takmičenja</a>
           <a href={hashEkrana('stampa', { ...q, tab })} className="dugme" id="stampa-link">
-            <Ikona ime="stampac" velicina={16} /><span>Pregled za štampu</span><kbd>Ctrl+P</kbd>
+            <Ikona ime="stampac" velicina={16} /><span>Pregled za štampu</span>
           </a>
         </div>
       </div>

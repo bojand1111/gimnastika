@@ -11,7 +11,7 @@ export default function IzborDela({ pol, naPromenu }) {
       {DELOVI.map((d) => (
         <button key={d.pol} type="button" aria-pressed={pol === d.pol ? 'true' : 'false'}
           title={`Prebaci na ${d.tekst} (${d.precica})`} onClick={() => naPromenu(d.pol)}>
-          <span>{d.tekst}</span><kbd>{d.precica}</kbd>
+          <span>{d.tekst}</span>
         </button>
       ))}
     </div>

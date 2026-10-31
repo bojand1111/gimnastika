@@ -201,7 +201,7 @@ export default function Takmicari() {
         <div className="kartica-zaglavlje">
           <h2 className="kartica-naslov">Takmičari u bazi</h2>
           <button type="button" className="dugme dugme-glavno" id="novi" onClick={novi}>
-            <Ikona ime="plus" velicina={16} /><span>Novi takmičar</span><kbd>Alt+N</kbd>
+            <Ikona ime="plus" velicina={16} /><span>Novi takmičar</span>
           </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
@@ -292,8 +292,8 @@ export default function Takmicari() {
           <Polje oznaka="Kontakt roditelja" id="f-kontakt_roditelja" value={forma.kontakt_roditelja}
             onChange={promeni('kontakt_roditelja')} placeholder="Ime i telefon" />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
-            <button type="submit" className="dugme dugme-glavno"><span>Sačuvaj</span><kbd>Enter</kbd></button>
-            <button type="button" className="dugme" id="otkazi" onClick={novi}><span>Otkaži</span><kbd>Esc</kbd></button>
+            <button type="submit" className="dugme dugme-glavno"><span>Sačuvaj</span></button>
+            <button type="button" className="dugme" id="otkazi" onClick={novi}><span>Otkaži</span></button>
             <span style={{ flexGrow: 1 }}></span>
             <button type="button" className={`dugme dugme-opasno ${izabranId ? '' : 'sakriveno'}`} id="obrisi" onClick={obrisi}>
               <Ikona ime="kanta" velicina={16} /><span>Obriši</span>

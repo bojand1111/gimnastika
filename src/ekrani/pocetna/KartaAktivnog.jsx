@@ -47,8 +47,8 @@ export default function KartaAktivnog({ takm, stanje, imaOstala, fokusRef }) {
             <span>{tekstNastavi(stanje)}</span>
             <Ikona ime="strelica-desno" velicina={16} />
           </a>
-          <a href="#/unos" className="dugme dugme-veliko"><span>Unos ocena</span><kbd>F2</kbd></a>
-          <a href="#/rang" className="dugme dugme-veliko"><span>Rang liste</span><kbd>F4</kbd></a>
+          <a href="#/unos" className="dugme dugme-veliko"><span>Unos ocena</span></a>
+          <a href="#/rang" className="dugme dugme-veliko"><span>Rang liste</span></a>
         </div>
       </section>
       <section className="kartica" style={{ overflow: 'hidden' }}>

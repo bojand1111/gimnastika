@@ -161,9 +161,9 @@ export default function Uvoz() {
           <span className="sek" id="uvoz-zbir">{zbir(brojevi)}</span>
           <span className="raste" />
           <button type="button" className="dugme" disabled={radi} onClick={dodajFajlove}><Ikona ime="fascikla" velicina={16} /><span>Dodaj još fajlova</span></button>
-          <button type="button" className="dugme" id="uvoz-otkazi" disabled={radi} onClick={() => radnje.current.otkazi()}><span>Otkaži</span><kbd>Esc</kbd></button>
+          <button type="button" className="dugme" id="uvoz-otkazi" disabled={radi} onClick={() => radnje.current.otkazi()}><span>Otkaži</span></button>
           <button type="button" className="dugme dugme-glavno dugme-veliko" id="uvoz-potvrdi" ref={potvrdaRef}
-            disabled={brojevi.ukupno === 0 || radi} onClick={uvezi}><span>Uvezi prijave</span><kbd>Ctrl+Enter</kbd></button>
+            disabled={brojevi.ukupno === 0 || radi} onClick={uvezi}><span>Uvezi prijave</span></button>
         </div>
       </div>
     </>

@@ -66,9 +66,9 @@ const DijalogTakmicar = forwardRef(function DijalogTakmicar({ klubovi, naSnimi }
         </div>
         <div className="forma-akcije">
           <button type="submit" className="dugme dugme-glavno" id="dijalog-sacuvaj" disabled={radi}>
-            <span>Sačuvaj i prijavi</span><kbd>Enter</kbd></button>
+            <span>Sačuvaj i prijavi</span></button>
           <button type="button" className="dugme" id="dijalog-otkazi" onClick={() => dijalog.current.close()}>
-            <span>Otkaži</span><kbd>Esc</kbd></button>
+            <span>Otkaži</span></button>
         </div>
       </form>
     </dialog>

@@ -127,7 +127,7 @@ export default function Kopija() {
           <p className="sek">Čuva celu bazu, sva takmičenja i sve ocene u jedan fajl. {d.poslednjaTekst}</p>
           <div>
             <button type="button" ref={fokusRef} data-fokus className={klasa('dugme dugme-glavno dugme-veliko')} aria-disabled={onemoguci} onClick={napravi}>
-              <Ikona ime="kopija" velicina={16} /><span>Napravi rezervnu kopiju</span><kbd>Ctrl+S</kbd>
+              <Ikona ime="kopija" velicina={16} /><span>Napravi rezervnu kopiju</span>
             </button>
           </div>
         </section>

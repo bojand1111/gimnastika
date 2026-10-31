@@ -31,9 +31,9 @@ export default function Meni({ ekran, verzija, pol, naPromenuPola }) {
         {GRUPE.map(([grupa, stavke]) => (
           <div key={grupa} style={{ display: 'contents' }}>
             {grupa !== '' && <div className="meni-grupa">{grupa}</div>}
-            {stavke.map(([ruta, tekst, ik, precica]) => (
+            {stavke.map(([ruta, tekst, ik]) => (
               <a key={ruta} href={url(ruta)} className={`meni-stavka ${aktivan === ruta ? 'aktivna' : ''}`} aria-current={aktivan === ruta ? 'page' : undefined}>
-                <Ikona ime={ik} velicina={18} /><span>{tekst}</span>{precica !== '' && <kbd>{precica}</kbd>}
+                <Ikona ime={ik} velicina={18} /><span>{tekst}</span>
               </a>
             ))}
           </div>

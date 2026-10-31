@@ -119,7 +119,7 @@ export default function Klubovi() {
         <div className="kartica-zaglavlje">
           <h2 className="kartica-naslov">Klubovi u bazi</h2>
           <button type="button" className="dugme dugme-glavno" id="novi" onClick={novi}>
-            <Ikona ime="plus" velicina={16} /><span>Novi klub</span><kbd>Alt+N</kbd>
+            <Ikona ime="plus" velicina={16} /><span>Novi klub</span>
           </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px' }}>
@@ -153,8 +153,8 @@ export default function Klubovi() {
           </div>
           <span className="sivo mali">Skraćenica (2 do 4 slova) se prikazuje u unosu ocena i rang listama.</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
-            <button type="submit" className="dugme dugme-glavno"><span>Sačuvaj</span><kbd>Enter</kbd></button>
-            <button type="button" className="dugme" id="otkazi" onClick={novi}><span>Otkaži</span><kbd>Esc</kbd></button>
+            <button type="submit" className="dugme dugme-glavno"><span>Sačuvaj</span></button>
+            <button type="button" className="dugme" id="otkazi" onClick={novi}><span>Otkaži</span></button>
             <span style={{ flexGrow: 1 }}></span>
             <button type="button" className={`dugme dugme-opasno ${izabranId ? '' : 'sakriveno'}`} id="obrisi" onClick={obrisi}>
               <Ikona ime="kanta" velicina={16} /><span>Obriši</span>

@@ -56,8 +56,8 @@ const DijalogRazlog = forwardRef(function DijalogRazlog(_, ref) {
           value={tekst} onChange={(ev) => { postaviTekst(ev.target.value); postaviGresku(''); }} />
         {greska && <div className="poruka poruka-greska unos-razlog-greska" role="alert">{greska}</div>}
         <div className="forma-akcije">
-          <button type="submit" className="dugme dugme-glavno" id="dijalog-razlog-potvrdi"><span>Potvrdi</span><kbd>Enter</kbd></button>
-          <button type="button" className="dugme" id="dijalog-razlog-otkazi" onClick={() => zavrsi(null)}><span>Otkaži</span><kbd>Esc</kbd></button>
+          <button type="submit" className="dugme dugme-glavno" id="dijalog-razlog-potvrdi"><span>Potvrdi</span></button>
+          <button type="button" className="dugme" id="dijalog-razlog-otkazi" onClick={() => zavrsi(null)}><span>Otkaži</span></button>
         </div>
       </form>
     </dialog>

@@ -69,4 +69,4 @@ Ono što je do 1.0.1 bila Početna, za aktivno takmičenje: naziv, datum, mesto,
 - Priprema aktivnog takmičenja po klubovima.
 - Ostala takmičenja izabranog dela (u pripremi i završena) sa oznakama stanja i „Otvori".
 - Lekarski pregledi: prijavljeni (samo takmičari izabranog dela) na nezavršena takmičenja kojima lekarski ne važi na dan takmičenja (nema ga ili je istekao) ili ističe u roku iz podešavanja `lekarski_prag_dana` posle njega.
-- Rezervna kopija i prečice, kao pre.
+- Rezervna kopija, kao pre. Spisak prečica se od verzije 1.2.1 ne prikazuje; prečice i dalje rade.

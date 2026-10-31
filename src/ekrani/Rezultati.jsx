@@ -164,7 +164,7 @@ export default function Rezultati() {
         </div>
         <a href={hashEkrana('takmicari', { id: takmicar.id })} className="dugme ne-stampaj"><Ikona ime="meni-takmicari" velicina={16} /><span>Otvori karton</span></a>
         <button type="button" className="dugme ne-stampaj" onClick={() => window.print()}>
-          <Ikona ime="stampac" velicina={16} /><span>Štampaj</span><kbd>Ctrl+P</kbd>
+          <Ikona ime="stampac" velicina={16} /><span>Štampaj</span>
         </button>
       </section>
       {!izabrano

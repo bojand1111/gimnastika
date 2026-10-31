@@ -253,9 +253,9 @@ function Forma({ id }) {
         </div>
         <div className="dno-forme">
           <button type="submit" className="dugme dugme-glavno" disabled={radi}>
-            <span>{id !== null ? 'Sačuvaj' : 'Sačuvaj i pređi na prijave'}</span><kbd>Enter</kbd>
+            <span>{id !== null ? 'Sačuvaj' : 'Sačuvaj i pređi na prijave'}</span>
           </button>
-          <a href={LISTA} className="dugme" id="otkazi"><span>Otkaži</span><kbd>Esc</kbd></a>
+          <a href={LISTA} className="dugme" id="otkazi"><span>Otkaži</span></a>
           <span className="razmak" />
           {id !== null && (
             <button type="button" className="dugme dugme-opasno" id="obrisi" onClick={obrisi}>

@@ -47,7 +47,7 @@ const DijalogPotvrda = forwardRef(function DijalogPotvrda(_, ref) {
         <h2 className="kartica-naslov" id="dijalog-potvrda-tekst" style={{ lineHeight: '22px' }}>{tekst}</h2>
         <div className="forma-akcije">
           <button type="button" className="dugme dugme-opasno" id="dijalog-potvrda-da" onClick={() => zavrsi(true)}><span>{dugme}</span></button>
-          <button type="button" className="dugme" id="dijalog-potvrda-ne" ref={odustani} onClick={() => zavrsi(false)}><span>Odustani</span><kbd>Esc</kbd></button>
+          <button type="button" className="dugme" id="dijalog-potvrda-ne" ref={odustani} onClick={() => zavrsi(false)}><span>Odustani</span></button>
         </div>
       </div>
     </dialog>

@@ -53,12 +53,12 @@ export function useStampanje({ polozeno, ime, nazad, spremno }) {
 export default function StampaAlat({ naslov, polozeno, nazad, zauzeto, naStampaj, naPdf }) {
   return (
     <div className="stampa-alat">
-      <a href={nazad} className="dugme"><Ikona ime="strelica-levo" velicina={16} /><span>Nazad</span><kbd>Esc</kbd></a>
+      <a href={nazad} className="dugme"><Ikona ime="strelica-levo" velicina={16} /><span>Nazad</span></a>
       <span className="naslov">{naslov}</span>
       <span className="sivo mali">A4 {polozeno ? 'položeno' : 'uspravno'} · u dijalogu za štampu isključite zaglavlja i podnožja browsera</span>
       <button type="button" className="dugme" onClick={naPdf} aria-disabled={zauzeto || undefined}>Sačuvaj PDF</button>
       <button type="button" className="dugme dugme-glavno" onClick={naStampaj} aria-disabled={zauzeto || undefined} autoFocus>
-        <Ikona ime="stampac" velicina={16} /><span>Štampaj</span><kbd>Ctrl+P</kbd>
+        <Ikona ime="stampac" velicina={16} /><span>Štampaj</span>
       </button>
     </div>
   );
