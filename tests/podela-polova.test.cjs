@@ -283,3 +283,49 @@ test('prazna baza: sve nule, bez upisa u podesavanja', () => {
   assert.deepEqual(podeliPolove(baza), { takmicenja: 0, podeljena: 0, kategorije: 0, programi: 0 });
   assert.deepEqual(baza.svi('SELECT * FROM podesavanja ORDER BY kljuc'), pre);
 });
+
+// 1.1.x: pol takmicara se mogao ispraviti i dok ima prijave; prijava prelazi u drugi deo, a clan stare grupe ne sme da ostane.
+test('clan grupe cijem se polu promenio pol postaje nerasporedjen u svom delu', () => {
+  const { napraviModule } = require('../electron/moduli.cjs');
+  const baza = nova();
+  const id = takmicenje(baza, 'Kup');
+  const k = klub(baza);
+  const g = grupa(baza, id, 'M', 'A');
+  const prijave = [prijava(baza, id, 'M', k), prijava(baza, id, 'M', k), prijava(baza, id, 'M', k)];
+  prijave.forEach((p, i) => {
+    baza.izvrsi('INSERT INTO grupa_clanovi (grupa_id, prijava_id, redosled) VALUES (?, ?, ?)', [g, p, i + 1]);
+    baza.izvrsi('INSERT INTO grupa_redosled (grupa_id, rotacija, prijava_id, redosled) VALUES (?, 2, ?, ?)', [g, p, 3 - i]);
+  });
+  const ispravljena = prijave[2];
+  baza.izvrsi("UPDATE takmicari SET pol = 'Z' WHERE id = (SELECT takmicar_id FROM prijave WHERE id = ?)", [ispravljena]);
+  const brojevi = () => ['prijave', 'ocene', 'ocene_e', 'izmene_ocena'].map((t) => (baza.tabele().includes(t) ? brojRedova(baza, t) : 0));
+  const pre = brojevi();
+
+  podeliPolove(baza);
+
+  const zsg = baza.jedan("SELECT id FROM takmicenja WHERE pol = 'Z'").id;
+  assert.equal(baza.vrednost('SELECT takmicenje_id FROM prijave WHERE id = ?', [ispravljena]), zsg);
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM grupa_clanovi WHERE prijava_id = ?', [ispravljena]), 0);
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM grupa_redosled WHERE prijava_id = ?', [ispravljena]), 0);
+  assert.equal(brojRedova(baza, 'grupa_clanovi'), 2);
+  assert.equal(brojRedova(baza, 'grupa_redosled'), 2);
+  assert.deepEqual(brojevi(), pre, 'prijave i ocene se ne brisu');
+
+  const m = napraviModule(baza, { dialog: {}, fasciklaPodataka: () => require('node:os').tmpdir(), dnevnik: { info() {}, greska() {} } });
+  m.pol.postavi('M');
+  m.takmicenja.otvori(String(id));
+  const msg = m.rotacije.podaci(1);
+  assert.deepEqual(msg.grupe.map((x) => x.clanovi.map((c) => Number(c.prijava_id))), [[Number(prijave[0]), Number(prijave[1])]]);
+  assert.equal(msg.nerasporedjeni.length, 0);
+  m.pol.postavi('Z');
+  m.takmicenja.otvori(String(zsg));
+  const z = m.rotacije.podaci(1);
+  assert.equal(z.grupe.length, 0);
+  assert.deepEqual(z.nerasporedjeni.map((c) => Number(c.prijava_id)), [Number(ispravljena)]);
+
+  // drugi prolaz: nista se ne menja
+  const pocetak = JSON.stringify([baza.svi('SELECT * FROM grupa_clanovi ORDER BY prijava_id'), baza.svi('SELECT * FROM grupa_redosled ORDER BY prijava_id'), baza.svi('SELECT id, takmicenje_id FROM prijave ORDER BY id')]);
+  assert.deepEqual(podeliPolove(baza), { takmicenja: 0, podeljena: 0, kategorije: 0, programi: 0 });
+  assert.equal(JSON.stringify([baza.svi('SELECT * FROM grupa_clanovi ORDER BY prijava_id'), baza.svi('SELECT * FROM grupa_redosled ORDER BY prijava_id'), baza.svi('SELECT id, takmicenje_id FROM prijave ORDER BY id')]), pocetak);
+  assert.deepEqual(baza.svi('PRAGMA foreign_key_check'), []);
+});

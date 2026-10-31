@@ -272,3 +272,31 @@ test('unos.podaci: pol je pol takmicenja, dodatni argumenti se zanemaruju', () =
   assert.deepEqual(m.sprave.map((x) => x.skracenica), ['PA']);
   assert.deepEqual(m.redovi.map((r) => r.ime), ['Test Marko']);
 });
+
+// --- Prijava drugog dela se odbija, ocena ostaje ista ---
+test('unos.nacrt, potvrdi, odustao i vrati odbijaju prijavu drugog dela, ocena se ne menja', () => {
+  const { moduli, baza, s, pid } = sa4();
+  const u = moduli.unos;
+  // MSG: Marko ima potvrdjenu ocenu na parteru; ZSG: Ana na preskoku
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  u.potvrdi(pid.Marko, s.pa, ULAZ, undefined);
+  moduli.pol.postavi('Z');
+  moduli.takmicenja.otvori(String(s.takm));
+  u.potvrdi(pid.Ana, s.pr, ULAZ, undefined);
+  const stanje = (prijava, sprava) => JSON.stringify(baza.jedan('SELECT * FROM ocene WHERE prijava_id = ? AND sprava_id = ?', [prijava, sprava]));
+  const odbijeno = (e) => e instanceof GreskaKorisnika && e.message === 'Prijava ne postoji na ovom takmičenju.';
+  const proveri = (prijava, sprava) => {
+    const pre = stanje(prijava, sprava);
+    assert.notEqual(pre, 'null', 'ocena postoji pre pokusaja');
+    assert.throws(() => u.nacrt(prijava, sprava, { d: '1', e: [], odbitak: '' }), odbijeno);
+    assert.throws(() => u.potvrdi(prijava, sprava, { d: '4,8', e: ['7', '7', '7', '7'], odbitak: '' }, 'ispravka'), odbijeno);
+    assert.throws(() => u.odustao(prijava, sprava), odbijeno);
+    assert.throws(() => u.vrati(prijava, sprava), odbijeno);
+    assert.equal(stanje(prijava, sprava), pre, 'ocena je ista');
+  };
+  proveri(pid.Marko, s.pa); // izabran ZSG, prijava iz MSG
+  moduli.pol.postavi('M');
+  moduli.takmicenja.otvori(String(s.takmM));
+  proveri(pid.Ana, s.pr); // izabran MSG, prijava iz ZSG
+});

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { napraviPromenu, pripremiPromenu } from '../src/promenaDela.js';
+import { napraviPromenu, pripremiPromenu, uskladiPol } from '../src/promenaDela.js';
 
 test('pripremiPromenu ceka obecanja ekrana', async () => {
   const meta = new EventTarget();
@@ -69,4 +69,39 @@ test('ako pripremi pukne, postavi se ne zove', async () => {
   });
   await assert.rejects(() => promeni('Z'), /nije snimljeno/);
   assert.equal(postavljeno, false);
+});
+
+test('pripremiPromenu uklanja fokus sa polja pre app:pre-pol, pa blur snimanje ide dok je stari deo aktivan', async () => {
+  const redosled = [];
+  const meta = new EventTarget();
+  meta.activeElement = { blur: () => redosled.push('blur') };
+  meta.addEventListener('app:pre-pol', () => redosled.push('pre-pol'));
+  await pripremiPromenu(meta);
+  assert.deepEqual(redosled, ['blur', 'pre-pol']);
+});
+
+test('pripremiPromenu radi i kad nema aktivnog elementa ili on nema blur', async () => {
+  const a = new EventTarget();
+  a.activeElement = null;
+  await pripremiPromenu(a);
+  const b = new EventTarget();
+  b.activeElement = {};
+  await pripremiPromenu(b);
+});
+
+test('uskladiPol: isti deo ne menja nista, razlicit se primenjuje i javlja', async () => {
+  const pozivi = [];
+  const radnje = { primeni: (p) => pozivi.push(`primeni ${p}`) };
+  assert.equal(await uskladiPol({ procitaj: async () => 'M', trenutni: () => 'M', ...radnje }), null);
+  assert.deepEqual(pozivi, []);
+  assert.equal(await uskladiPol({ procitaj: async () => 'Z', trenutni: () => 'M', ...radnje }), 'Z');
+  assert.deepEqual(pozivi, ['primeni Z']);
+});
+
+test('uskladiPol: greska citanja ide dalje i nista se ne primenjuje', async () => {
+  let primenjeno = false;
+  await assert.rejects(
+    () => uskladiPol({ procitaj: async () => { throw new Error('nema'); }, trenutni: () => 'M', primeni: () => { primenjeno = true; } }),
+    /nema/);
+  assert.equal(primenjeno, false);
 });

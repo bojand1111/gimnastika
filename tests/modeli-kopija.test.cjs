@@ -240,3 +240,51 @@ test('vracanje kopije bez kolone pol deli takmicenje', () => {
     assert.deepEqual(t.baza.svi('PRAGMA foreign_key_check'), []);
   } finally { t.ukloni(); }
 });
+
+// --- Deo (MSG/ZSG) ostaje ovog racunara i posle vracanja ---
+const { napraviModule } = require('../electron/moduli.cjs');
+
+function moduliNad(t) {
+  return napraviModule(t.baza, { dialog: {}, fasciklaPodataka: () => t.dir, dnevnik: NEMI, verzija: '1.0.0' });
+}
+
+test('vracanje kopije napravljene u MSG ne menja izabrani ZSG deo', () => {
+  const t = nova();
+  try {
+    const m = moduliNad(t);
+    m.pol.postavi('M');
+    m.takmicenja.sacuvaj({ ...m.takmicenja.prazno(), naziv: 'Kup M', datum: '2026-11-01' }, null);
+    m.pol.postavi('Z');
+    m.takmicenja.sacuvaj({ ...m.takmicenja.prazno(), naziv: 'Kup Z', datum: '2026-11-02' }, null);
+    m.pol.postavi('M'); // kopija nosi aktivni_pol = M
+    const kopija = t.k.napravi('rucna');
+    m.pol.postavi('Z');
+    t.k.vrati(kopija.putanja);
+    assert.equal(m.pol.daj(), 'Z');
+    assert.equal(t.baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivni_pol'"), 'Z');
+    assert.deepEqual(m.takmicenja.sva().map((x) => `${x.naziv}/${x.pol}`), ['Kup Z/Z']);
+  } finally { t.ukloni(); }
+});
+
+test('vracanje stare kopije bez pola ne menja izabrani deo, ni M ni Z', () => {
+  for (const izabran of ['M', 'Z']) {
+    const t = nova();
+    try {
+      const m = moduliNad(t);
+      m.pol.postavi(izabran);
+      t.k.vrati(staraKopija(t.dir)); // aktivno takmicenje iz kopije je ZSG
+      assert.equal(m.pol.daj(), izabran, `izabran ${izabran}`);
+      assert.equal(m.takmicenja.sva().length, 1, `izabran ${izabran}`);
+      assert.equal(m.takmicenja.sva()[0].pol, izabran);
+    } finally { t.ukloni(); }
+  }
+});
+
+test('vracanje stare kopije kad deo nikad nije biran: deo odredjuje aktivno takmicenje iz kopije', () => {
+  const t = nova();
+  try {
+    t.k.vrati(staraKopija(t.dir));
+    assert.equal(moduliNad(t).pol.daj(), 'Z');
+    assert.deepEqual(t.baza.svi('PRAGMA foreign_key_check'), []);
+  } finally { t.ukloni(); }
+});

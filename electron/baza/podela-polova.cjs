@@ -62,6 +62,17 @@ function podeliTakmicenja(baza, sad, rez) {
   return podeljena;
 }
 
+// Clan grupe cija prijava pripada drugom takmicenju od grupe (u 1.1.x pol takmicara se menjao i sa prijavama,
+// pa je prijava prosla u drugi deo, a clanstvo ostalo): clanstvo i rucni redosled se brisu, prijava postaje nerasporedjena.
+function ocistiClanstvoGrupa(baza) {
+  for (const tabela of ['grupa_clanovi', 'grupa_redosled']) {
+    baza.izvrsi(
+      `DELETE FROM ${tabela} WHERE EXISTS (SELECT 1 FROM grupe g JOIN prijave p ON p.id = ${tabela}.prijava_id
+        WHERE g.id = ${tabela}.grupa_id AND g.takmicenje_id <> p.takmicenje_id)`,
+    );
+  }
+}
+
 // Svaka stavka postaje dve: stara id ostaje M, nova je Z; Z prijave prelaze na novu stavku.
 function podeliSifarnik(baza, tabela, kolonaPrijave, sad) {
   let n = 0;
@@ -111,6 +122,7 @@ function podeliPolove(baza) {
     const sad = Baza.sad();
     const rez = { takmicenja: 0, podeljena: 0, kategorije: 0, programi: 0 };
     const podeljena = podeliTakmicenja(baza, sad, rez);
+    ocistiClanstvoGrupa(baza);
     rez.kategorije = podeliSifarnik(baza, 'kategorije', 'kategorija_id', sad);
     rez.programi = podeliSifarnik(baza, 'programi', 'program_id', sad);
     prevediAktivno(baza, podeljena, rez.takmicenja > 0);

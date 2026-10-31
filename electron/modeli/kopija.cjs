@@ -24,7 +24,8 @@ const NAJNOVIJA_PHP = '1.2.0';
 const GRB_OBLIK = new RegExp('^grb/[A-Za-z0-9_-][A-Za-z0-9_.-]*$');
 const grbOk = (v) => GRB_OBLIK.test(String(v ?? '')) && !String(v).includes('..');
 // Podesavanja ovog racunara: ne dolaze iz kopije (sajt_token je tajna, sajt_url usmerava slanje rezultata).
-const ZIVI_KLJUCEVI = ['kopije_fascikla', 'sajt_url', 'sajt_token', 'sajt_poslednja_sinhronizacija'];
+// aktivni_pol je izabrani deo (MSG/ZSG) ovog racunara.
+const ZIVI_KLJUCEVI = ['kopije_fascikla', 'sajt_url', 'sajt_token', 'sajt_poslednja_sinhronizacija', 'aktivni_pol'];
 // Grbovi u podesavanjima: stari zajednicki kljucevi i verzije po polu.
 const GRB_KLJUCEVI = ['grb_levo', 'grb_desno', 'grb_levo_M', 'grb_levo_Z', 'grb_desno_M', 'grb_desno_Z'];
 const GRB_NAVEDENI = GRB_KLJUCEVI.map((k) => `'${k}'`).join(', ');
@@ -84,8 +85,11 @@ function napravi(baza, opcije) {
   const posleVracanja = opcije.posleVracanja ?? (() => { baza.migriraj(); pocetniPodaci(baza); podeliPolove(baza); });
 
   // Trenutne vrednosti podesavanja ovog racunara, koje vracanje ne sme da promeni.
+  // Izabrani deo se cuva samo kad ga je ovaj racunar stvarno izabrao; inace ga posle vracanja odredjuje podela.
   function ziveVrednosti() {
-    return Object.fromEntries(ZIVI_KLJUCEVI.map((k) => [k, podesavanja.daj(k)]));
+    const izabran = baza.vrednost("SELECT vrednost FROM podesavanja WHERE kljuc = 'aktivni_pol'");
+    const kljucevi = ZIVI_KLJUCEVI.filter((k) => k !== 'aktivni_pol' || ['M', 'Z'].includes(izabran));
+    return Object.fromEntries(kljucevi.map((k) => [k, podesavanja.daj(k)]));
   }
 
   function fasciklaStanje() {

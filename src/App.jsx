@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import gim from './gim.js';
 import { razlozi } from './ruter.js';
 import { radnja } from './precice.js';
-import { napraviPromenu, pripremiPromenu } from './promenaDela.js';
+import { napraviPromenu, pripremiPromenu, uskladiPol } from './promenaDela.js';
 import Meni, { naslovEkrana } from './okvir/Meni.jsx';
 import Traka from './okvir/Traka.jsx';
 import Poruke, { obavesti } from './okvir/Poruke.jsx';
@@ -75,6 +75,20 @@ export default function App() {
       document.dispatchEvent(new Event('app:aktivno'));
     } catch (err) { obavesti(err.message, 'greska'); }
   }
+
+  // Posle vracanja kopije glavni proces je mozda promenio deo: ponovo ga procitaj; Pocetna samo ako se deo promenio.
+  useEffect(() => {
+    if (!window.gim?.kopija?.naVraceni) return undefined;
+    return window.gim.kopija.naVraceni(async () => {
+      try {
+        const novi = await uskladiPol({ procitaj: () => gim.pol.daj(), trenutni: () => polRef.current, primeni: primeniPol });
+        if (novi === null) return;
+        location.hash = '#/pocetna';
+        document.dispatchEvent(new Event('app:pol'));
+        document.dispatchEvent(new Event('app:aktivno'));
+      } catch (err) { obavesti(err.message, 'greska'); }
+    });
+  }, []);
 
   useEffect(() => {
     // Alt+M i Alt+Z rade i u polju za unos; podrazumevani postupak pregledaca se gasi.

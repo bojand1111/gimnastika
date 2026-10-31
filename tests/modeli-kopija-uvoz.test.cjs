@@ -246,3 +246,13 @@ test('uvoz PHP zip-a: kljucevi sajta iz zipa se ne uvoze, ziva podesavanja ostaj
     assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc LIKE 'sajt_%'")), 3);
   } finally { t.ukloni(); }
 });
+
+test('uvoz PHP zip-a ne menja izabrani deo ovog racunara', () => {
+  const t = nova('1.0.0');
+  try {
+    t.podesavanja.postavi('aktivni_pol', 'M');
+    t.k.vrati(napraviZip(t, OPIS)); // takmicenje iz kopije je ZSG
+    assert.equal(t.podesavanja.daj('aktivni_pol'), 'M');
+    assert.equal(t.podesavanja.daj('aktivno_takmicenje_Z'), '1');
+  } finally { t.ukloni(); }
+});
