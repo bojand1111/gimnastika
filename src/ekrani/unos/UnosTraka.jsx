@@ -1,3 +1,4 @@
+import Ikona from '../../komponente/Ikona.jsx';
 import { hashUnos, procenat, tekstOdustalo } from '../unosStanje.js';
 
 // Traka iznad kartice (POPIS 5.1): sprava, rotacija i napredak. Pol je samo za tekst (odustao/odustala).
@@ -11,7 +12,7 @@ export default function UnosTraka({ d, napredak }) {
           <div className="unos-traka-grupa"><span className="oznaka">Sprava</span>
             <div className="izbor" role="group" aria-label="Sprava">
               {sprave.map((s) => (
-                <a key={s.id} href={hashUnos(s.id, rot)} className={Number(s.id) === Number(sprava.id) ? 'izabrano' : ''}>{s.naziv}</a>
+                <a key={s.id} href={hashUnos(s.id, rot)} className={Number(s.id) === Number(sprava.id) ? 'izabrano' : ''}>{s.ikona && <Ikona ime={s.ikona} velicina={18} />}{s.naziv}</a>
               ))}
             </div>
           </div>
