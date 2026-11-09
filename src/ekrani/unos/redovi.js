@@ -3,7 +3,7 @@ import { NEMA, preracunaj } from '../unosStanje.js';
 
 export function izPodataka(d) {
   return d.redovi.map((r) => {
-    const vrednosti = { d: r.d ?? '', odbitak: r.odbitak ?? '' };
+    const vrednosti = { d: r.d ?? '', bonus: r.bonus ?? '', odbitak: r.odbitak ?? '' };
     (r.e_sudije ?? []).forEach((x, i) => { vrednosti[`e${i + 1}`] = x ?? ''; });
     const red = {
       prijava_id: r.prijava_id,
@@ -29,8 +29,12 @@ export function izPodataka(d) {
   });
 }
 
-// Kolone mreze (POPIS 5): #, St. br., Takmicar, Klub, Kategorija, D, E1..EN, E, Odb., Konacna, Status.
-export const kolone = (brojSudija) => `36px 44px minmax(0,1fr) 52px minmax(0,0.6fr) 64px ${'60px '.repeat(brojSudija)}66px 60px 88px 146px`;
+// Kolone mreze (POPIS 5): #, St. br., Takmicar, Klub, Kategorija, D, E1..EN, E, Bonus, Pen., Kon., Status.
+// Polja E sudija su uza kad ih je vise od 4, da ime stane na 1366 px ("10,000" zauzima 47 px).
+export const kolone = (brojSudija) => {
+  const e = brojSudija <= 4 ? 56 : brojSudija === 5 ? 54 : 52;
+  return `30px 44px minmax(0,1fr) 52px minmax(0,0.5fr) 56px ${`${e}px `.repeat(brojSudija)}58px 52px 52px 76px 142px`;
+};
 
 // "vreme" u bazi je UTC (YYYY-MM-DD HH:MM:SS); prikaz je HH:mm lokalnog vremena racunara.
 export function vremeIzmene(vreme) {

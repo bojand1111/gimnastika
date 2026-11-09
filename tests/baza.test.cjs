@@ -2,11 +2,35 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { otvori, Baza } = require('../electron/baza/baza.cjs');
 
+test('migracija 006: postojece ocene dobijaju bonus NULL, vrednosti i konacna ostaju iste', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const b = otvori(':memory:');
+  const fascikla = path.join(__dirname, '..', 'electron', 'baza', 'migracije');
+  // baza do migracije 005, sa jednom unetom ocenom
+  b.db.exec('CREATE TABLE IF NOT EXISTS migracije (ime TEXT PRIMARY KEY, primenjeno TEXT)');
+  for (const f of fs.readdirSync(fascikla).filter((x) => /^00[1-5]_/.test(x) && x.endsWith('.sql')).sort()) {
+    b.db.exec(fs.readFileSync(path.join(fascikla, f), 'utf8'));
+    b.ubaci('migracije', { ime: f.slice(0, -'.sql'.length), primenjeno: 'x' });
+  }
+  const S = '2026-01-01 00:00:00';
+  b.izvrsi("INSERT INTO sprave (id, pol, naziv, skracenica, redosled, kreirano, izmenjeno) VALUES (1, 'Z', 'Greda', 'GR', 1, ?, ?)", [S, S]);
+  b.izvrsi("INSERT INTO takmicenja (id, naziv, datum, pol, kreirano, izmenjeno) VALUES (1, 'Kup', '2026-11-01', 'Z', ?, ?)", [S, S]);
+  b.izvrsi("INSERT INTO takmicari (id, id_broj, ime, prezime, godina_rodjenja, pol, kreirano, izmenjeno) VALUES (1, 'T1', 'A', 'B', 2012, 'Z', ?, ?)", [S, S]);
+  b.izvrsi('INSERT INTO prijave (id, takmicenje_id, takmicar_id, kreirano, izmenjeno) VALUES (1, 1, 1, ?, ?)', [S, S]);
+  b.izvrsi("INSERT INTO ocene (id, prijava_id, sprava_id, d, e, odbitak, konacna, status, kreirano, izmenjeno) VALUES (1, 1, 1, 4200, 8700, 300, 12600, 'uneto', ?, ?)", [S, S]);
+  assert.deepEqual(b.naCekanju(), ['006_bonus']);
+  assert.deepEqual(b.migriraj(), ['006_bonus']);
+  assert.deepEqual({ ...b.jedan('SELECT d, e, bonus, odbitak, konacna, status FROM ocene WHERE id = 1') },
+    { d: 4200, e: 8700, bonus: null, odbitak: 300, konacna: 12600, status: 'uneto' });
+  b.zatvori();
+});
+
 test('migracije na praznoj bazi prave sve tabele i ponovo ne rade nista', () => {
   const b = otvori(':memory:');
-  assert.equal(b.naCekanju().length, 5);
+  assert.equal(b.naCekanju().length, 6);
   const prvi = b.migriraj();
-  assert.deepEqual(prvi, ['001_pocetna', '002_takmicenje_grb_domacin', '003_potvrde_klubova', '004_redosled_po_rotaciji', '005_pol_po_delu']);
+  assert.deepEqual(prvi, ['001_pocetna', '002_takmicenje_grb_domacin', '003_potvrde_klubova', '004_redosled_po_rotaciji', '005_pol_po_delu', '006_bonus']);
   assert.deepEqual(b.tabele().sort(), ['grupa_clanovi', 'grupa_redosled', 'grupe', 'izmene_ocena', 'kategorije', 'klubovi', 'migracije', 'ocene', 'ocene_e', 'podesavanja', 'potvrde_klubova', 'prijava_sprave', 'prijave', 'programi', 'sprave', 'takmicari', 'takmicenja']);
   assert.deepEqual(b.migriraj(), []);
   assert.deepEqual(b.naCekanju(), []);

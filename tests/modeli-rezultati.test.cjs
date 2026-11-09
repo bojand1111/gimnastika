@@ -242,6 +242,7 @@ test('detalji.odbacene i ostali detalji ocene', () => {
   assert.equal(red.status, 'uneto');
   assert.equal(red.d, 4800);
   assert.equal(red.odbitak, 100);
+  assert.equal(red.bonus, 0, 'prazan bonus u potvrdi je 0');
   assert.deepEqual(red.odbacene, [1, 2]);
   assert.deepEqual(red.e_sudije, { 1: 8300, 2: 8100, 3: 8400, 4: 8200 });
   assert.equal(red.konacna, 4800 + 8250 - 100);
@@ -352,5 +353,21 @@ test('VK koji je odustao na jednoj spravi: oznaka prazna, bez mesta, na dnu; VK 
   assert.equal(ceca.odustao, true);
   assert.equal(oznake(rez.po_spravi[s.pr])[pid.Ceca], 'VK', 'na PR ostaje VK');
   for (const e of rez.ekipno) assert.ok(!e.clanovi.some((c) => c.prijava === pid.Ceca), 'VK nije u ekipnom');
+  n.baza.zatvori();
+});
+
+test('bonus: ulazi u konacnu i plasman na spravi; stara ocena bez bonusa (NULL) daje bonus 0', () => {
+  const n = nova();
+  const { s, pid, o, r } = n;
+  o.sacuvaj(s.takm, pid.Ana, s.pr, { d: '4,0', e: ['8,0', '8,0', '8,0', '8,0'], bonus: '', odbitak: '' }, true);
+  o.sacuvaj(s.takm, pid.Bea, s.pr, { d: '4,0', e: ['8,0', '8,0', '8,0', '8,0'], bonus: '0,1', odbitak: '0,3' }, true);
+  o.sacuvaj(s.takm, pid.Dona, s.pr, { d: '4,0', e: ['8,0', '8,0', '8,0', '8,0'], bonus: '0,5', odbitak: '' }, true);
+  n.baza.izvrsi('UPDATE ocene SET bonus = NULL WHERE prijava_id = ?', [pid.Ana]);
+  const lista = r.izracunaj(n.takm(), 'Z', s.kat, s.prog).po_spravi[s.pr];
+  assert.deepEqual(lista.map((x) => [x.prijava, x.mesto, x.bonus, x.odbitak, x.konacna]), [
+    [pid.Dona, 1, 500, 0, 12500],
+    [pid.Ana, 2, 0, 0, 12000],
+    [pid.Bea, 3, 100, 300, 11800],
+  ]);
   n.baza.zatvori();
 });

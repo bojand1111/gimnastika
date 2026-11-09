@@ -2,7 +2,7 @@ import Ikona from '../../komponente/Ikona.jsx';
 import { prikaz } from '../../../electron/racun/broj.mjs';
 import { kolone, mestoTekst, odustalaRec } from '../stampaStanje.js';
 
-// Visebojna lista (POPIS 4.3): grid, blok po takmicaru sa D, E i odbitkom po spravi.
+// Visebojna lista (POPIS 4.3): grid, blok po takmicaru sa D, E, bonusom i odbitkom (pen.) po spravi.
 export default function ListViseboj({ redovi, rez, pol, polozeno }) {
   const z = pol === 'Z';
   const k = kolone(rez.sprave.length, polozeno);
@@ -37,7 +37,8 @@ export default function ListViseboj({ redovi, rez, pol, polozeno }) {
                   <span className="glavna"><b className="broj">{prikaz(d.konacna)}</b><span className="broj">({r.mesta[s.id] ?? ''})</span></span>
                   <span className="deo"><span>D</span><span className="broj">{prikaz(d.d)}</span></span>
                   <span className="deo"><span>E</span><span className="broj">{prikaz(d.e)}</span></span>
-                  {d.odbitak ? <span className="deo"><span>Odb.</span><span className="broj">{`−${prikaz(d.odbitak)}`}</span></span> : null}
+                  {d.bonus ? <span className="deo"><span>Bonus</span><span className="broj">{`+${prikaz(d.bonus)}`}</span></span> : null}
+                  {d.odbitak ? <span className="deo"><span>Pen.</span><span className="broj">{`−${prikaz(d.odbitak)}`}</span></span> : null}
                 </div>
               );
             })}

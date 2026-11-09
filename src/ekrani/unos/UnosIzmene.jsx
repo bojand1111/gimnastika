@@ -8,7 +8,7 @@ export default function UnosIzmene({ izmene }) {
         <span className="oznaka unos-oznaka">Prečice</span>
         <div className="sek unos-precice-lista">
           <span className="unos-precica"><kbd>Tab</kbd><kbd>Enter</kbd><span>sledeće polje</span></span>
-          <span className="unos-precica"><kbd>Enter</kbd><span>na odbitku: potvrdi i pređi na sledećeg</span></span>
+          <span className="unos-precica"><kbd>Enter</kbd><span>na penalizaciji: potvrdi i pređi na sledećeg</span></span>
           <span className="unos-precica"><kbd>↑</kbd><kbd>↓</kbd><span>drugi takmičar</span></span>
           <span className="unos-precica"><kbd>F8</kbd><span>odustao/la</span></span>
           <span className="unos-precica"><kbd>F9</kbd><span>ispravi unetu ocenu</span></span>

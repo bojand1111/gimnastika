@@ -1,10 +1,11 @@
 import { memo } from 'react';
 import Ikona from '../../komponente/Ikona.jsx';
-import { odustaoRec, otvoren, polja } from '../unosStanje.js';
+import { ePolja, odustaoRec, otvoren } from '../unosStanje.js';
 
-const naziv = (ime) => (ime === 'd' ? 'D ocena' : ime === 'odbitak' ? 'Odbitak' : `${ime.toUpperCase()} ocena`);
+const NAZIVI = { d: 'D ocena', bonus: 'Bonus', odbitak: 'Penalizacija' };
+const naziv = (ime) => NAZIVI[ime] ?? `${ime.toUpperCase()} ocena`;
 
-// Ćelija statusa (POPIS 5.3 i 6): čip, a za trenutni red u unosu dugmad "Potvrdi" (isto kao Enter na odbitku)
+// Ćelija statusa (POPIS 5.3 i 6): čip, a za trenutni red u unosu dugmad "Potvrdi" (isto kao Enter na penalizaciji)
 // i "Odustala|Odustao" (F8). Prečice su u opisu dugmeta, da kolona ostane uska.
 function Status({ red, trenutni, h }) {
   const id = red.prijava_id;
@@ -27,7 +28,7 @@ function Status({ red, trenutni, h }) {
   if (trenutni && otvoren(red)) {
     return (
       <span className="unos-status">
-        <button type="button" className="dugme dugme-malo dugme-glavno potvrdi-dugme" tabIndex={-1} title="Potvrdi (Enter na odbitku)"
+        <button type="button" className="dugme dugme-malo dugme-glavno potvrdi-dugme" tabIndex={-1} title="Potvrdi (Enter na penalizaciji)"
           onClick={() => h.potvrdi(id)}>
           Potvrdi
         </button>
@@ -77,15 +78,16 @@ function UnosRed({ red, brojSudija, trenutni, kolone, h }) {
       </span>
       <span className="unos-klub" title={red.klub}>{red.klub}</span>
       <span className="unos-kat" title={red.kategorija}>{red.kategorija}</span>
-      {red.status === 'ne_radi' && <span className="unos-pruga" style={{ gridColumn: `span ${brojSudija + 4}` }}><span>Ne radi ovu spravu</span></span>}
+      {red.status === 'ne_radi' && <span className="unos-pruga" style={{ gridColumn: `span ${brojSudija + 5}` }}><span>Ne radi ovu spravu</span></span>}
       {red.status === 'odustao' && (
-        <span className="unos-pruga" style={{ gridColumn: `span ${brojSudija + 4}` }}>
+        <span className="unos-pruga" style={{ gridColumn: `span ${brojSudija + 5}` }}>
           <span className="unos-pruga-rec">{odustaoRec(red.pol)}</span><span>bez ocene na ovoj spravi</span>
         </span>
       )}
       {!pruga && polje('d')}
-      {!pruga && polja(brojSudija).slice(1, -1).map(polje)}
+      {!pruga && ePolja(brojSudija).map(polje)}
       {!pruga && <span className="unos-e broj centar">{red.e}</span>}
+      {!pruga && polje('bonus')}
       {!pruga && polje('odbitak')}
       {!pruga && <span className={`konacna unos-konacna${red.konacna === '–' ? ' sivo' : ''}`}>{red.konacna}</span>}
       <Status red={red} trenutni={trenutni} h={h} />

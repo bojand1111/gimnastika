@@ -70,7 +70,7 @@ test('nacrt, potvrda, ispravka, odustajanje (POPIS 8.1)', () => {
   assert.equal(izm[0].razlog, 'pogrešno pročitan listić');
   assert.ok(izm[0].opis.includes('E2 8,100 → 7,900'));
   assert.ok(izm[0].opis.includes('konačna 13,050 → 12,950'));
-  assert.equal(izm[0].opis, 'odbitak 0,000 → 0,100 · E2 8,100 → 7,900 · konačna 13,050 → 12,950');
+  assert.equal(izm[0].opis, 'penalizacija 0,000 → 0,100 · E2 8,100 → 7,900 · konačna 13,050 → 12,950');
   assert.equal(izm[0].ime, 'Ana');
   assert.equal(izm[0].prezime, 'Test');
   assert.equal(izm[0].staro.konacna, 13050);
@@ -129,6 +129,53 @@ test('odbitak: prazan je null u nacrtu, 0 u potvrdi', () => {
   const { s, pid, o } = nova();
   assert.equal(o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, false).ocena.odbitak, null);
   assert.equal(o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, true).ocena.odbitak, 0);
+});
+
+test('bonus: prazan je null u nacrtu i 0 u potvrdi, dodaje se konacnoj', () => {
+  const { baza, s, pid, o } = nova();
+  let r = o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, false);
+  assert.equal(r.ocena.bonus, null);
+  assert.equal(r.prikaz.bonus, '');
+  r = o.sacuvaj(s.takm, pid.Ana, s.gr, { ...UNOS, bonus: '0,1', odbitak: '0,3' }, false);
+  assert.equal(r.ocena.bonus, 100);
+  assert.equal(r.prikaz.konacna, '12,850', 'nacrt racuna i bonus');
+  r = o.sacuvaj(s.takm, pid.Ana, s.gr, { d: '4,2', e: ['8,7', '8,7', '8,7', '8,7'], bonus: '0,1', odbitak: '0,3' }, true);
+  assert.equal(r.prikaz.bonus, '0,100');
+  assert.equal(r.prikaz.odbitak, '0,300');
+  assert.equal(r.prikaz.konacna, '12,700');
+  assert.deepEqual({ ...baza.jedan('SELECT bonus, odbitak, konacna, typeof(bonus) AS tip FROM ocene WHERE prijava_id = ?', [pid.Ana]) },
+    { bonus: 100, odbitak: 300, konacna: 12700, tip: 'integer' });
+  assert.equal(o.sacuvaj(s.takm, pid.Bea, s.gr, UNOS, true).ocena.bonus, 0);
+});
+
+test('bonus: neispravna vrednost se odbija kao i odbitak (penalizacija)', () => {
+  const { s, pid, o } = nova();
+  assert.equal(poruka(() => o.sacuvaj(s.takm, pid.Ana, s.gr, { ...UNOS, bonus: '0,1x' }, false)),
+    'Bonus: neispravna vrednost „0,1x“ (0 do 20, najviše tri decimale).');
+  assert.equal(poruka(() => o.sacuvaj(s.takm, pid.Ana, s.gr, { ...UNOS, bonus: '-0,1' }, true)),
+    'Bonus: neispravna vrednost „-0,1“ (0 do 20, najviše tri decimale).');
+  assert.equal(poruka(() => o.sacuvaj(s.takm, pid.Ana, s.gr, { ...UNOS, bonus: '21' }, true)),
+    'Bonus: neispravna vrednost „21“ (0 do 20, najviše tri decimale).');
+  assert.equal(poruka(() => o.sacuvaj(s.takm, pid.Ana, s.gr, { ...UNOS, odbitak: 'x' }, true)),
+    'Penalizacija: neispravna vrednost „x“ (0 do 20, najviše tri decimale).');
+});
+
+test('bonus: ispravka se zapisuje u izmene; stara ocena bez bonusa (NULL) ne pravi stavku za bonus', () => {
+  const { baza, s, pid, o } = nova();
+  o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, true);
+  o.sacuvaj(s.takm, pid.Ana, s.gr, { ...UNOS, bonus: '0,2' }, true, 'bonus');
+  let izm = o.izmeneNaSpravi(s.takm, s.gr);
+  assert.equal(izm[0].opis, 'bonus 0,000 → 0,200 · konačna 13,050 → 13,250');
+  assert.equal(izm[0].staro.bonus, 0);
+  assert.equal(izm[0].novo.bonus, 200);
+  // ocena uneta pre migracije 006: bonus je NULL; ispravka E ne sme da prijavi bonus
+  o.sacuvaj(s.takm, pid.Bea, s.gr, UNOS, true);
+  baza.izvrsi('UPDATE ocene SET bonus = NULL WHERE prijava_id = ?', [pid.Bea]);
+  const r = o.sacuvaj(s.takm, pid.Bea, s.gr, { ...UNOS, e: ['8,3', '8,1', '8,4', '8,0'] }, true, 'E4');
+  assert.equal(r.ocena.bonus, 0);
+  assert.equal(r.prikaz.konacna, '13,000');
+  izm = o.izmeneNaSpravi(s.takm, s.gr);
+  assert.equal(izm[0].opis, 'E4 8,200 → 8,000 · konačna 13,050 → 13,000');
 });
 
 test('odustao nad unetom pravi zapis sa opisom', () => {

@@ -1,16 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  polja, proveriPolje, preracunaj, podaciReda, sledeciOtvoren, sledecePolje, sledeciRedSaPoljem,
+  ePolja, polja, proveriPolje, preracunaj, podaciReda, sledeciOtvoren, sledecePolje, sledeciRedSaPoljem,
   prvoPraznoPolje, pocetniFokus, napredakIzRedova, tekstOdustalo, procenat, hashUnos, parUnos, odustaoRec, primeniPrikaz,
 } from '../src/ekrani/unosStanje.js';
 
 const red = (status, extra = {}) => ({ prijava_id: 1, status, ispravlja: false, vrednosti: {}, ...extra });
-const unos = (d, e, odbitak = '') => ({ d, e1: e[0] ?? '', e2: e[1] ?? '', e3: e[2] ?? '', e4: e[3] ?? '', odbitak });
+const unos = (d, e, odbitak = '', bonus = '') => ({ d, e1: e[0] ?? '', e2: e[1] ?? '', e3: e[2] ?? '', e4: e[3] ?? '', bonus, odbitak });
 
-test('polja: d, E sudije, odbitak', () => {
-  assert.deepEqual(polja(4), ['d', 'e1', 'e2', 'e3', 'e4', 'odbitak']);
-  assert.deepEqual(polja(1), ['d', 'e1', 'odbitak']);
+test('polja: d, E sudije, bonus, odbitak (pen.) poslednji', () => {
+  assert.deepEqual(polja(4), ['d', 'e1', 'e2', 'e3', 'e4', 'bonus', 'odbitak']);
+  assert.deepEqual(polja(1), ['d', 'e1', 'bonus', 'odbitak']);
+  assert.deepEqual(ePolja(3), ['e1', 'e2', 'e3']);
+  assert.deepEqual(ePolja(0), []);
 });
 
 test('proveriPolje: prazno, normalizacija, neispravno', () => {
@@ -30,6 +32,19 @@ test('preracunaj: primer iz specifikacije', () => {
 test('preracunaj: odbitak 0,1 daje 12,950; prazan odbitak je 0', () => {
   const r = { vrednosti: unos('4,8', ['8,3', '8,1', '8,4', '8,2'], '0,1') };
   assert.equal(preracunaj(r, 4, 'odbaci_krajnje', 'odseci').konacna, '12,950');
+});
+
+test('preracunaj: bonus se dodaje (4,2 + 8,700 + 0,1 − 0,3 = 12,700); prazan bonus je 0', () => {
+  const r = { vrednosti: unos('4,2', ['8,7', '8,7', '8,7', '8,7'], '0,3', '0,1') };
+  assert.deepEqual(preracunaj(r, 4, 'odbaci_krajnje', 'odseci'), { e: '8,700', konacna: '12,700' });
+  const bezBonusa = { vrednosti: unos('4,2', ['8,7', '8,7', '8,7', '8,7'], '0,3', '') };
+  assert.equal(preracunaj(bezBonusa, 4, 'odbaci_krajnje', 'odseci').konacna, '12,600');
+  const stariRed = { vrednosti: { d: '4,2', e1: '8,7', e2: '8,7', e3: '8,7', e4: '8,7', odbitak: '0,3' } }; // bez kljuca bonus
+  assert.equal(preracunaj(stariRed, 4, 'odbaci_krajnje', 'odseci').konacna, '12,600');
+  const lose = { vrednosti: unos('4,2', ['8,7', '8,7', '8,7', '8,7'], '', 'x') };
+  assert.deepEqual(preracunaj(lose, 4, 'odbaci_krajnje', 'odseci'), { e: '8,700', konacna: '–' });
+  const preko = { vrednosti: unos('4,2', ['8,7', '8,7', '8,7', '8,7'], '', '21') };
+  assert.equal(preracunaj(preko, 4, 'odbaci_krajnje', 'odseci').konacna, '–');
 });
 
 test('preracunaj: nepotpune E, bez D, neispravan odbitak, ne ispod nule', () => {
@@ -56,8 +71,8 @@ test('preracunaj: zaokruzivanje se razlikuje (odseci vs zaokruzi)', () => {
 });
 
 test('podaciReda: trim', () => {
-  const r = { vrednosti: unos(' 4,8 ', [' 8,3', '8,1 ', '', '8,2'], ' ') };
-  assert.deepEqual(podaciReda(r, 4), { d: '4,8', e: ['8,3', '8,1', '', '8,2'], odbitak: '' });
+  const r = { vrednosti: unos(' 4,8 ', [' 8,3', '8,1 ', '', '8,2'], ' ', ' 0,1 ') };
+  assert.deepEqual(podaciReda(r, 4), { d: '4,8', e: ['8,3', '8,1', '', '8,2'], bonus: '0,1', odbitak: '' });
 });
 
 test('sledeciOtvoren: kruzno, bez trenutnog, null kad nema', () => {
@@ -72,8 +87,10 @@ test('sledeciOtvoren: kruzno, bez trenutnog, null kad nema', () => {
 test('sledecePolje: u redu, null na krajevima', () => {
   const p = polja(2);
   assert.equal(sledecePolje(p, 'd', 1), 'e1');
-  assert.equal(sledecePolje(p, 'e2', 1), 'odbitak');
+  assert.equal(sledecePolje(p, 'e2', 1), 'bonus');
+  assert.equal(sledecePolje(p, 'bonus', 1), 'odbitak');
   assert.equal(sledecePolje(p, 'odbitak', 1), null);
+  assert.equal(sledecePolje(p, 'odbitak', -1), 'bonus');
   assert.equal(sledecePolje(p, 'e1', -1), 'd');
   assert.equal(sledecePolje(p, 'd', -1), null);
 });
@@ -91,7 +108,8 @@ test('sledeciRedSaPoljem: preskace zakljucane i ne_radi', () => {
 test('prvoPraznoPolje: prvo prazno ili d', () => {
   const p = polja(2);
   assert.equal(prvoPraznoPolje({ vrednosti: { d: '4,800', e1: '8,000', e2: '', odbitak: '' } }, p), 'e2');
-  assert.equal(prvoPraznoPolje({ vrednosti: { d: '4,800', e1: '8,000', e2: '8,000', odbitak: '0,000' } }, p), 'd');
+  assert.equal(prvoPraznoPolje({ vrednosti: { d: '4,800', e1: '8,000', e2: '8,000', bonus: '', odbitak: '' } }, p), 'bonus');
+  assert.equal(prvoPraznoPolje({ vrednosti: { d: '4,800', e1: '8,000', e2: '8,000', bonus: '0,000', odbitak: '0,000' } }, p), 'd');
   assert.equal(prvoPraznoPolje({ vrednosti: {} }, p), 'd');
 });
 
@@ -146,10 +164,10 @@ test('parUnos: stari pol u hashu se zanemaruje', () => {
 
 test('primeniPrikaz: upis vrednosti, status, ciscenje oznaka', () => {
   const r = red('nacrt', { ispravlja: true, greskaCuvanja: true, greske: new Set(['d']), vrednosti: unos('', []) });
-  const n = primeniPrikaz(r, { d: '4,800', e_sudije: ['8,300', '8,100', '8,400', '8,200'], odbitak: '0,000', e: '8,250', konacna: '13,050', status: 'uneto' });
-  assert.deepEqual(n.vrednosti, { d: '4,800', e1: '8,300', e2: '8,100', e3: '8,400', e4: '8,200', odbitak: '0,000' });
+  const n = primeniPrikaz(r, { d: '4,800', e_sudije: ['8,300', '8,100', '8,400', '8,200'], bonus: '0,100', odbitak: '0,000', e: '8,250', konacna: '13,150', status: 'uneto' });
+  assert.deepEqual(n.vrednosti, { d: '4,800', e1: '8,300', e2: '8,100', e3: '8,400', e4: '8,200', bonus: '0,100', odbitak: '0,000' });
   assert.equal(n.e, '8,250');
-  assert.equal(n.konacna, '13,050');
+  assert.equal(n.konacna, '13,150');
   assert.equal(n.status, 'uneto');
   assert.equal(n.ispravlja, false);
   assert.equal(n.greskaCuvanja, false);

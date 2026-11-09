@@ -98,11 +98,25 @@ test('snimak: odustala Djordjevic Sara ima odustao true i mesto null', () => {
 test('snimak: oblik reda sprave i JSON se vraca kroz stringify bez gubitka', () => {
   const { s } = gradi();
   const red = Object.values(s.liste[0].po_spravi)[0][0];
-  for (const k of ['mesto', 'oznaka', 'prijava_id', 'startni_broj', 'ime', 'prezime', 'klub', 'klub_ime', 'd', 'e', 'odbitak', 'konacna', 'konacna_h', 'odustao']) {
+  for (const k of ['mesto', 'oznaka', 'prijava_id', 'startni_broj', 'ime', 'prezime', 'klub', 'klub_ime', 'd', 'e', 'bonus', 'odbitak', 'konacna', 'konacna_h', 'odustao']) {
     assert.ok(k in red, k);
   }
   assert.equal(typeof red.konacna_h, 'number');
   assert.deepEqual(JSON.parse(JSON.stringify(s)), s);
+});
+
+test('listaIzRezultata: bonus je tekst kao odbitak, konacna_h ukljucuje bonus', () => {
+  const rez = {
+    prijave: { 5: { ime: 'A', prezime: 'B', klub_skr: 'X', klub_ime: 'Klub X', startni_broj: 1 } },
+    po_spravi: { 7: [{ prijava: 5, mesto: 1, oznaka: '', status: 'uneto', d: 4200, e: 8700, bonus: 100, odbitak: 300, konacna: 12700 }] },
+    viseboj: [],
+    ekipno: [],
+  };
+  const red = listaIzRezultata({ pol: 'Z' }, rez).po_spravi[7][0];
+  assert.equal(red.bonus, '0,100');
+  assert.equal(red.odbitak, '0,300');
+  assert.equal(red.konacna, '12,700');
+  assert.equal(red.konacna_h, 12700);
 });
 
 test('listaIzRezultata: viseboj bez ijedne ocene nema zbir ni zbir_h', () => {
@@ -129,7 +143,7 @@ test('snimak: tacan skup kljuceva (cuvar od curenja licnih podataka)', () => {
   assert.deepEqual(Object.keys(l), ['pol', 'kategorija', 'program', 'po_spravi', 'viseboj', 'ekipno']);
   assert.deepEqual(Object.keys(s), ['verzija_formata', 'program', 'poslato', 'takmicenje', 'sprave', 'liste']);
   const red = Object.values(l.po_spravi).flat().find((r) => !r.odustao);
-  assert.deepEqual(Object.keys(red), ['mesto', 'oznaka', 'prijava_id', 'startni_broj', 'ime', 'prezime', 'klub', 'klub_ime', 'd', 'e', 'odbitak', 'konacna', 'konacna_h', 'odustao']);
+  assert.deepEqual(Object.keys(red), ['mesto', 'oznaka', 'prijava_id', 'startni_broj', 'ime', 'prezime', 'klub', 'klub_ime', 'd', 'e', 'bonus', 'odbitak', 'konacna', 'konacna_h', 'odustao']);
   assert.deepEqual(Object.keys(l.viseboj[0]), ['mesto', 'oznaka', 'prijava_id', 'ime', 'prezime', 'klub', 'po_spravi', 'odustao', 'zbir', 'zbir_h']);
   assert.deepEqual(Object.keys(l.ekipno[0]), ['mesto', 'oznaka', 'klub', 'klub_ime', 'po_spravi', 'ukupno', 'ukupno_h', 'clanovi']);
   assert.deepEqual(Object.keys(l.ekipno[0].clanovi[0]), ['prijava_id', 'ime', 'prezime']);

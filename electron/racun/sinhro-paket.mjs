@@ -30,7 +30,7 @@ export function listaIzRezultata(kombinacija, rez) {
       };
       if (!odustao) {
         Object.assign(red, {
-          d: tekst(r.d), e: tekst(r.e), odbitak: tekst(r.odbitak), konacna: tekst(r.konacna), konacna_h: r.konacna,
+          d: tekst(r.d), e: tekst(r.e), bonus: tekst(r.bonus), odbitak: tekst(r.odbitak), konacna: tekst(r.konacna), konacna_h: r.konacna,
         });
       }
       red.odustao = odustao;

@@ -453,6 +453,8 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .unos-ime { font-size: 15px; font-weight: 600; }
 .unos-startni { font-size: 15px; font-weight: 600; }
 .unos-e { font-size: 16px; color: var(--ink-2); }
+/* Izracunata E je podebljana i u redu koji ceka (jace od .unos-red.ceka .broj) */
+#unos .unos-red .unos-e { font-weight: 700; }
 .unos-red .vrati { padding: 0 6px; height: 28px; }
 .unos-red .ispravi { width: 28px; height: 28px; color: var(--link); }
 .unos-red .potvrdi-dugme, .unos-red .odustao-dugme { padding: 0 8px; }

@@ -19,7 +19,7 @@ export function obradiTaster(ev, id, ime, ctx) {
     ev.preventDefault();
     if (ime !== 'odbitak') { fokusiraj(id, sledecePolje(lista, ime, 1)); return; }
     if (taster === 'Enter') { ctx.potvrdi(id); return; }
-    const j = sledeciOtvoren(redovi, i); // Tab na odbitku: D sledeceg otvorenog, a bez njega ostaje
+    const j = sledeciOtvoren(redovi, i); // Tab na odbitku (pen.): D sledeceg otvorenog, a bez njega ostaje
     if (j !== null) fokusiraj(redovi[j].prijava_id, 'd');
     return;
   }

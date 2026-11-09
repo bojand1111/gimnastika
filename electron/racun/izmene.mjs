@@ -8,6 +8,7 @@ export function snimak(o) {
   return {
     d: o.d ?? null,
     e: o.e ?? null,
+    bonus: o.bonus ?? null,
     odbitak: o.odbitak ?? null,
     konacna: o.konacna ?? null,
     status: o.status ?? null,
@@ -17,11 +18,15 @@ export function snimak(o) {
 
 const pr = (v) => prikaz(izBaze(v ?? null));
 const razlicito = (a, b) => (a ?? null) !== (b ?? null);
+// Bonus: stari zapisi i ocene pre migracije 006 nemaju bonus (null), sto je isto sto i 0.
+const bezBonusa = (v) => v === null || v === undefined || v === 0;
 
 // "E2 8,100 → 7,900 · konačna 13,050 → 12,950"; prazna vrednost je '' (razmak posle strelice ostaje).
+// Odbitak se prikazuje kao "penalizacija" (kljuc u JSON-u ostaje odbitak).
 export function opisIzmene(staro, novo) {
   const delovi = [];
-  for (const [k, oz] of [['d', 'D'], ['odbitak', 'odbitak']]) {
+  for (const [k, oz] of [['d', 'D'], ['bonus', 'bonus'], ['odbitak', 'penalizacija']]) {
+    if (k === 'bonus' && bezBonusa(staro[k]) && bezBonusa(novo[k])) continue;
     if (razlicito(staro[k], novo[k])) delovi.push(`${oz} ${pr(staro[k])} → ${pr(novo[k])}`);
   }
   const se = staro.e_sudije ?? {};

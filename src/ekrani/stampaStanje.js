@@ -44,13 +44,13 @@ export function imePdf(vrsta, naziv, pol) {
 export function legendaStampe(takm, tab, pol) {
   const e = takm.pravilo_e === 'odbaci_krajnje' ? 'prosek srednjih ocena E sudija' : 'prosek ocena E sudija';
   const clan = pol === 'Z' ? 'takmičarka' : 'takmičar';
-  let drugi = `Ocena na spravi = D + E − odbitak. VK = van konkurencije: ocene se prikazuju, ${clan} ne zauzima mesto.`;
+  let drugi = `Ocena na spravi = D + E + bonus − pen. VK = van konkurencije: ocene se prikazuju, ${clan} ne zauzima mesto.`;
   if (String(tab) === 'ekipno') drugi += ` Ekipno: po spravi se broje ${Number(takm.ekipno_broji)} najbolje ocene, ocene u zagradi se ne broje.`;
-  return [`D = težina vežbe · E = izvođenje (${e}) · Odb. = odbitak · (n) = mesto na spravi · Br. = startni broj`, drugi];
+  return [`D = težina vežbe · E = izvođenje (${e}) · Pen. = penalizacija · (n) = mesto na spravi · Br. = startni broj`, drugi];
 }
 
 export function legendaBiltena(takm) {
-  return `D = težina vežbe, E = izvođenje, Uk. = ocena na spravi (D + E − odbitak). Ekipno: po spravi se broje ${Number(takm.ekipno_broji)} najbolje ocene, ocene u zagradi se ne broje. VK = van konkurencije.`;
+  return `D = težina vežbe, E = izvođenje, Uk. = ocena na spravi (D + E + bonus − pen.). Ekipno: po spravi se broje ${Number(takm.ekipno_broji)} najbolje ocene, ocene u zagradi se ne broje. VK = van konkurencije.`;
 }
 
 export const ekipaRec = (n) => (n === 1 ? 'ekipa' : 'ekipe');

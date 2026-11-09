@@ -27,9 +27,9 @@ export function konacnaE(e, pravilo, zaokruzivanje = 'odseci') {
   return prosek(vrednosti, zaokruzivanje);
 }
 
-// Konacna = D + E - odbitak, ne ispod nule.
-export function konacna(d, e, odbitak) {
-  return Math.max(0, d + e - odbitak);
+// Konacna = D + E + bonus - odbitak (pen.), ne ispod nule. Bez bonusa je 0.
+export function konacna(d, e, odbitak, bonus = 0) {
+  return Math.max(0, d + e + bonus - odbitak);
 }
 
 // Indeksi odbacenih E ocena (za precrtavanje): jedna najvisa i jedna najniza, razlicite pozicije.

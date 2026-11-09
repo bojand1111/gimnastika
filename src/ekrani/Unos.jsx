@@ -5,7 +5,7 @@ import Ikona from '../komponente/Ikona.jsx';
 import { obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
 import {
-  hashUnos, napredakIzRedova, parUnos, pocetniFokus, polja, prvoPraznoPolje,
+  ePolja, hashUnos, napredakIzRedova, parUnos, pocetniFokus, polja, prvoPraznoPolje,
 } from './unosStanje.js';
 import { izPodataka, kolone } from './unos/redovi.js';
 import { napraviAkcije } from './unos/akcije.js';
@@ -158,13 +158,14 @@ export default function Unos() {
           data-zaokruzivanje={d.zaokruzivanje} data-pol={pol}>
           <div className="unos-naslov-red">
             <h2 className="unos-naslov">{sprava.ikona !== '' && <Ikona ime={sprava.ikona} velicina={24} />}<span>{`${sprava.naziv} · Rotacija ${rot} · ${grupa.naziv}`}</span></h2>
-            <span className="sivo mali">{`Konačna = D + E − odbitak · ${pravilo}${d.bezGrupa ? ' · nema grupa, prikazani su svi prijavljeni' : ''}`}</span>
+            <span className="sivo mali">{`Konačna = D + E + bonus − pen. · ${pravilo}${d.bezGrupa ? ' · nema grupa, prikazani su svi prijavljeni' : ''}`}</span>
           </div>
           <div className="kartica-skrol" role="table" aria-label="Unos ocena">
             <div className="unos-zaglavlje" role="row" style={{ gridTemplateColumns: mreza }}>
-              <span className="centar">#</span><span>St. br.</span><span>Takmičar</span><span>Klub</span><span>Kategorija</span><span className="centar">D</span>
-              {polja(brojSudija).slice(1, -1).map((p) => <span className="centar" key={p}>{p.toUpperCase()}</span>)}
-              <span className="centar">E</span><span className="centar">Odb.</span><span className="desno">Konačna</span><span className="desno">Status</span>
+              <span className="centar">#</span><span>St. br.</span><span>Takmičar</span><span>Klub</span><span title="Kategorija">Kat.</span><span className="centar">D</span>
+              {ePolja(brojSudija).map((p) => <span className="centar" key={p}>{p.toUpperCase()}</span>)}
+              <span className="centar">E</span><span className="centar">Bonus</span><span className="centar">Pen.</span>
+              <span className="desno" title="Konačna">Kon.</span><span className="desno">Status</span>
             </div>
             {redovi.length === 0 && <div className="prazno">Grupa je prazna.</div>}
             {redovi.map((r) => (

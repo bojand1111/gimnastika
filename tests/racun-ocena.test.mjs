@@ -33,6 +33,15 @@ test('E ocena: odsecanje i zaokruzivanje', () => {
 
 test('konacna ne ide ispod nule', () => {
   assert.equal(konacna(1000, 2000, 5000), 0);
+  assert.equal(konacna(1000, 2000, 5000, 100), 0);
+});
+
+test('konacna sa bonusom: D + E + bonus - pen. (primer iz biltena 4,2 + 8,700 + 0,1 - 0,3)', () => {
+  assert.equal(konacna(4200, 8700, 300, 100), 12700);
+  assert.equal(konacna(4200, 8700, 300), 12600, 'bez bonusa je bonus 0');
+  assert.equal(konacna(4200, 8700, 300, 0), konacna(4200, 8700, 300));
+  assert.equal(konacna(4800, 8250, 0, 500), 13550);
+  assert.ok(Number.isInteger(konacna(4233, 8267, 101, 99)));
 });
 
 test('odbaceniIndeksi', () => {

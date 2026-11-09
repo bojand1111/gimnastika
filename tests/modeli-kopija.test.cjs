@@ -50,7 +50,7 @@ test('napravi: sqlite fajl sa kopija_opis (5 kljuceva), lista ga vraca prvim', (
     const o = Object.fromEntries(kljucevi.map((x) => [x.kljuc, x.vrednost]));
     assert.equal(o.aplikacija, 'gimnastika');
     assert.equal(o.verzija, '1.0.0');
-    assert.equal(o.baza_verzija, '005_pol_po_delu');
+    assert.equal(o.baza_verzija, '006_bonus');
     assert.equal(o.vrsta, 'rucna');
     assert.match(o.vreme, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
     const lista = t.k.lista();
@@ -286,5 +286,64 @@ test('vracanje stare kopije kad deo nikad nije biran: deo odredjuje aktivno takm
     t.k.vrati(staraKopija(t.dir));
     assert.equal(moduliNad(t).pol.daj(), 'Z');
     assert.deepEqual(t.baza.svi('PRAGMA foreign_key_check'), []);
+  } finally { t.ukloni(); }
+});
+
+// --- Bonus (migracija 006): starije kopije nemaju kolonu bonus ---
+test('vracanje stare kopije bez kolone bonus: bonus je NULL, ocene i konacne iste', () => {
+  const t = nova();
+  try {
+    t.k.vrati(staraKopija(t.dir));
+    const ocene = t.baza.svi('SELECT id, d, e, bonus, odbitak, konacna FROM ocene ORDER BY id').map((r) => ({ ...r }));
+    assert.equal(ocene.length, 3);
+    for (const o of ocene) assert.deepEqual(o, { id: o.id, d: 5000, e: 8000, bonus: null, odbitak: null, konacna: 13000 });
+    assert.equal(t.baza.vrednost('SELECT MAX(ime) FROM migracije'), '006_bonus');
+  } finally { t.ukloni(); }
+});
+
+test('kopija sa bonusom se vraca sa istim bonusom', () => {
+  const t = nova();
+  try {
+    t.baza.izvrsi(`INSERT INTO sprave (id, pol, naziv, skracenica, redosled, kreirano, izmenjeno) VALUES (99, 'Z', 'Test', 'TS', 9, ?, ?)`, [SAD, SAD]);
+    t.baza.izvrsi(`INSERT INTO takmicenja (id, naziv, datum, pol, kreirano, izmenjeno) VALUES (1, 'Kup', '2026-11-01', 'Z', ?, ?)`, [SAD, SAD]);
+    t.baza.izvrsi(`INSERT INTO takmicari (id, id_broj, ime, prezime, godina_rodjenja, pol, kreirano, izmenjeno) VALUES (1, 'T1', 'A', 'B', 2012, 'Z', ?, ?)`, [SAD, SAD]);
+    t.baza.izvrsi('INSERT INTO prijave (id, takmicenje_id, takmicar_id, kreirano, izmenjeno) VALUES (1, 1, 1, ?, ?)', [SAD, SAD]);
+    t.baza.izvrsi(`INSERT INTO ocene (id, prijava_id, sprava_id, d, e, bonus, odbitak, konacna, status, kreirano, izmenjeno)
+      VALUES (1, 1, 99, 4200, 8700, 100, 300, 12700, 'uneto', ?, ?)`, [SAD, SAD]);
+    const kopija = t.k.napravi('rucna');
+    t.baza.izvrsi('UPDATE ocene SET bonus = 500, konacna = 13100');
+    t.k.vrati(kopija.putanja);
+    assert.deepEqual({ ...t.baza.jedan('SELECT bonus, odbitak, konacna FROM ocene WHERE id = 1') }, { bonus: 100, odbitak: 300, konacna: 12700 });
+  } finally { t.ukloni(); }
+});
+
+test('uvoz PHP zip-a: PHP sema nema bonus, uvezene ocene imaju bonus NULL i istu konacnu', () => {
+  const t = nova();
+  try {
+    const S = '2026-10-01 18:44:06';
+    const sql = [
+      '-- gimnastika kopija baze', '-- verzija: 1.1.1', '',
+      'INSERT INTO `klubovi` (`id`, `puno_ime`, `skracenica`, `grad`, `kreirano`, `izmenjeno`) VALUES',
+      `(1, 'Soko', 'SOK', 'Novi Sad', '${S}', '${S}');`,
+      'INSERT INTO `takmicari` (`id`, `id_broj`, `ime`, `prezime`, `godina_rodjenja`, `pol`, `klub_id`, `kreirano`, `izmenjeno`) VALUES',
+      `(1, 'A1', 'Ana', 'Anić', 2012, 'Z', 1, '${S}', '${S}');`,
+      'INSERT INTO `sprave` (`id`, `pol`, `naziv`, `skracenica`, `ikona`, `redosled`, `kreirano`, `izmenjeno`) VALUES',
+      `(1, 'Z', 'Preskok', 'PR', 'sprava-PR', 1, '${S}', '${S}');`,
+      'INSERT INTO `takmicenja` (`id`, `naziv`, `datum`, `kreirano`, `izmenjeno`) VALUES',
+      `(1, 'Kup', '2026-10-17', '${S}', '${S}');`,
+      'INSERT INTO `prijave` (`id`, `takmicenje_id`, `takmicar_id`, `klub_id`, `kreirano`, `izmenjeno`) VALUES',
+      `(1, 1, 1, 1, '${S}', '${S}');`,
+      'INSERT INTO `ocene` (`id`, `prijava_id`, `sprava_id`, `d`, `e`, `odbitak`, `konacna`, `status`, `broj_ispravki`, `uneto_u`, `kreirano`, `izmenjeno`) VALUES',
+      `(1, 1, 1, '4.200', '8.700', '0.300', '12.600', 'uneto', 0, '${S}', '${S}', '${S}');`,
+      'INSERT INTO `podesavanja` (`kljuc`, `vrednost`) VALUES', "('aktivno_takmicenje', '1');", '',
+    ].join('\n');
+    const p = path.join(t.dir, 'php.zip');
+    zip.napravi(p, {
+      'opis.json': { sadrzaj: JSON.stringify({ aplikacija: 'gimnastika', verzija: '1.1.1', baza_verzija: 2, vreme: S, vrsta: 'rucna' }) },
+      'baza.sql': { sadrzaj: sql },
+    });
+    assert.equal(t.k.vrati(p).uvoz, true);
+    assert.deepEqual({ ...t.baza.jedan('SELECT d, e, bonus, odbitak, konacna FROM ocene') },
+      { d: 4200, e: 8700, bonus: null, odbitak: 300, konacna: 12600 });
   } finally { t.ukloni(); }
 });

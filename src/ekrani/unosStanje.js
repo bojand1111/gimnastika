@@ -1,6 +1,6 @@
 // Cista logika ekrana Unos ocena (POPIS 6, 10.3, 10.4, 10.6, 10.11): bez React-a, bez IPC-a, bez DOM-a.
 // Red u stanju: { prijava_id, status ('nacrt'|'uneto'|'ispravljeno'|'odustao'|'ne_radi'), ispravlja: boolean,
-//   greskaCuvanja: boolean, vrednosti: { d, e1..eN, odbitak } (tekst), greske: Set imena polja,
+//   greskaCuvanja: boolean, vrednosti: { d, e1..eN, bonus, odbitak } (tekst), greske: Set imena polja,
 //   e: string, konacna: string, rb, startni_broj, ime, pol, opis, vk, radi }.
 // Red je otvoren za unos kad je status 'nacrt' ili kad se ispravlja; inace su mu polja zakljucana.
 import { izUnosa, prikaz } from '../../electron/racun/broj.mjs';
@@ -11,9 +11,14 @@ export const NEMA = '–';
 
 export const otvoren = (red) => red.status === 'nacrt' || !!red.ispravlja;
 
-// ['d', 'e1', ..., 'eN', 'odbitak']
+// ['e1', ..., 'eN']
+export function ePolja(brojSudija) {
+  return Array.from({ length: brojSudija }, (_, i) => `e${i + 1}`);
+}
+
+// ['d', 'e1', ..., 'eN', 'bonus', 'odbitak']; odbitak (pen.) je poslednje polje: Enter na njemu potvrdjuje red.
 export function polja(brojSudija) {
-  return ['d', ...Array.from({ length: brojSudija }, (_, i) => `e${i + 1}`), 'odbitak'];
+  return ['d', ...ePolja(brojSudija), 'bonus', 'odbitak'];
 }
 
 // Prazno je u redu (null); neispravno nije. Ispravan tekst se normalizuje ("8,3" => "8,300").
@@ -25,19 +30,21 @@ export function proveriPolje(tekst) {
   return { ok: true, vrednost: v, prikaz: prikaz(v) };
 }
 
-// E i konacna iz teksta polja; '–' kad se ne moze izracunati. Prazan odbitak je 0.
+// E i konacna iz teksta polja; '–' kad se ne moze izracunati. Prazan bonus i prazan odbitak su 0.
 export function preracunaj(red, brojSudija, pravilo, zaokruzivanje) {
   const v = red.vrednosti ?? {};
-  const e = polja(brojSudija).slice(1, -1).map((ime) => izUnosa(String(v[ime] ?? '')));
+  const e = ePolja(brojSudija).map((ime) => izUnosa(String(v[ime] ?? '')));
   const sveE = e.every((x) => x !== null);
   const E = sveE ? konacnaE(e, pravilo, zaokruzivanje) : null;
   const d = izUnosa(String(v.d ?? ''));
   const odbitakTekst = String(v.odbitak ?? '').trim();
   const odb = odbitakTekst === '' ? 0 : izUnosa(odbitakTekst);
-  const ok = d !== null && E !== null && odb !== null;
+  const bonusTekst = String(v.bonus ?? '').trim();
+  const bon = bonusTekst === '' ? 0 : izUnosa(bonusTekst);
+  const ok = d !== null && E !== null && odb !== null && bon !== null;
   return {
     e: E === null ? NEMA : prikaz(E),
-    konacna: ok ? prikaz(konacna(d, E, odb)) : NEMA,
+    konacna: ok ? prikaz(konacna(d, E, odb, bon)) : NEMA,
   };
 }
 
@@ -47,7 +54,8 @@ export function podaciReda(red, brojSudija) {
   const t = (ime) => String(v[ime] ?? '').trim();
   return {
     d: t('d'),
-    e: polja(brojSudija).slice(1, -1).map(t),
+    e: ePolja(brojSudija).map(t),
+    bonus: t('bonus'),
     odbitak: t('odbitak'),
   };
 }
@@ -124,7 +132,7 @@ export function parUnos(hash) {
 
 // Novi red iz odgovora IPC-a (prikaz ocene); ciste oznake ispravke i gresaka.
 export function primeniPrikaz(red, p) {
-  const vrednosti = { ...red.vrednosti, d: p.d ?? '', odbitak: p.odbitak ?? '' };
+  const vrednosti = { ...red.vrednosti, d: p.d ?? '', bonus: p.bonus ?? '', odbitak: p.odbitak ?? '' };
   (p.e_sudije ?? []).forEach((x, i) => { vrednosti[`e${i + 1}`] = x ?? ''; });
   return {
     ...red,

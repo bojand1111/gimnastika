@@ -50,8 +50,8 @@ const takm = { pravilo_e: 'odbaci_krajnje', ekipno_broji: 3 };
 test('legendaStampe: dva reda, pravilo E, pol i ekipni dodatak', () => {
   const z = legendaStampe(takm, 'viseboj', 'Z');
   assert.equal(z.length, 2);
-  assert.equal(z[0], 'D = težina vežbe · E = izvođenje (prosek srednjih ocena E sudija) · Odb. = odbitak · (n) = mesto na spravi · Br. = startni broj');
-  assert.equal(z[1], 'Ocena na spravi = D + E − odbitak. VK = van konkurencije: ocene se prikazuju, takmičarka ne zauzima mesto.');
+  assert.equal(z[0], 'D = težina vežbe · E = izvođenje (prosek srednjih ocena E sudija) · Pen. = penalizacija · (n) = mesto na spravi · Br. = startni broj');
+  assert.equal(z[1], 'Ocena na spravi = D + E + bonus − pen. VK = van konkurencije: ocene se prikazuju, takmičarka ne zauzima mesto.');
   const m = legendaStampe({ ...takm, pravilo_e: 'prosek' }, 7, 'M');
   assert.match(m[0], /\(prosek ocena E sudija\)/);
   assert.match(m[1], /takmičar ne zauzima mesto\.$/);
@@ -61,7 +61,7 @@ test('legendaStampe: dva reda, pravilo E, pol i ekipni dodatak', () => {
 
 test('legendaBiltena: jedan tekst sa ekipno_broji', () => {
   assert.equal(legendaBiltena({ ekipno_broji: 2 }),
-    'D = težina vežbe, E = izvođenje, Uk. = ocena na spravi (D + E − odbitak). Ekipno: po spravi se broje 2 najbolje ocene, ocene u zagradi se ne broje. VK = van konkurencije.');
+    'D = težina vežbe, E = izvođenje, Uk. = ocena na spravi (D + E + bonus − pen.). Ekipno: po spravi se broje 2 najbolje ocene, ocene u zagradi se ne broje. VK = van konkurencije.');
 });
 
 test('ekipaRec: jedna ekipa, ostalo ekipe', () => {

@@ -15,9 +15,9 @@ function RedSprave({ s, det, n, pol, mesta }) {
   const ime = (
     <td><span className="rez-sprava">{s.ikona !== '' && <Ikona ime={s.ikona} velicina={20} />}<span>{s.naziv}</span></span></td>
   );
-  if (!det) return <tr>{ime}<td colSpan={n + 5} className="sivo">nema ocene</td></tr>;
+  if (!det) return <tr>{ime}<td colSpan={n + 6} className="sivo">nema ocene</td></tr>;
   if (det.status === 'odustao') {
-    return <tr>{ime}<td colSpan={n + 5}><span className="status status-crn"><Ikona ime="iks" velicina={13} />{odustaoRec(pol)}</span></td></tr>;
+    return <tr>{ime}<td colSpan={n + 6}><span className="status status-crn"><Ikona ime="iks" velicina={13} />{odustaoRec(pol)}</span></td></tr>;
   }
   const es = [];
   for (let i = 1; i <= n; i += 1) {
@@ -31,6 +31,7 @@ function RedSprave({ s, det, n, pol, mesta }) {
       <td className="desno"><span className="broj rez-d">{prikaz(det.d)}</span></td>
       {es}
       <td className="desno"><span className="broj sek rez-d">{prikaz(det.e)}</span></td>
+      <td className="desno"><span className="broj sivo">{prikaz(det.bonus)}</span></td>
       <td className="desno"><span className="broj sivo">{prikaz(det.odbitak)}</span></td>
       <td className="desno"><span className="broj rez-konacna">{prikaz(det.konacna)}</span></td>
       <td className="desno"><Mesto podaci={mestoIzOznake(mesta[s.id])} plain /></td>
@@ -52,13 +53,13 @@ function KarticaTakmicenja({ izabrano, pol }) {
         <thead><tr>
           <th>Sprava</th><th className="desno" style={{ width: 84 }}>D</th>
           {Array.from({ length: n }, (_, i) => <th key={i} className="desno" style={{ width: 78 }}>{`E${i + 1}`}</th>)}
-          <th className="desno" style={{ width: 88 }}>E</th><th className="desno" style={{ width: 84 }}>Odb.</th>
+          <th className="desno" style={{ width: 88 }}>E</th><th className="desno" style={{ width: 76 }}>Bonus</th><th className="desno" style={{ width: 76 }}>Pen.</th>
           <th className="desno" style={{ width: 116 }}>Konačna</th><th className="desno" style={{ width: 84 }}>Mesto</th>
         </tr></thead>
         <tbody>
           {sprave.map((s) => <RedSprave key={s.id} s={s} det={red?.detalji?.[s.id] ?? null} n={n} pol={pol} mesta={mesta} />)}
           <tr className="rez-viseboj">
-            <td><span className="rez-viseboj-naziv">Višeboj</span></td><td colSpan={n + 3}></td>
+            <td><span className="rez-viseboj-naziv">Višeboj</span></td><td colSpan={n + 4}></td>
             <td className="desno"><span className="broj rez-konacna">{red && red.zbir !== null ? prikaz(red.zbir) : '–'}</span></td>
             <td className="desno">{red ? <Mesto podaci={mestoPodaci(red.mesto, red.oznaka)} plain /> : <span className="sivo">–</span>}</td>
           </tr>

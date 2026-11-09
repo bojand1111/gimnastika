@@ -130,6 +130,7 @@ function napravi(baza, podesavanja) {
             status: o.status,
             d: izBaze(o.d),
             e: izBaze(o.e),
+            bonus: izBaze(o.bonus) ?? 0, // uneta ocena pre migracije 006 nema bonus
             odbitak: izBaze(o.odbitak),
             konacna: izBaze(o.konacna),
             e_sudije: o.e_sudije,

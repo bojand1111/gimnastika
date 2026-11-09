@@ -98,6 +98,7 @@ function napravi(baza, podesavanja) {
       prikaz: {
         d: prikaz(izBaze(o.d)),
         e: prikaz(izBaze(o.e)),
+        bonus: prikaz(izBaze(o.bonus)),
         odbitak: prikaz(izBaze(o.odbitak)),
         konacna: prikaz(izBaze(o.konacna)),
         e_sudije: eS,
@@ -122,11 +123,13 @@ function napravi(baza, podesavanja) {
     const e = [];
     for (let i = 1; i <= brojSudija; i++) e.push(parsiraj((ulaz.e ?? [])[i - 1], `E${i}`));
     const odbitakTekst = String(ulaz.odbitak ?? '').trim();
-    const odbitak = odbitakTekst === '' ? (potvrdi ? 0 : null) : parsiraj(odbitakTekst, 'Odbitak');
+    const odbitak = odbitakTekst === '' ? (potvrdi ? 0 : null) : parsiraj(odbitakTekst, 'Penalizacija');
+    const bonusTekst = String(ulaz.bonus ?? '').trim();
+    const bonus = bonusTekst === '' ? (potvrdi ? 0 : null) : parsiraj(bonusTekst, 'Bonus');
 
     const svaE = e.every((v) => v !== null);
     const E = svaE ? konacnaE(e, takm.pravilo_e, podesavanja.dajPol('e_zaokruzivanje', takm.pol, 'odseci')) : null;
-    const konacna = d !== null && E !== null ? konacnaOcena(d, E, odbitak ?? 0) : null;
+    const konacna = d !== null && E !== null ? konacnaOcena(d, E, odbitak ?? 0, bonus ?? 0) : null;
 
     if (potvrdi) {
       if (d === null) throw new GreskaKorisnika('Unesite D ocenu.');
@@ -135,7 +138,7 @@ function napravi(baza, podesavanja) {
     }
 
     const sad = Baza.sad();
-    const red = { d, e: E, odbitak, konacna, izmenjeno: sad };
+    const red = { d, e: E, bonus, odbitak, konacna, izmenjeno: sad };
     if (potvrdi) {
       red.status = bilaUneta ? 'ispravljeno' : 'uneto';
       red.uneto_u = sad;
@@ -178,7 +181,7 @@ function napravi(baza, podesavanja) {
     const postojeca = nadji(prijavaId, spravaId);
     const sad = Baza.sad();
     baza.transakcija((b) => {
-      const red = { d: null, e: null, odbitak: null, konacna: null, status: 'odustao', uneto_u: sad, izmenjeno: sad };
+      const red = { d: null, e: null, bonus: null, odbitak: null, konacna: null, status: 'odustao', uneto_u: sad, izmenjeno: sad };
       if (postojeca === null) {
         b.ubaci('ocene', { ...red, prijava_id: prijavaId, sprava_id: spravaId, kreirano: sad });
         return;

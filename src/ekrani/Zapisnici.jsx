@@ -17,8 +17,8 @@ export default function Zapisnici() {
   const gde = gdeKada(d.takm);
   const strane = straneZapisnika(d.listovi);
   const sudije = Array.from({ length: d.brojSudija }, (_, i) => i + 1);
-  // D, E sudije, odbitak i konacna
-  const ocenaKolona = 3 + d.brojSudija;
+  // D, E sudije, bonus, pen. (odbitak) i konacna
+  const ocenaKolona = 4 + d.brojSudija;
   return (
     <div className="stampa-ekran">
       <style>{'@page { size: A4 landscape; margin: 0; }'}</style>
@@ -43,7 +43,7 @@ export default function Zapisnici() {
               <th className="levo" style={{ width: 210 }}>Klub · kategorija · program</th>
               <th style={{ width: 66 }}>D</th>
               {sudije.map((n) => <th key={n} style={{ width: 58 }}>E{n}</th>)}
-              <th style={{ width: 66 }}>Odbitak</th><th style={{ width: 80 }}>Konačna</th>
+              <th style={{ width: 56 }}>Bonus</th><th style={{ width: 56 }}>Pen.</th><th style={{ width: 80 }}>Konačna</th>
             </tr></thead>
             <tbody>
               {s.redovi.map((r) => (

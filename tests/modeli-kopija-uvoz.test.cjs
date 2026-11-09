@@ -92,7 +92,7 @@ test('uvoz PHP zip-a: vrednosti, apostrof, NULL, hiljaditi delovi, preskocena po
     assert.equal(t.podesavanja.daj('grb_levo'), '');
     assert.equal(Number(t.baza.vrednost("SELECT COUNT(*) FROM podesavanja WHERE kljuc = 'grb_levo'")), 0);
     // migracije tabela je SQLite-ova, sa svim migracijama (migriraj posle uvoza)
-    assert.equal(t.baza.svi('SELECT ime FROM migracije').length, 5);
+    assert.equal(t.baza.svi('SELECT ime FROM migracije').length, 6);
     // sprave su iz kopije (pocetniPodaci nije zvan pre uvoza), pa ih je tacno jedna
     assert.equal(t.baza.vrednost('SELECT COUNT(*) FROM sprave'), 1);
     assert.equal(t.baza.vrednost('PRAGMA foreign_keys'), 1);

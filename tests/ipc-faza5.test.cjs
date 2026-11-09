@@ -243,6 +243,25 @@ test('nacrt, potvrdi, odustao, vrati: string id-jevi i prikaz', () => {
   assert.deepEqual(u.podaci(s.pr, 1).napredak, { obradjeno: 2, ukupno: 3, odustalo: 1 });
 });
 
+test('bonus kroz IPC: nacrt i potvrda nose bonus, podaci() ga vracaju; stara uneta ocena (NULL) je 0,000', () => {
+  const { baza, moduli, pid, s } = sa4();
+  const u = moduli.unos;
+  const n = u.nacrt(String(pid.Ana), String(s.pr), { d: '4,2', e: ['8,7', '8,7', '8,7', '8,7'], bonus: '0,1', odbitak: '0,3' });
+  assert.equal(n.prikaz.bonus, '0,100');
+  assert.equal(n.prikaz.konacna, '12,700');
+  assert.equal(u.podaci(s.pr, 1).redovi.find((r) => r.prijava_id === pid.Ana).bonus, '0,100');
+  const p = u.potvrdi(pid.Ana, s.pr, { d: '4,2', e: ['8,7', '8,7', '8,7', '8,7'], bonus: '0,1', odbitak: '0,3' }, '');
+  assert.equal(p.prikaz.konacna, '12,700');
+  assert.throws(() => u.nacrt(pid.Bea, s.pr, { ...ULAZ, bonus: 'abc' }), (e) => e instanceof GreskaKorisnika && e.message.startsWith('Bonus: neispravna vrednost'));
+  u.potvrdi(pid.Bea, s.pr, ULAZ, '');
+  baza.izvrsi('UPDATE ocene SET bonus = NULL WHERE prijava_id = ?', [pid.Bea]);
+  const redovi = u.podaci(s.pr, 1).redovi;
+  const bea = redovi.find((r) => r.prijava_id === pid.Bea);
+  assert.equal(bea.bonus, '0,000');
+  assert.equal(bea.konacna, '13,050');
+  assert.equal(redovi.find((r) => r.prijava_id === pid.Ceca).bonus, '', 'bez ocene: prazno');
+});
+
 test('ulaz bez e i d se tretira kao prazan', () => {
   const { moduli, pid, s } = sa4();
   const n = moduli.unos.nacrt(pid.Ana, s.pr, {});

@@ -1,15 +1,15 @@
 import { prikaz } from '../../../electron/racun/broj.mjs';
 import { mestoTekst, odustalaRec } from '../stampaStanje.js';
 
-// Lista jedne sprave (POPIS 4.3): mesto, broj, ime, klub, D, E, odbitak, ocena.
+// Lista jedne sprave (POPIS 4.3): mesto, broj, ime, klub, D, E, bonus, pen. (odbitak), ocena.
 export default function ListSprava({ redovi, rez, pol }) {
   const z = pol === 'Z';
   return (
     <table className="st-tab">
       <thead><tr>
         <th style={{ width: 50 }}>Mesto</th><th style={{ width: 40 }}>Br.</th><th className="levo">{z ? 'Takmičarka' : 'Takmičar'}</th>
-        <th className="levo" style={{ width: 180 }}>Klub</th>
-        <th style={{ width: 64 }}>D</th><th style={{ width: 64 }}>E</th><th style={{ width: 64 }}>Odb.</th><th style={{ width: 80 }}>Ocena</th>
+        <th className="levo" style={{ width: 160 }}>Klub</th>
+        <th style={{ width: 64 }}>D</th><th style={{ width: 64 }}>E</th><th style={{ width: 52 }}>Bonus</th><th style={{ width: 52 }}>Pen.</th><th style={{ width: 80 }}>Ocena</th>
       </tr></thead>
       <tbody>
         {redovi.map((r) => {
@@ -27,6 +27,7 @@ export default function ListSprava({ redovi, rez, pol }) {
               <td className="levo">{p.klub_ime ?? ''}</td>
               <td>{od ? '–' : prikaz(r.d)}</td>
               <td>{od ? '–' : prikaz(r.e)}</td>
+              <td>{od || !r.bonus ? '' : `+${prikaz(r.bonus)}`}</td>
               <td>{od || !r.odbitak ? '' : `−${prikaz(r.odbitak)}`}</td>
               <td className="jako" style={{ fontSize: 14 }}>{od ? '–' : prikaz(r.konacna)}</td>
             </tr>

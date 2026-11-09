@@ -93,6 +93,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
   const ulazOcene = (u) => ({
     d: String(u?.d ?? ''),
     e: (Array.isArray(u?.e) ? u.e : []).map((x) => String(x ?? '')),
+    bonus: String(u?.bonus ?? ''),
     odbitak: String(u?.odbitak ?? ''),
   });
 
@@ -500,6 +501,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
               d: pk(o?.d),
               e_sudije: eSudije,
               e: pk(o?.e),
+              // uneta ocena pre migracije 006 nema bonus: prikazuje se kao 0
+              bonus: pk(o?.bonus ?? (status === 'uneto' || status === 'ispravljeno' ? 0 : null)),
               odbitak: pk(o?.odbitak),
               konacna: pk(o?.konacna),
             });
