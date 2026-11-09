@@ -19,6 +19,8 @@ function sledeci(idBroj) {
 
 // PHP empty() za vrednosti iz forme.
 const prazno = (v) => v === undefined || v === null || v === '' || v === '0' || v === 0 || v === false;
+// Red ima svoj klub iz kolone fajla (tekst sa bar jednim slovom ili cifrom).
+const imaKlub = (t) => normalizuj(t ?? '') !== '';
 
 function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
   // Modeli su tanki omotaci oko baze bez stanja; model uvoza ih pravi sam da zavisi samo od
@@ -52,6 +54,9 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
     const programi = sifarnici.lista('programi', pol);
     const istiPol = svi.filter((t) => t.pol === pol);
 
+    const sviKlubovi = klubovi.svi();
+    const noviKlubovi = new Map(); // normalizovan tekst => puno ime kluba koji se pravi pri upisu
+    const kluboviFajla = new Map(); // normalizovan tekst => {kljuc, tekst, naziv, klub_id (predlog), redova}
     const oznake = [];
     const indeksOznake = new Map();
     const redovi = [];
@@ -90,18 +95,56 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
         }
         oi = indeksOznake.get(r.oznaka);
       }
-      redovi.push({ ...r, ...o, oznaka_i: oi });
+      // Klub iz kolone fajla: postojeci po nazivu, inace se pravi pri upisu novog takmicara.
+      const nadjen = imaKlub(r.klub) ? U.nadjiKlubDetaljno(r.klub, sviKlubovi) : { id: null, delimicno: false };
+      const klubId = nadjen.id;
+      const klubNaziv = imaKlub(r.klub) ? U.nazivKluba(r.klub) : '';
+      const klubKljuc = imaKlub(r.klub) ? normalizuj(r.klub) : '';
+      if (klubKljuc !== '' && klubId === null && !noviKlubovi.has(klubKljuc)) noviKlubovi.set(klubKljuc, klubNaziv);
+      if (klubKljuc !== '') {
+        if (!kluboviFajla.has(klubKljuc)) kluboviFajla.set(klubKljuc, { kljuc: klubKljuc, tekst: String(r.klub), naziv: klubNaziv, klub_id: klubId, delimicno: nadjen.delimicno, redova: 0 });
+        kluboviFajla.get(klubKljuc).redova++;
+      }
+      redovi.push({ ...r, ...o, oznaka_i: oi, klub_id: klubId, klub_naziv: klubNaziv, klub_kljuc: klubKljuc });
     }
     return {
       ime: imeFajla,
       vrsta: dok.vrsta,
       klub_tekst: p.klub,
-      klub_id: U.nadjiKlub(p.klub, klubovi.svi()),
+      klub_id: U.nadjiKlub(p.klub, sviKlubovi),
       pol,
       oznake,
       redovi,
+      novi_klubovi: [...noviKlubovi.values()],
+      klubovi_fajla: [...kluboviFajla.values()],
       greske: p.greske,
     };
+  }
+
+  // Klub reda pri upisu. Izbor sa ekrana: id postojeceg, 'novo' (pravi se) ili 'bez' (bez kluba);
+  // bez izbora: postojeci po nazivu (medju klubovima pre uvoza) ili novi. Jedan novi klub po
+  // normalizovanom tekstu. Skracenica je prvi slobodan predlog (2 do 4 slova, jedinstvena).
+  function klubReda(tekst, postojeci, napravljeni, rez, izbor) {
+    const kljuc = normalizuj(tekst);
+    const iz = String(izbor ?? '').trim();
+    if (iz === 'bez') return null;
+    if (/^[0-9]+$/.test(iz)) return Number(iz);
+    if (iz === 'novo') return noviKlub(tekst, napravljeni, rez);
+    if (!napravljeni.has(kljuc)) napravljeni.set(kljuc, U.nadjiKlub(tekst, postojeci) ?? noviKlub(tekst, napravljeni, rez));
+    return napravljeni.get(kljuc);
+  }
+
+  // Novi klub iz teksta fajla, jednom po normalizovanom tekstu (kljuc 'novo|tekst').
+  function noviKlub(tekst, napravljeni, rez) {
+    const kljuc = 'novo|' + normalizuj(tekst);
+    if (!napravljeni.has(kljuc)) {
+      const puno = U.nazivKluba(tekst);
+      const skr = U.skraceniceKluba(puno).find((s) => klubovi.proveri({ puno_ime: puno, skracenica: s }, null).length === 0);
+      if (skr === undefined) throw new GreskaKorisnika(`Za klub „${puno}“ nema slobodne skraćenice. Dodajte ga prvo na ekranu Klubovi.`);
+      napravljeni.set(kljuc, Number(klubovi.sacuvaj({ puno_ime: puno, skracenica: skr, grad: '' }, null)));
+      rez.noviKlubovi.push(`${puno} (${skr})`);
+    }
+    return napravljeni.get(kljuc);
   }
 
   // Izbor iz forme za kategoriju ili program: '' => null, 'novo' => {novo: naziv}, broj => {id}.
@@ -140,6 +183,15 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
       if (klubId !== 0 && baza.vrednost('SELECT id FROM klubovi WHERE id = ?', [klubId]) === null) {
         throw new GreskaKorisnika(`Klub za fajl ${f.ime} ne postoji.`);
       }
+      // Izbor po klubu iz kolone fajla (kljuc = normalizovan tekst): id postojeceg, 'novo' ili 'bez'.
+      const kluboviIzbor = {};
+      for (const [k, v] of Object.entries(iz.klubovi ?? {})) {
+        const t = String(v ?? '').trim();
+        if (/^[0-9]+$/.test(t) && baza.vrednost('SELECT id FROM klubovi WHERE id = ?', [Number(t)]) === null) {
+          throw new GreskaKorisnika(`Izabrani klub za fajl ${f.ime} ne postoji.`);
+        }
+        kluboviIzbor[k] = t;
+      }
       const oznake = f.oznake.map((o, oi) => {
         const zo = iz.oznake?.[oi] ?? {};
         return {
@@ -156,7 +208,7 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
         if (postupak !== 'postojeci' && postupak !== 'novi') return;
         redovi.push({ ...r, postupak_izabran: postupak });
       });
-      plan.push({ fajl: f, klub_id: klubId || null, oznake, redovi });
+      plan.push({ fajl: f, klub_id: klubId || null, klubovi: kluboviIzbor, oznake, redovi });
     });
     return plan;
   }
@@ -167,8 +219,10 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
     const pol = polTakmicenja(takmicenjeId);
     const plan = planiraj(fajlovi, iz, pol);
 
-    const rez = { prijavljeno: 0, novih: 0, postojecih: 0, vec: 0, preskoceno: [], upozorenja: [] };
+    const rez = { prijavljeno: 0, novih: 0, postojecih: 0, vec: 0, preskoceno: [], upozorenja: [], noviKlubovi: [] };
     baza.transakcija(() => {
+      const postojeciKlubovi = klubovi.svi(); // klubovi pre uvoza, kao u pregledu
+      const klubIds = new Map(); // normalizovan tekst kluba iz fajla => id
       const napravljene = new Map(); // 'vrsta|naziv' => id, da ista nova stavka iz dva fajla bude jedna
       const noviUpisani = new Map(); // kljuc imena => id novog takmicara iz ovog uvoza
       let idBroj = null;
@@ -211,6 +265,7 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
                 rez.preskoceno.push(`${ime} (${greske.join(' ')})`);
                 continue;
               }
+              if (imaKlub(r.klub)) novi.klub_id = klubReda(String(r.klub), postojeciKlubovi, klubIds, rez, p.klubovi[normalizuj(r.klub)]);
               tid = takmicari.sacuvaj(novi, null);
               noviUpisani.set(kljuc, tid);
               nov = true;
@@ -232,7 +287,8 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
         }
       }
     });
-    dnevnik.info(`Uvoz prijava (takmičenje ${takmicenjeId}): prijavljeno ${rez.prijavljeno}, novih takmičara ${rez.novih}, preskočeno ${rez.preskoceno.length}`);
+    dnevnik.info(`Uvoz prijava (takmičenje ${takmicenjeId}): prijavljeno ${rez.prijavljeno}, novih takmičara ${rez.novih}, preskočeno ${rez.preskoceno.length}`
+      + (rez.noviKlubovi.length > 0 ? `, novi klubovi: ${rez.noviKlubovi.join(', ')}` : ''));
     return rez;
   }
 

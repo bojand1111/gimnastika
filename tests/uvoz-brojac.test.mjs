@@ -72,3 +72,18 @@ test('zaUpis: kucica postaje 1 ili prazno', () => {
   const o = zaUpis({ 0: { klub_id: '2', oznake: {}, redovi: { 0: { uvezi: true, postupak: 'novi' }, 1: { uvezi: false, postupak: 'postojeci' } } } });
   assert.deepEqual(o[0].redovi, { 0: { uvezi: '1', postupak: 'novi' }, 1: { uvezi: '', postupak: 'postojeci' } });
 });
+
+test('pocetniIzbor i zaUpis: klub po klubu iz fajla (predlog iz baze ili novo)', () => {
+  const f = {
+    klub_id: null,
+    oznake: [],
+    redovi: [],
+    klubovi_fajla: [{ kljuc: 'gk nis', tekst: 'GK"Niš"', naziv: 'GK „Niš“', klub_id: 4, redova: 2 },
+      { kljuc: 'gk bor bor', tekst: 'GK"Bor" Bor', naziv: 'GK „Bor“ Bor', klub_id: null, redova: 1 }],
+  };
+  const i = pocetniIzbor(f);
+  assert.deepEqual(i.klubovi, { 'gk nis': '4', 'gk bor bor': 'novo' });
+  assert.deepEqual(zaUpis({ 0: { ...i, klubovi: { ...i.klubovi, 'gk bor bor': 'bez' } } })[0].klubovi, { 'gk nis': '4', 'gk bor bor': 'bez' });
+  // fajl bez kolone Klub
+  assert.deepEqual(pocetniIzbor({ klub_id: null, oznake: [], redovi: [] }).klubovi, {});
+});

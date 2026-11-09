@@ -345,6 +345,10 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .uvoz { display: flex; flex-direction: column; gap: var(--gap); }
 .uvoz-upozorenje { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 16px; background: var(--warn-soft); color: var(--warn); font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--line); }
 .uvoz-podesavanja { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; padding: 10px 16px 12px; border-bottom: 1px solid var(--line); }
+/* Klubovi iz kolone fajla: izbor po klubu */
+.uvoz-klubovi { display: flex; flex-direction: column; gap: 8px; padding: 10px 16px 12px; border-bottom: 1px solid var(--line); }
+.uvoz-klubovi .oznaka { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uvoz-klub-proveri { font-size: 12px; font-weight: 600; color: var(--warn); background: var(--warn-soft); border-radius: 4px; padding: 1px 6px; align-self: flex-start; }
 .uvoz-tabela tbody tr.uvoz-novi { background: var(--ok-soft); }
 .uvoz-tabela tbody tr.uvoz-postoji, .uvoz-tabela tbody tr.uvoz-slican { background: var(--warn-soft); }
 .uvoz-tabela tbody tr.uvoz-greska { background: var(--bad-soft); }

@@ -78,4 +78,46 @@ function odtPrimer(putanja, { mimetype = true } = {}) {
   return putanja;
 }
 
-module.exports = { docxPrimer, xlsxPrimer, odtPrimer };
+// Bilten kao pravi (izmišljena imena): zaglavlje spiska je tabela u plutajućem okviru za tekst,
+// podaci su u posebnoj tabeli bez zaglavlja, sa klubom u svakom redu; posle toga tabele rezultata.
+// mc: okvir kao mc:AlternateContent (Choice wps + Fallback VML, isti sadržaj dva puta); inače samo VML.
+function docxBilten(putanja, { mc = false, strane } = {}) {
+  const p = (t) => '<w:p><w:r><w:t xml:space="preserve">' + xml(t) + '</w:t></w:r></w:p>';
+  const tc = (t) => '<w:tc>' + p(t) + '</w:tc>';
+  const tr = (c) => '<w:tr>' + c.map(tc).join('') + '</w:tr>';
+  const tbl = (redovi) => '<w:tbl>' + redovi.map(tr).join('') + '</w:tbl>';
+  const zaglavlje = tbl([['Rb.', 'Ime', 'Prezime', 'Datum rodjenja', 'KLUB-DRUŠTVO', 'Drzava']]);
+  const okvir = (sadrzaj) => {
+    const vml = '<w:pict><v:shape id="s1" type="#_x0000_t202"><v:textbox><w:txbxContent>' + sadrzaj + p('') + '</w:txbxContent></v:textbox></v:shape></w:pict>';
+    if (!mc) return '<w:p><w:r>' + vml + '</w:r></w:p>';
+    const wps = '<w:drawing><wp:anchor><a:graphic><a:graphicData><wps:wsp><wps:txbx><w:txbxContent>' + sadrzaj + p('')
+      + '</w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing>';
+    return '<w:p><w:r><mc:AlternateContent><mc:Choice Requires="wps">' + wps + '</mc:Choice><mc:Fallback>' + vml + '</mc:Fallback></mc:AlternateContent></w:r></w:p>';
+  };
+  const s = strane ?? [
+    [
+      ['1', 'Filip', 'Kulić', '26.10.2006.', 'GD"Partizan" Subotica', 'SRB'],
+      ['2', 'Ana', 'Testić', '1.2.2010.', 'SD"Vojvodina" Novi Sad', 'SRB'],
+      ['3', 'Marko', 'Bezdatumić', '', 'SD"Vojvodina" Novi Sad', 'SRB'],
+    ],
+    [
+      ['4', 'Luka', 'Lukić', '3.3.2011.', 'SD „Vojvodina“  Novi Sad', 'SRB'],
+      ['5', 'Ivan', 'Bezklubić', '4.4.2012.', '', 'SRB'],
+      ['6', 'Pera', 'Perić', '5.5.2013.', 'SGU"AKRO"Paraćin', 'SRB'],
+    ],
+  ];
+  let telo = p('GIMNASTIČKI SAVEZ SRBIJE') + p('MUŠKA SPORTSKA GIMNASTIKA');
+  for (const strana of s) telo += okvir(zaglavlje) + p('') + tbl(strana);
+  // rezultati: "Prezime Ime" u jednoj ćeliji, iste širine kao spisak, pa tabela bez zaglavlja iste širine
+  telo += tbl([['Ime', 'KLUB-DRUŠTVO', 'Kategorija', '', '', 'Ukupno'], ['Kulić Filip', 'GD"Partizan" Subotica', 'Seniori', '', '', '50,000']]);
+  telo += tbl([['7', 'Zoran', 'Rezultatić', '6.6.2006.', 'GK"Niš"', 'SRB']]);
+  telo += tbl([['Mesto', 'Ime', 'KLUB-DRUŠTVO', 'D', 'E', 'Bonus', 'Pen.', 'Ukupno'], ['1', 'Kulić Filip', 'GD"Partizan" Subotica', '3,0', '8,0', '', '', '11,000']]);
+  const ns = ['w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"', 'v="urn:schemas-microsoft-com:vml"',
+    'mc="http://schemas.openxmlformats.org/markup-compatibility/2006"', 'wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"',
+    'a="http://schemas.openxmlformats.org/drawingml/2006/main"', 'wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"'];
+  const dok = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ' + ns.map((n) => 'xmlns:' + n).join(' ') + '><w:body>' + telo + '<w:sectPr/></w:body></w:document>';
+  zip.napravi(putanja, { '[Content_Types].xml': { sadrzaj: '<Types/>' }, 'word/document.xml': { sadrzaj: dok } });
+  return putanja;
+}
+
+module.exports = { docxPrimer, xlsxPrimer, odtPrimer, docxBilten };

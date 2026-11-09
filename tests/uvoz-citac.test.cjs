@@ -8,7 +8,7 @@ const docx = require('../electron/uvoz/docx.cjs');
 const xlsx = require('../electron/uvoz/xlsx.cjs');
 const citac = require('../electron/uvoz/citac.cjs');
 const { GreskaKorisnika } = require('../electron/greska.cjs');
-const { docxPrimer, xlsxPrimer } = require('./pomoc/uzorci.cjs');
+const { docxPrimer, xlsxPrimer, docxBilten } = require('./pomoc/uzorci.cjs');
 
 const FAJLOVI = path.join(__dirname, 'fajlovi');
 const NIJE_PODRZAN = 'Fajl nije podržan dokument. Uvoze se Word (.docx, .doc), Excel (.xlsx, .xls), OpenDocument (.odt, .ods) i PDF sa tekstom; skenirani dokumenti i slike ne mogu.';
@@ -276,5 +276,33 @@ test('docx: ukupan broj celija je ogranicen (spojene celije se rasiruju)', () =>
     assert.equal(docx.procitaj(t.put).tabele[0][0].length, 1999998);
     zip.napravi(t.put, { 'word/document.xml': { sadrzaj: dok(31747) } });
     assert.throws(() => docx.procitaj(t.put), { message: 'Word dokument je oštećen (document.xml nije ispravan XML).' });
+  } finally { t.ukloni(); }
+});
+
+test('docx: tabela iz okvira za tekst (VML i mc:AlternateContent), bez duplikata i bez lepljenja u tekst', () => {
+  const t = privremeni('a.docx');
+  try {
+    for (const mc of [false, true]) {
+      docxBilten(t.put, { mc });
+      const d = docx.procitaj(t.put);
+      // po strani: zaglavlje iz okvira pa podaci; zatim tri tabele rezultata
+      assert.equal(d.tabele.length, 7, 'mc=' + mc);
+      assert.deepEqual(d.tabele[0], [['Rb.', 'Ime', 'Prezime', 'Datum rodjenja', 'KLUB-DRUŠTVO', 'Drzava']]);
+      assert.deepEqual(d.tabele[1][0], ['1', 'Filip', 'Kulić', '26.10.2006.', 'GD"Partizan" Subotica', 'SRB']);
+      assert.deepEqual(d.tabele[2], d.tabele[0]);
+      assert.equal(d.tabele[3][0][4], 'SD „Vojvodina“ Novi Sad');
+      assert.deepEqual(d.tekst.split('\n'), ['GIMNASTIČKI SAVEZ SRBIJE', 'MUŠKA SPORTSKA GIMNASTIKA']);
+    }
+  } finally { t.ukloni(); }
+});
+
+test('docx: tekst okvira u celiji tabele ostaje deo celije', () => {
+  const t = privremeni('a.docx');
+  try {
+    const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml"';
+    const okvir = '<w:r><w:pict><v:shape><v:textbox><w:txbxContent><w:p><w:r><w:t>okvir</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r>';
+    const telo = '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>a</w:t></w:r>' + okvir + '</w:p></w:tc></w:tr></w:tbl>';
+    zip.napravi(t.put, { 'word/document.xml': { sadrzaj: '<w:document ' + W + '><w:body>' + telo + '</w:body></w:document>' } });
+    assert.deepEqual(docx.procitaj(t.put).tabele, [[['aokvir']]]);
   } finally { t.ukloni(); }
 });

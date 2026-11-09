@@ -1,5 +1,6 @@
 // Tumači pročitane tabele kao prijavu kluba. Čiste funkcije, bez baze.
-// Tabelu takmičara nalazi po zaglavlju (PREZIME, IME, KATEGORIJA, DATUM ROĐENJA, FUNKCIJA/EKIPA).
+// Tabelu takmičara nalazi po zaglavlju (PREZIME, IME, KATEGORIJA, DATUM ROĐENJA, FUNKCIJA/EKIPA, KLUB).
+// Zaglavlje u posebnoj tabeli bez redova (npr. u okviru za tekst u biltenu) važi za sledeće tabele iste širine.
 
 const ZAMENE = { 'č': 'c', 'ć': 'c', 'š': 's', 'ž': 'z', 'đ': 'dj', 'ñ': 'n', 'ö': 'o', 'ü': 'u', 'é': 'e', 'á': 'a' };
 
@@ -37,6 +38,8 @@ function kolone(red) {
       k.ucesce = i;
     } else if (k.pol === undefined && n === 'pol') {
       k.pol = i;
+    } else if (k.klub === undefined && (n === 'klub' || n.startsWith('klub ') || n === 'drustvo' || n === 'naziv kluba')) {
+      k.klub = i;
     }
   });
   if (k.ime_prezime !== undefined || (k.prezime !== undefined && k.ime !== undefined)) return k;
@@ -160,9 +163,15 @@ function red(r, k) {
     program: kp.program,
     ucesce: ucesce(c('ucesce')),
     pol: polIzTeksta(c('pol')),
+    klub: c('klub').replace(/\s+/g, ' '),
     greske,
   };
 }
+
+// Red koji liči na zaglavlje neke druge tabele (rezultati, finala): ne nastavlja prenešeno zaglavlje.
+const RECI_ZAGLAVLJA = new Set(['rb', 'r br', 'redni broj', 'mesto', 'plasman', 'ime', 'prezime', 'ime i prezime', 'prezime i ime',
+  'klub', 'klub drustvo', 'drustvo', 'kategorija', 'ukupno', 'datum rodjenja', 'godiste', 'drzava']);
+const liciNaZaglavlje = (r) => r.some((celija) => RECI_ZAGLAVLJA.has(normalizuj(celija)));
 
 // Klub iz reda "Klub | ..." u bilo kojoj tabeli ili iz pasusa "Klub: ...".
 function klub(dokument) {
@@ -193,19 +202,31 @@ function polDokumenta(dokument) {
 function protumaci(dokument) {
   const izlaz = { klub: klub(dokument), pol: polDokumenta(dokument), redovi: [], greske: [] };
   let nadjeno = false;
+  let prenos = null; // {k, sirina}: zaglavlje iz tabele bez redova, za sledeće tabele bez zaglavlja
   for (const tabela of dokument.tabele) {
     let k = null;
+    const prvi = tabela[0];
+    if (prenos !== null && prvi !== undefined && prvi.length === prenos.sirina && kolone(prvi) === null && !liciNaZaglavlje(prvi)) {
+      k = prenos.k; // tabela bez zaglavlja odmah posle zaglavlja iste širine
+    } else {
+      prenos = null;
+    }
+    let zaglavlje = null;
+    let posleZaglavlja = 0;
     for (const r of tabela) {
       if (k === null) {
         k = kolone(r);
+        if (k !== null) zaglavlje = r;
         continue;
       }
+      if (r.some((v) => String(v).trim() !== '')) posleZaglavlja++;
       const podaci = red(r, k);
       if (podaci !== null) {
         podaci.rb = izlaz.redovi.length + 1;
         izlaz.redovi.push(podaci);
       }
     }
+    if (zaglavlje !== null && posleZaglavlja === 0) prenos = { k, sirina: zaglavlje.length };
     if (k !== null) nadjeno = true;
   }
   if (!nadjeno) izlaz.greske.push('U fajlu nema tabele sa kolonama PREZIME i IME.');

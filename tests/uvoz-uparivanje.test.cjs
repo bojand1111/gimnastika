@@ -101,3 +101,41 @@ test('oceni: nepoznata godina u bazi daje 0 u opisu, ne NaN', () => {
   const o = u.oceni(red('Test', 'Ana', null), bezGodine, [], 'Z');
   assert.equal(o.napomena, 'u bazi: Test Ana (0, bez kluba)');
 });
+
+test('nazivKluba: navodi kao „…“ sa razmakom, jedan razmak', () => {
+  assert.equal(u.nazivKluba('GK"Topličanin"Prokuplje'), 'GK „Topličanin“ Prokuplje');
+  assert.equal(u.nazivKluba('SD"Vojvodina" Novi Sad'), 'SD „Vojvodina“ Novi Sad');
+  assert.equal(u.nazivKluba('  SD „Vojvodina“   Novi Sad '), 'SD „Vojvodina“ Novi Sad');
+  assert.equal(u.nazivKluba('GK"Niš"'), 'GK „Niš“');
+  assert.equal(u.nazivKluba('GK Beograd'), 'GK Beograd');
+  assert.equal(u.nazivKluba('GK "Beograd'), 'GK "Beograd'); // bez para navodnika ostaje
+});
+
+test('skraceniceKluba: osnova pod navodnicima, pa ostali predlozi, uvek 2 do 4 velika slova', () => {
+  const prva = (n) => u.skraceniceKluba(n)[0];
+  assert.equal(prva('SD „Vojvodina“ Novi Sad'), 'VOJ');
+  assert.equal(prva('SGU „AKRO“ Paraćin'), 'AKRO');
+  assert.equal(prva('GK „Niš“'), 'NIŠ');
+  assert.equal(prva('GD „Part.-Željez.“ Subotica'), 'PŽ');
+  assert.equal(prva('GK „SO Partizan“ Kostolac'), 'SP');
+  assert.equal(prva('G.D. Partizan Subotica'), 'PS');
+  assert.equal(prva('Gimnastički klub Mladost'), 'MLA');
+  assert.equal(prva('GK 2011'), 'KLU');
+  const svi = u.skraceniceKluba('SD „Vojvodina“ Novi Sad');
+  assert.deepEqual(svi.slice(0, 3), ['VOJ', 'VNS', 'VOJV']);
+  assert.ok(svi.length > 26);
+  assert.equal(new Set(svi).size, svi.length);
+  for (const s of svi) assert.match(s, /^\p{Lu}{2,4}$/u);
+  // isti naziv uvek daje iste predloge
+  assert.deepEqual(u.skraceniceKluba('SD „Vojvodina“ Novi Sad'), svi);
+});
+
+test('nadjiKlubDetaljno: tacno po skracenici ili jezgru, delimicno kad jedno jezgro sadrzi drugo', () => {
+  const klubovi = [{ id: 1, puno_ime: 'Gimnastički klub Partizan', skracenica: 'PAR' }, { id: 2, puno_ime: 'GK „Bor“ Bor', skracenica: 'BOR' }];
+  assert.deepEqual(u.nadjiKlubDetaljno('GK"SO Partizan" Kostolac', klubovi), { id: 1, delimicno: true });
+  assert.deepEqual(u.nadjiKlubDetaljno('GK Partizan', klubovi), { id: 1, delimicno: false });
+  assert.deepEqual(u.nadjiKlubDetaljno('bor', klubovi), { id: 2, delimicno: false });
+  assert.deepEqual(u.nadjiKlubDetaljno('GK Niš', klubovi), { id: null, delimicno: false });
+  assert.deepEqual(u.nadjiKlubDetaljno('', klubovi), { id: null, delimicno: false });
+  assert.equal(u.nadjiKlub('GK"SO Partizan" Kostolac', klubovi), 1);
+});

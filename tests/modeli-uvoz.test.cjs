@@ -10,7 +10,7 @@ const { napravi: napraviPodesavanja } = require('../electron/modeli/podesavanja.
 const { napravi: napraviPrijave } = require('../electron/modeli/prijave.cjs');
 const { napravi } = require('../electron/modeli/uvoz.cjs');
 const { tokSeme } = require('./pomoc/seme.cjs');
-const { docxPrimer } = require('./pomoc/uzorci.cjs');
+const { docxPrimer, docxBilten } = require('./pomoc/uzorci.cjs');
 
 const S = '2026-01-01 00:00:00';
 const BEZ_DNEVNIKA = { info() {}, greska() {} };
@@ -404,4 +404,160 @@ test('postupak nista se preskace bez upisa', () => {
   assert.deepEqual(r.preskoceno, []);
   assert.equal(broj(baza, 'takmicari'), pre);
   assert.equal(broj(baza, 'prijave'), 0);
+});
+
+// Izbor koji uvozi sve redove fajla sa predlozenim postupkom.
+const IZBOR_SVE = (f, dopuna = {}) => ({
+  redovi: Object.fromEntries(f.redovi.map((r, ri) => [ri, { uvezi: '1', postupak: r.postupak }])),
+  ...dopuna,
+});
+const klubTakmicara = (baza, prezime) => baza.jedan(
+  'SELECT k.* FROM takmicari t LEFT JOIN klubovi k ON k.id = t.klub_id WHERE t.prezime = ?', [prezime]);
+
+test('bilten: klub iz svakog reda, postojeci po nazivu, novi jednom, skracenica jedinstvena, izbor fajla za red bez kluba', () => {
+  const { baza, s, uvoz, prijave, poruke } = nova();
+  const partizan = baza.ubaci('klubovi', { puno_ime: 'GD „Partizan“ Subotica', skracenica: 'PAR', kreirano: S, izmenjeno: S });
+  baza.ubaci('klubovi', { puno_ime: 'Vojni', skracenica: 'voj', kreirano: S, izmenjeno: S }); // VOJ je zauzeto
+  // Kulić Filip vec postoji (klub JED): ostaje u svom klubu
+  const kulic = baza.ubaci('takmicari', { id_broj: '050', ime: 'Filip', prezime: 'Kulić', godina_rodjenja: 2006, pol: 'M', klub_id: s.k1, kreirano: S, izmenjeno: S });
+
+  const fajl = priprema(uvoz, s.takmM, docxBilten, 'bilten.docx');
+  assert.deepEqual(fajl.greske, []);
+  assert.equal(fajl.klub_id, null);
+  assert.deepEqual(fajl.redovi.map((r) => [r.prezime, r.status, r.klub_id]), [
+    ['Kulić', U.POSTOJI, partizan],
+    ['Testić', U.NOVI, null],
+    ['Bezdatumić', U.GRESKA, null],
+    ['Lukić', U.NOVI, null],
+    ['Bezklubić', U.NOVI, null],
+    ['Perić', U.NOVI, null],
+  ]);
+  assert.equal(fajl.redovi[0].takmicar_id, kulic);
+  assert.equal(fajl.redovi[2].napomena, 'nema godine rođenja, a takmičara nema u bazi');
+  assert.equal(fajl.redovi[4].klub, '');
+  assert.equal(fajl.redovi[4].klub_naziv, '');
+  assert.equal(fajl.redovi[1].klub_naziv, 'SD „Vojvodina“ Novi Sad');
+  assert.deepEqual(fajl.novi_klubovi, ['SD „Vojvodina“ Novi Sad', 'SGU „AKRO“ Paraćin']);
+  assert.deepEqual(fajl.oznake, []);
+
+  // drugi fajl sa istim novim klubom u istom uvozu
+  const fajl2 = priprema(uvoz, s.takmM, (put) => docxBilten(put, { strane: [[['1', 'Mila', 'Milić', '1.1.2012.', 'SD "Vojvodina" Novi Sad', 'SRB'], ['2', 'Sava', 'Savić', '2.2.2012.', 'GD Partizan Subotica', 'SRB']]] }));
+  const klubova = broj(baza, 'klubovi');
+  const r = uvoz.upisi(s.takmM, [fajl, fajl2], { 0: IZBOR_SVE(fajl, { klub_id: String(s.k2) }), 1: IZBOR_SVE(fajl2) });
+  assert.equal(r.prijavljeno, 7);
+  assert.equal(r.novih, 6);
+  assert.equal(r.postojecih, 1);
+  assert.deepEqual(r.preskoceno, []);
+  assert.deepEqual(r.noviKlubovi, ['SD „Vojvodina“ Novi Sad (VNS)', 'SGU „AKRO“ Paraćin (AKRO)']);
+  assert.equal(broj(baza, 'klubovi'), klubova + 2);
+  const voj = klubTakmicara(baza, 'Testić');
+  assert.equal(voj.puno_ime, 'SD „Vojvodina“ Novi Sad');
+  assert.equal(voj.skracenica, 'VNS');
+  assert.equal(voj.grad, '');
+  assert.equal(klubTakmicara(baza, 'Lukić').id, voj.id);
+  assert.equal(klubTakmicara(baza, 'Milić').id, voj.id);
+  assert.equal(klubTakmicara(baza, 'Perić').skracenica, 'AKRO');
+  assert.equal(Number(klubTakmicara(baza, 'Savić').id), partizan);
+  assert.equal(Number(klubTakmicara(baza, 'Bezklubić').id), s.k2);
+  assert.equal(Number(klubTakmicara(baza, 'Kulić').id), s.k1);
+  assert.equal(baza.vrednost('SELECT id FROM takmicari WHERE prezime = ?', ['Bezdatumić']), null);
+  assert.equal(baza.vrednost('SELECT id FROM takmicari WHERE prezime = ?', ['Rezultatić']), null);
+  const lista = prijave.lista(s.takmM, 'M');
+  assert.equal(lista.length, 7);
+  const testic = lista.find((p) => p.prezime === 'Testić');
+  assert.equal(Number(testic.klub_id), Number(voj.id));
+  assert.equal(testic.kategorija_id, null);
+  assert.equal(testic.program_id, null);
+  assert.equal(poruke.at(-1), `Uvoz prijava (takmičenje ${s.takmM}): prijavljeno 7, novih takmičara 6, preskočeno 0, novi klubovi: SD „Vojvodina“ Novi Sad (VNS), SGU „AKRO“ Paraćin (AKRO)`);
+
+  // ponovni uvoz istog fajla: klubovi se sada nalaze u bazi, nista novo se ne pravi
+  const opet = priprema(uvoz, s.takmM, docxBilten);
+  assert.deepEqual(opet.novi_klubovi, []);
+  assert.equal(opet.redovi[1].klub_id, Number(voj.id));
+  assert.equal(opet.redovi[1].status, U.PRIJAVLJEN);
+});
+
+test('bilten: izbor kluba po klubu iz fajla (postojeci, novi uprkos poklapanju, bez kluba) i nepostojeci id', () => {
+  const { baza, s, uvoz } = nova();
+  const partizan = baza.ubaci('klubovi', { puno_ime: 'GD „Partizan“ Subotica', skracenica: 'PAR', kreirano: S, izmenjeno: S });
+  const fajl = priprema(uvoz, s.takmM, docxBilten, 'bilten.docx');
+  // jedan zapis po klubu iz fajla, sa predlogom iz baze i brojem redova
+  assert.deepEqual(fajl.klubovi_fajla.map((k) => [k.kljuc, k.klub_id, k.redova]), [
+    ['gd partizan subotica', partizan, 1],
+    ['sd vojvodina novi sad', null, 3],
+    ['sgu akro paracin', null, 1],
+  ]);
+  assert.deepEqual(fajl.redovi.map((r) => r.klub_kljuc), ['gd partizan subotica', 'sd vojvodina novi sad', 'sd vojvodina novi sad', 'sd vojvodina novi sad', '', 'sgu akro paracin']);
+
+  // nepostojeci izabrani klub: greska, nista se ne upisuje
+  const takmicara = broj(baza, 'takmicari');
+  assert.equal(poruka(() => uvoz.upisi(s.takmM, [fajl], { 0: IZBOR_SVE(fajl, { klubovi: { 'sd vojvodina novi sad': '9999' } }) })),
+    'Izabrani klub za fajl bilten.docx ne postoji.');
+  assert.equal(broj(baza, 'takmicari'), takmicara);
+
+  const klubova = broj(baza, 'klubovi');
+  const r = uvoz.upisi(s.takmM, [fajl], { 0: IZBOR_SVE(fajl, {
+    klub_id: String(s.k2),
+    klubovi: { 'gd partizan subotica': 'novo', 'sd vojvodina novi sad': String(s.k1), 'sgu akro paracin': 'bez' },
+  }) });
+  assert.equal(r.novih, 5);
+  // samo Partizan je nov (izabrano "novi" iako postoji klub sa istim imenom); Vojvodina ide u JED, AKRO bez kluba
+  assert.equal(broj(baza, 'klubovi'), klubova + 1);
+  assert.equal(r.noviKlubovi.length, 1);
+  const testic = klubTakmicara(baza, 'Testić');
+  assert.equal(Number(testic.id), s.k1);
+  assert.equal(Number(klubTakmicara(baza, 'Lukić').id), s.k1);
+  assert.equal(klubTakmicara(baza, 'Perić').id, null);
+  assert.equal(Number(klubTakmicara(baza, 'Bezklubić').id), s.k2);
+  // Kulic dobija novi klub istog imena (izbor 'novo'), sa drugom skracenicom
+  const kulic = klubTakmicara(baza, 'Kulić');
+  assert.notEqual(Number(kulic.id), partizan);
+  assert.equal(kulic.puno_ime, 'GD „Partizan“ Subotica');
+  assert.notEqual(kulic.skracenica, 'PAR');
+});
+
+test('bilten: klub se ne pravi za postojeceg takmicara ni za red koji ne prodje proveru', () => {
+  const { baza, s, uvoz } = nova();
+  const fajl = priprema(uvoz, s.takmM, (put) => docxBilten(put, { strane: [[
+    ['1', 'Marko', 'Test', '1.1.2011.', 'GK"Novi" Grad', 'SRB'],
+    ['2', 'Pera', 'Starić', '1.1.1800.', 'GK"Drugi" Grad', 'SRB'],
+  ]] }));
+  assert.equal(fajl.redovi[0].status, U.POSTOJI);
+  assert.equal(fajl.redovi[0].takmicar_id, s.muski);
+  const klubova = broj(baza, 'klubovi');
+  const r = uvoz.upisi(s.takmM, [fajl], { 0: IZBOR_SVE(fajl) });
+  assert.equal(r.postojecih, 1);
+  assert.equal(r.preskoceno.length, 1);
+  assert.match(r.preskoceno[0], /^Starić Pera \(Godina rođenja nije ispravna\.\)$/);
+  assert.deepEqual(r.noviKlubovi, []);
+  assert.equal(broj(baza, 'klubovi'), klubova);
+  assert.equal(Number(baza.vrednost('SELECT klub_id FROM takmicari WHERE id = ?', [s.muski])), s.k1);
+});
+
+test('bilten: greska u upisu vraca i napravljene klubove (jedna transakcija)', () => {
+  const { baza, s, podesavanja } = nova();
+  const lazna = Object.create(baza);
+  lazna.ubaci = (tabela, red) => {
+    if (tabela === 'prijave') throw new Error('kvar');
+    return baza.ubaci(tabela, red);
+  };
+  const uvozL = napravi(lazna, podesavanja, BEZ_DNEVNIKA);
+  const fajl = priprema(uvozL, s.takmM, docxBilten);
+  const pre = ['takmicari', 'prijave', 'klubovi'].map((t) => broj(baza, t));
+  assert.equal(poruka(() => uvozL.upisi(s.takmM, [fajl], { 0: IZBOR_SVE(fajl) })), 'kvar');
+  assert.deepEqual(['takmicari', 'prijave', 'klubovi'].map((t) => broj(baza, t)), pre);
+});
+
+test('prijava kluba (bez kolone Klub) i dalje koristi klub fajla', () => {
+  const { baza, s, uvoz } = nova();
+  const fajl = priprema(uvoz, s.takmM, docxRedovi('Klub Dva', REDOVI_A));
+  assert.equal(fajl.klub_id, s.k2);
+  assert.equal(fajl.redovi[0].klub, '');
+  assert.equal(fajl.redovi[0].klub_id, null);
+  assert.deepEqual(fajl.novi_klubovi, []);
+  const klubova = broj(baza, 'klubovi');
+  const r = uvoz.upisi(s.takmM, [fajl], IZBOR_NOVI());
+  assert.deepEqual(r.noviKlubovi, []);
+  assert.equal(broj(baza, 'klubovi'), klubova);
+  assert.equal(Number(baza.vrednost('SELECT klub_id FROM takmicari WHERE prezime = ?', ['Aaa'])), s.k2);
 });

@@ -111,6 +111,7 @@ export default function Uvoz() {
       const r = await gim.uvoz.upisi(fajlovi, zaUpis(poIndeksu));
       najavi(`Uvoz završen: prijavljeno ${r.prijavljeno} (novih takmičara ${r.novih}, postojećih ${r.postojecih}).${r.vec > 0 ? ` Već prijavljenih: ${r.vec}.` : ''}`,
         r.prijavljeno > 0 ? 'ok' : 'upozorenje');
+      if (r.noviKlubovi && r.noviKlubovi.length) najavi(`Novi klubovi: ${r.noviKlubovi.join(', ')}.`, 'info');
       if (r.preskoceno.length) najavi(`Preskočeno: ${r.preskoceno.join('; ')}.`, 'upozorenje');
       if (r.upozorenja.length) najavi(`Lekarski ne važi na dan takmičenja: ${r.upozorenja.join(', ')}.`, 'upozorenje');
       uvozStanje.ocisti();

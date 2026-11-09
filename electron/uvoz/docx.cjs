@@ -8,14 +8,40 @@ const GRESKA_XML = 'Word dokument je oštećen (document.xml nije ispravan XML).
 const OMOTACI = new Set(['w:sdt', 'w:sdtContent', 'w:customXml', 'w:ins']);
 
 // Tekst pasusa: svi w:t spojeni, w:tab, w:br i w:cr kao razmak, više razmaka u jedan.
-function tekstPasusa(p) {
+// bezOkvira: sadržaj okvira za tekst (w:txbxContent) se preskače, čita se posebno (okviri).
+function tekstPasusa(p, bezOkvira = false) {
   let s = '';
-  for (const el of xml.potomci(p)) {
+  for (const el of potomciBezOkvira(p, bezOkvira)) {
     const i = xml.ime(el);
     if (i === 'w:t') s += xml.tekstElementa(el);
     else if (i === 'w:tab' || i === 'w:br' || i === 'w:cr') s += ' ';
   }
   return s.replace(/\s+/g, ' ');
+}
+
+// Kao xml.potomci; sa bezOkvira ne ulazi u w:txbxContent.
+function potomciBezOkvira(cvor, bezOkvira, izlaz = []) {
+  for (const d of xml.deca(cvor)) {
+    const i = xml.ime(d);
+    if (i === null || (bezOkvira && i === 'w:txbxContent')) continue;
+    izlaz.push(d);
+    potomciBezOkvira(d, bezOkvira, izlaz);
+  }
+  return izlaz;
+}
+
+// Okviri za tekst (w:txbxContent) u pasusu, redom dokumenta. Iz mc:AlternateContent se čita samo
+// mc:Choice kad postoji, jer je mc:Fallback isti okvir u starom obliku (VML).
+function okviri(cvor, izlaz = []) {
+  const deca = xml.deca(cvor);
+  const imaIzbor = xml.ime(cvor) === 'mc:AlternateContent' && deca.some((d) => xml.ime(d) === 'mc:Choice');
+  for (const d of deca) {
+    const i = xml.ime(d);
+    if (i === null || (imaIzbor && i === 'mc:Fallback')) continue;
+    if (i === 'w:txbxContent') izlaz.push(d);
+    else okviri(d, izlaz);
+  }
+  return izlaz;
 }
 
 // Elementi `naziv` neposredno ispod čvora, i kroz omotače (sdt, sdtContent, customXml, ins).
@@ -66,8 +92,10 @@ function prodji(cvor, tabele, tekst, brojac) {
     if (i === 'w:tbl') {
       tabele.push(tabela(d, tabele, brojac));
     } else if (i === 'w:p') {
-      const t = tekstPasusa(d).trim();
+      const t = tekstPasusa(d, true).trim();
       if (t !== '') tekst.push(t);
+      // tabele i pasusi iz okvira za tekst (npr. zaglavlje tabele u plutajućem okviru)
+      for (const okvir of okviri(d)) prodji(okvir, tabele, tekst, brojac);
     } else {
       prodji(d, tabele, tekst, brojac);
     }

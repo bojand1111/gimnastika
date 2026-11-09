@@ -8,6 +8,9 @@ function Upozorenje({ tekst }) {
 
 // Jedan fajl uvoza: zaglavlje, upozorenja, podesavanja (klub, oznake) i tabela redova (POPIS 7.7). Novi takmicari dobijaju pol izabranog dela.
 export default function FajlKartica({ f, i, izbor, b, d, naPolje, naOznaku, naRed, naSve, naUkloni, zauzet }) {
+  // Redovi sa svojim klubom (kolona Klub u fajlu): izbor kluba fajla vazi samo za redove bez kluba.
+  const saKlubom = f.redovi.some((r) => (r.klub ?? '') !== '');
+  const naKlub = (kljuc, v) => naPolje('klubovi', { ...(izbor.klubovi ?? {}), [kljuc]: v });
   return (
     <section className="kartica" style={{ overflow: 'hidden' }}>
       <div className="kartica-zaglavlje">
@@ -25,8 +28,8 @@ export default function FajlKartica({ f, i, izbor, b, d, naPolje, naOznaku, naRe
       )}
       <div className="uvoz-podesavanja">
         <label className="polje" style={{ width: 260 }}>
-          <span className="oznaka">Klub{f.klub_tekst !== '' ? ` (u fajlu: ${f.klub_tekst})` : ''}</span>
-          <select className="unos" aria-label="Klub" value={izbor.klub_id} onChange={(ev) => naPolje('klub_id', ev.target.value)}>
+          <span className="oznaka">{saKlubom ? 'Klub za redove bez kluba' : 'Klub'}{f.klub_tekst !== '' ? ` (u fajlu: ${f.klub_tekst})` : ''}</span>
+          <select className="unos" aria-label={saKlubom ? 'Klub za redove bez kluba' : 'Klub'} value={izbor.klub_id} onChange={(ev) => naPolje('klub_id', ev.target.value)}>
             <option value="">bez kluba</option>
             {d.klubovi.map((k) => <option key={k.id} value={k.id}>{`${k.skracenica} · ${k.puno_ime}`}</option>)}
           </select>
@@ -51,7 +54,30 @@ export default function FajlKartica({ f, i, izbor, b, d, naPolje, naOznaku, naRe
           </div>
         ))}
       </div>
-      {f.redovi.length > 0 && <TabelaUvoza f={f} izbor={izbor} naRed={naRed} naSve={naSve} />}
+      {saKlubom && (
+        <div className="uvoz-klubovi">
+          <p className="sek" style={{ margin: 0 }}>
+            Klub se čita iz kolone Klub u fajlu, za svaki red posebno. Proverite izbor za svaki klub: postojeći klub iz baze, novi klub ili bez kluba. Postojeći takmičari zadržavaju klub iz baze.
+          </p>
+          <div className="uvoz-podesavanja" style={{ padding: 0, borderBottom: 0 }}>
+            {(f.klubovi_fajla ?? []).map((k) => (
+              <label key={k.kljuc} className="polje" style={{ width: 260 }}>
+                <span className="oznaka" title={k.tekst}>U fajlu: <b>{k.tekst}</b> ({k.redova})</span>
+                {k.delimicno && String(izbor.klubovi?.[k.kljuc]) === String(k.klub_id) && (
+                  <span className="uvoz-klub-proveri" role="note">Proverite: poklapa se samo deo naziva</span>
+                )}
+                <select className="unos" aria-label={`Klub za ${k.tekst}`} value={izbor.klubovi?.[k.kljuc] ?? 'novo'}
+                  onChange={(ev) => naKlub(k.kljuc, ev.target.value)}>
+                  <option value="novo">+ novi klub: {k.naziv}</option>
+                  <option value="bez">bez kluba</option>
+                  {d.klubovi.map((x) => <option key={x.id} value={x.id}>{`${x.skracenica} · ${x.puno_ime}`}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {f.redovi.length > 0 && <TabelaUvoza f={f} izbor={izbor} naRed={naRed} naSve={naSve} klubovi={d.klubovi} />}
     </section>
   );
 }

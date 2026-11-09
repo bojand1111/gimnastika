@@ -19,20 +19,71 @@ function jezgroKluba(n) {
 
 // Klub iz zaglavlja prijave među klubovima (id, puno_ime, skracenica): po skraćenici ili po jezgru naziva.
 function nadjiKlub(tekst, klubovi) {
+  return nadjiKlubDetaljno(tekst, klubovi).id;
+}
+
+// Isto kao nadjiKlub, uz oznaku da se poklapa samo deo naziva (jedno jezgro sadrži drugo).
+function nadjiKlubDetaljno(tekst, klubovi) {
   const n = normalizuj(tekst);
-  if (n === '') return null;
+  if (n === '') return { id: null, delimicno: false };
   const jezgro = jezgroKluba(n);
   for (const k of klubovi) {
-    if (normalizuj(String(k.skracenica ?? '')) === n) return Number(k.id);
+    if (normalizuj(String(k.skracenica ?? '')) === n) return { id: Number(k.id), delimicno: false };
   }
   let delimicno = null;
   for (const k of klubovi) {
     const jk = jezgroKluba(normalizuj(String(k.puno_ime ?? '')));
     if (jk === '' || jezgro === '') continue;
-    if (jk === jezgro) return Number(k.id);
+    if (jk === jezgro) return { id: Number(k.id), delimicno: false };
     if (delimicno === null && (jk.includes(jezgro) || jezgro.includes(jk))) delimicno = Number(k.id);
   }
-  return delimicno;
+  return { id: delimicno, delimicno: delimicno !== null };
+}
+
+const NAVODNICI = '"„“”«»';
+const RE_NAVODI = new RegExp(`\\s*[${NAVODNICI}]\\s*([^${NAVODNICI}]+?)\\s*[${NAVODNICI}]\\s*`, 'gu');
+const OPSTE_SKR = [...OPSTE_RECI, 'sgu', 'su'];
+const velika = (s) => s.toLocaleUpperCase('sr-Latn');
+
+// Puno ime novog kluba iz teksta fajla: navodi kao „…“ sa razmakom spolja, jedan razmak.
+// 'GK"Topličanin"Prokuplje' => 'GK „Topličanin“ Prokuplje'.
+function nazivKluba(tekst) {
+  return String(tekst ?? '').normalize('NFC').replace(RE_NAVODI, ' „$1“ ').replace(/\s+/g, ' ').trim();
+}
+
+// Predlozi skraćenice (2 do 4 slova, velika) za novi klub, najbolji prvi. Osnova je naziv pod
+// navodnicima ('SD „Vojvodina“ Novi Sad' => VOJ), inače naziv bez opštih reči (GK, SD, klub...).
+// Jedna reč: kratka reč velikim slovima ostaje (AKRO), inače prva tri slova; više reči: prva slova.
+function skraceniceKluba(naziv) {
+  const tekst = String(naziv ?? '').normalize('NFC');
+  const reci = (s) => (s.match(/\p{L}+/gu) || []).filter((r) => Array.from(r).length > 1 && !OPSTE_SKR.includes(normalizuj(r)));
+  const navod = new RegExp(`[${NAVODNICI}]([^${NAVODNICI}]+)[${NAVODNICI}]`, 'u').exec(tekst);
+  let osnova = navod ? reci(navod[1]) : [];
+  if (osnova.length === 0) osnova = reci(tekst);
+  if (osnova.length === 0) osnova = ['Klub'];
+  const sve = reci(tekst);
+  const prva = Array.from(osnova[0]);
+  const slova = Array.from(osnova.join(''));
+  const pocetna = (lista) => lista.map((r) => Array.from(r)[0]).slice(0, 4).join('');
+  const predlozi = [];
+  if (osnova.length === 1) {
+    if (prva.length <= 4 && osnova[0] === velika(osnova[0])) predlozi.push(osnova[0]);
+    predlozi.push(prva.slice(0, 3).join(''));
+  } else {
+    predlozi.push(pocetna(osnova));
+  }
+  predlozi.push(pocetna(sve), prva.slice(0, 3).join(''), prva.slice(0, 4).join(''));
+  if (osnova.length > 1) predlozi.push(prva.slice(0, 2).join('') + Array.from(osnova[1])[0]);
+  // na kraju: prva dva ili tri slova osnove i još jedno slovo A..Z
+  for (const pre of [slova.slice(0, 2).join(''), slova.slice(0, 3).join('')]) {
+    for (const z of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') predlozi.push(pre + z);
+  }
+  const izlaz = [];
+  for (const p of predlozi) {
+    const v = velika(p);
+    if (/^\p{L}{2,4}$/u.test(v) && !izlaz.includes(v)) izlaz.push(v);
+  }
+  return izlaz;
 }
 
 const RIMSKI = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10 };
@@ -108,4 +159,4 @@ function oceni(r, takmicari, prijavljeni, pol) {
   return { status: SLICAN, takmicar_id: id, postupak: 'novi', napomena: 'u bazi je ' + opis + ', godina se razlikuje' };
 }
 
-module.exports = { NOVI, POSTOJI, SLICAN, PRIJAVLJEN, GRESKA, kljuc, kandidati, oceni, nadjiKlub, nadjiStavku };
+module.exports = { NOVI, POSTOJI, SLICAN, PRIJAVLJEN, GRESKA, kljuc, kandidati, oceni, nadjiKlub, nadjiKlubDetaljno, nadjiStavku, nazivKluba, skraceniceKluba };

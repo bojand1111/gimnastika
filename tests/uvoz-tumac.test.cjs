@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const tumac = require('../electron/uvoz/tumac-prijave.cjs');
 const citac = require('../electron/uvoz/citac.cjs');
-const { docxPrimer } = require('./pomoc/uzorci.cjs');
+const { docxPrimer, docxBilten } = require('./pomoc/uzorci.cjs');
 
 const FAJLOVI = path.join(__dirname, 'fajlovi');
 
@@ -159,4 +159,74 @@ test('protumaci: ime zapisano razlozeno (NFD) se lepo formatira', () => {
   const r = tumac.protumaci(dok).redovi[0];
   assert.equal(r.prezime, 'Čorić');
   assert.equal(r.ime, 'Marko');
+});
+
+function biltenDokument(opcije) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-tumac-'));
+  try {
+    const put = path.join(dir, 'b.docx');
+    docxBilten(put, opcije);
+    return citac.procitaj(put);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+}
+
+test('tumac: bilten, zaglavlje iz okvira za tekst vazi za tabele bez zaglavlja, klub u svakom redu', () => {
+  for (const mc of [false, true]) {
+    const r = tumac.protumaci(biltenDokument({ mc }));
+    assert.deepEqual(r.greske, []);
+    assert.equal(r.pol, 'M');
+    assert.equal(r.klub, '');
+    // dve strane po tri reda; tabele rezultata i tabela bez zaglavlja posle njih se ne uvoze
+    assert.deepEqual(r.redovi.map((x) => [x.rb, x.prezime, x.ime, x.godina, x.klub]), [
+      [1, 'Kulić', 'Filip', 2006, 'GD"Partizan" Subotica'],
+      [2, 'Testić', 'Ana', 2010, 'SD"Vojvodina" Novi Sad'],
+      [3, 'Bezdatumić', 'Marko', null, 'SD"Vojvodina" Novi Sad'],
+      [4, 'Lukić', 'Luka', 2011, 'SD „Vojvodina“ Novi Sad'],
+      [5, 'Bezklubić', 'Ivan', 2012, ''],
+      [6, 'Perić', 'Pera', 2013, 'SGU"AKRO"Paraćin'],
+    ]);
+    assert.equal(r.redovi[0].datum, '2006-10-26');
+    assert.equal(r.redovi[0].oznaka, '');
+    assert.equal(r.redovi[0].kategorija, null);
+    assert.deepEqual(r.redovi[2].greske, []);
+  }
+});
+
+test('tumac: tabela rezultata (Ime sa prezimenom, Kategorija) se ne uvozi', () => {
+  const rezultati = [
+    ['Ime', 'KLUB-DRUŠTVO', 'Kategorija', '', 'Ukupno'],
+    ['Kulić Filip', 'GD Partizan', 'Seniori', '', '50,000'],
+  ];
+  const finale = [['Mesto', 'Ime', 'KLUB-DRUŠTVO', 'D', 'E', 'Bonus', 'Pen.', 'Ukupno'], ['1', 'Kulić Filip', 'GD Partizan', '3,0', '8,0', '', '', '11,000']];
+  const r = tumac.protumaci({ tekst: 'MSG', tabele: [rezultati, finale] });
+  assert.deepEqual(r.redovi, []);
+  assert.deepEqual(r.greske, ['U fajlu nema tabele sa kolonama PREZIME i IME.']);
+  // ni posle zaglavlja spiska: tabela rezultata iste sirine prekida prenos zaglavlja
+  const zaglavlje = [['Rb.', 'Ime', 'Prezime', 'Datum rodjenja', 'Klub']];
+  const ista = [['Ime', 'Klub', 'Kategorija', '', 'Ukupno'], ['Kulić Filip', 'GD Partizan', 'Seniori', '', '50,000']];
+  const r2 = tumac.protumaci({ tekst: '', tabele: [zaglavlje, ista, [['1', 'Filip', 'Kulić', '2006', 'GD Partizan']]] });
+  assert.deepEqual(r2.redovi, []);
+  assert.deepEqual(r2.greske, ['Tabela sa prijavama je prazna.']);
+});
+
+test('tumac: prenos zaglavlja samo za susednu tabelu iste sirine, iz tabele bez redova', () => {
+  const zaglavlje = [['Prezime', 'Ime', 'Godište']];
+  const podaci = [['Kovač', 'Ana', '2014']];
+  const prenos = (tabele) => tumac.protumaci({ tekst: '', tabele }).redovi.map((x) => x.prezime);
+  assert.deepEqual(prenos([zaglavlje, podaci, [['Jović', 'Lena', '2013']]]), ['Kovač', 'Jović']);
+  // druga sirina, tabela izmedju, zaglavlje sa redovima: nema prenosa
+  assert.deepEqual(prenos([zaglavlje, [['Kovač', 'Ana', '2014', 'x']]]), []);
+  assert.deepEqual(prenos([zaglavlje, [['nesto', 'drugo']], podaci]), []);
+  assert.deepEqual(prenos([[...zaglavlje, ['Jović', 'Lena', '2013']], podaci]), ['Jović']);
+  // prazan red posle zaglavlja ne smeta
+  assert.deepEqual(prenos([[...zaglavlje, ['', '', '']], podaci]), ['Kovač']);
+});
+
+test('tumac: kolona kluba (Klub, KLUB-DRUŠTVO, Klub/Društvo, Društvo)', () => {
+  for (const naziv of ['Klub', 'KLUB-DRUŠTVO', 'Klub/Društvo', 'Društvo', 'Naziv kluba']) {
+    const r = tumac.protumaci({ tekst: '', tabele: [[['Prezime', 'Ime', naziv], ['Kovač', 'Ana', '  GK  „Niš“ ']]] });
+    assert.equal(r.redovi[0].klub, 'GK „Niš“', naziv);
+  }
+  const bez = tumac.protumaci({ tekst: '', tabele: [[['Prezime', 'Ime'], ['Kovač', 'Ana']]] });
+  assert.equal(bez.redovi[0].klub, '');
 });

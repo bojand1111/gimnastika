@@ -10,7 +10,9 @@ export function pocetniIzbor(f) {
   });
   const redovi = {};
   f.redovi.forEach((r, ri) => { redovi[ri] = { uvezi: r.postupak !== 'nista', postupak: r.postupak }; });
-  return { klub_id: f.klub_id != null ? String(f.klub_id) : '', oznake, redovi };
+  // Klub iz kolone fajla: predlog iz baze ili novi klub.
+  const klubovi = Object.fromEntries((f.klubovi_fajla ?? []).map((k) => [k.kljuc, k.klub_id != null ? String(k.klub_id) : 'novo']));
+  return { klub_id: f.klub_id != null ? String(f.klub_id) : '', klubovi, oznake, redovi };
 }
 
 // Izabran red je "novi" kad nema izbora postupka (status novi) ili je postupak 'novi'.
@@ -55,7 +57,7 @@ export function zaUpis(izbor) {
   for (const [i, f] of Object.entries(izbor)) {
     const redovi = {};
     for (const [ri, r] of Object.entries(f.redovi)) redovi[ri] = { uvezi: r.uvezi ? '1' : '', postupak: r.postupak };
-    izlaz[i] = { klub_id: f.klub_id, oznake: f.oznake, redovi };
+    izlaz[i] = { klub_id: f.klub_id, klubovi: f.klubovi ?? {}, oznake: f.oznake, redovi };
   }
   return izlaz;
 }
