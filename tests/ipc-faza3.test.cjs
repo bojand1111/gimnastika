@@ -132,6 +132,7 @@ test('prijave.ucesce: nevazeca vrednost baca GreskaKorisnika', () => {
 
 test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
   const { baza, moduli, dir } = pravi();
+  baza.izvrsi("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('lekarski_sprecava_prijavu','ne')"); // samo upozorenje
   const s = tokSeme(baza);
   moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
@@ -178,6 +179,7 @@ test('prijave.podaci: oblik, lek_ne_vazi, upozorenja, filter pola', () => {
 
 test('prijave.noviTakmicar, izmeni, sprava, startni', () => {
   const { baza, moduli, dir } = pravi();
+  baza.izvrsi("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('lekarski_sprecava_prijavu','ne')"); // samo upozorenje
   const s = tokSeme(baza);
   moduli.pol.postavi('Z');
   moduli.takmicenja.otvori(s.takm);
@@ -401,4 +403,16 @@ test('prijave: prijava drugog pola se ponasa kao da ne postoji', () => {
   const d = moduli.prijave.dodaj([s.muski]);
   assert.equal(d.dodato, 0);
   cisti(dir);
+});
+
+test('prijave.podaci kad se lekarski ne prati: nijedna prijava nema lek_ne_vazi ni upozorenje', () => {
+  const { baza, moduli, dir } = pravi();
+  const s = tokSeme(baza);
+  moduli.pol.postavi('Z');
+  moduli.takmicenja.otvori(s.takm);
+  moduli.prijave.dodaj([s.t.Ana, s.t.Bea, s.t.Dona]);
+  const p = moduli.prijave.podaci();
+  assert.deepEqual(p.prijave.map((r) => r.lek_ne_vazi), [false, false, false]);
+  assert.deepEqual(p.upozorenja, []);
+  fs.rmSync(dir, { recursive: true, force: true });
 });

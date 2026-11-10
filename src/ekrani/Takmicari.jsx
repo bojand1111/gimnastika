@@ -33,6 +33,7 @@ export default function Takmicari() {
   const [takmicari, postaviTakmicare] = useState([]);
   const [klubovi, postaviKlubove] = useState([]);
   const [prag, postaviPrag] = useState(30);
+  const [prati, postaviPrati] = useState(false); // prati li se lekarski (podesavanje za deo)
   const [izabranId, postaviIzabran] = useState(null);
   const [forma, postaviFormu] = useState(PRAZNA);
   const [greske, postaviGreske] = useState([]);
@@ -54,8 +55,10 @@ export default function Takmicari() {
     (async () => {
       try {
         postaviKlubove(await gim.klubovi.svi());
-        const p = Number((await gim.podesavanja.sva()).lekarski_prag_dana);
+        const pod = await gim.podesavanja.sva();
+        const p = Number(pod.lekarski_prag_dana);
         if (Number.isFinite(p)) postaviPrag(p);
+        postaviPrati(pod.lekarski_sprecava_prijavu !== 'ne_prati');
       } catch (e) { obavesti(e.message, 'greska'); }
     })();
   }, [ucitaj]);
@@ -114,7 +117,8 @@ export default function Takmicari() {
   const vidljivi = useMemo(() => takmicari.filter((r) => vidljiv(r, filter)), [takmicari, filter]);
   const godista = useMemo(
     () => [...new Set(takmicari.map((r) => Number(r.godina_rodjenja)))].sort((a, b) => b - a), [takmicari]);
-  const poruka = lekarskiPoruka(forma.lekarski_do, prag, danas());
+  // Kad se lekarski ne prati, nema ni upozorenja u kartonu ni kolone u listi.
+  const poruka = prati ? lekarskiPoruka(forma.lekarski_do, prag, danas()) : { tekst: '', klasa: '' };
 
   const promeni = (polje) => (ev) => postaviFormu((f) => ({ ...f, [polje]: ev.target.value }));
   const postaviPol = (pol) => postaviFormu((f) => ({ ...f, pol }));
@@ -176,7 +180,7 @@ export default function Takmicari() {
     { naslov: 'Prezime i ime', celija: (r) => `${r.prezime} ${r.ime}` },
     { naslov: 'God.', sirina: 66, celija: (r) => <span className="broj">{r.godina_rodjenja}</span> },
     { naslov: 'Klub', sirina: 62, celija: (r) => <span className="skr">{r.klub_skr ?? ''}</span> },
-    {
+    prati && {
       naslov: 'Lekarski važi do', sirina: 292,
       celija: (r) => {
         const oz = lekarskiOznaka(lekarski(r.lekarski_do, prag, danas()));
@@ -188,7 +192,7 @@ export default function Takmicari() {
         );
       },
     },
-  ];
+  ].filter(Boolean);
 
   const izabran = takmicari.find((x) => x.id === izabranId);
   const bojaPoruke = poruka.klasa === 'greska'

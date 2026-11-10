@@ -119,7 +119,7 @@ export default function Pocetna() {
         )}
       </div>
       <div className="kolona" style={{ width: 340, flexShrink: 0 }}>
-        <Lekarski lekarski={d.lekarski} />
+        {d.lekarski !== null && <Lekarski lekarski={d.lekarski} />}
         <PoslednjaKopija kopija={d.poslednjaKopija} zauzeto={zauzeto} naNapravi={napraviKopiju} />
       </div>
     </div>

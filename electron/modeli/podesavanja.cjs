@@ -12,7 +12,8 @@ const PODRAZUMEVANO = {
   e_zaokruzivanje: 'odseci',
   plasman_isti_rezultat: 'deli',
   viseboj_nepotpun: 'ulazi',
-  lekarski_sprecava_prijavu: 'ne',
+  // ne_prati: lekarski proverava delegat, program ga ne prikazuje; ne: samo upozorenje; da: sprecava prijavu
+  lekarski_sprecava_prijavu: 'ne_prati',
   grb_levo: '',
   grb_desno: '',
   organizator: '',
@@ -24,7 +25,7 @@ const IZBORI = {
   e_zaokruzivanje: ['odseci', 'zaokruzi'],
   plasman_isti_rezultat: ['deli', 'visa_e_pa_d'],
   viseboj_nepotpun: ['ulazi', 'ne_ulazi'],
-  lekarski_sprecava_prijavu: ['ne', 'da'],
+  lekarski_sprecava_prijavu: ['ne_prati', 'ne', 'da'],
 };
 
 // Podesavanja koja vaze posebno za MSG ('M') i ZSG ('Z'); cuvaju se kao <kljuc>_<pol>, a stari kljuc bez nastavka se nasledjuje.
@@ -83,6 +84,11 @@ function napravi(baza, fasciklaPodataka) {
     for (const k of POLNI_KLJUCEVI) rez[k] = dajPol(k, pol);
     rez.pol = pol;
     return rez;
+  }
+
+  // Da li program prati lekarski za pol (podesavanje nije ne_prati).
+  function pratiLekarski(pol) {
+    return dajPol('lekarski_sprecava_prijavu', pol) !== 'ne_prati';
   }
 
   function daj(kljuc, podrazumevano = '') {
@@ -167,7 +173,7 @@ function napravi(baza, fasciklaPodataka) {
   }
 
   return {
-    POLNI_KLJUCEVI, sva, daj, dajPol, dajInt, postavi, aktivniPol, postaviPol,
+    POLNI_KLJUCEVI, sva, daj, dajPol, pratiLekarski, dajInt, postavi, aktivniPol, postaviPol,
     aktivnoTakmicenjeId, aktivno, postaviAktivno, sacuvajOpsta,
   };
 }

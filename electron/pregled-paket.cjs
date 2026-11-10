@@ -73,7 +73,8 @@ function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhr
           takm,
           stanje: aid === null ? null : pr.stanjePripreme(aid),
           ostala: tk.sva(pol).filter((r) => Number(r.id) !== aid).map((r) => ({ ...r, stanje: pr.stanjePripreme(Number(r.id)) })),
-          lekarski: pr.lekarskiUpozorenja(p.dajInt('lekarski_prag_dana', 30), pol),
+          // null: lekarski se ne prati, Pocetna ne prikazuje karticu
+          lekarski: p.pratiLekarski(pol) ? pr.lekarskiUpozorenja(p.dajInt('lekarski_prag_dana', 30), pol) : null,
           poslednjaKopija: poslednja(kopijaLista()),
           precice: PRECICE.map(([tekst, tasteri]) => [tekst, [...tasteri]]),
         };

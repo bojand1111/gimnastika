@@ -37,6 +37,7 @@ function grupa(baza, takm, pol, prijave) {
 
 test('tok prijava (POPIS 9.2)', () => {
   const { baza, s, podesavanja, p } = nova();
+  podesavanja.postavi('lekarski_sprecava_prijavu', 'ne'); // samo upozorenje
   // 1
   const r = p.dodajVise(s.takm, svi(s));
   assert.equal(r.dodato, 4);
@@ -216,7 +217,8 @@ test('lista: filtar pola, redosled Z pa M', () => {
 });
 
 test('prijava drugog pola se preskace', () => {
-  const { baza, s, p } = nova();
+  const { baza, s, podesavanja, p } = nova();
+  podesavanja.postavi('lekarski_sprecava_prijavu', 'ne'); // samo upozorenje
   const r = p.dodajJednu(s.takm, s.muski, s.kat, s.prog, 'pojedinac');
   assert.deepEqual(r, { stanje: 'preskoceno', ime: 'Test Marko', poruka: 'Test Marko: nije istog pola kao takmičenje.', lekarski_ne_vazi: false, prijava_id: null });
   const v = p.dodajVise(s.takmM, [s.t.Ana, s.muski]);
@@ -314,4 +316,19 @@ test('idZa: id prijave ili null', () => {
   const pid = p.lista(s.takm)[0].id;
   assert.equal(p.idZa(s.takm, s.t.Ana), Number(pid));
   assert.equal(p.idZa(s.takm, s.t.Bea), null);
+});
+
+test('lekarski se ne prati (podrazumevano): bez upozorenja i bez preskakanja', () => {
+  const { s, podesavanja, p } = nova();
+  assert.equal(podesavanja.dajPol('lekarski_sprecava_prijavu', 'Z'), 'ne_prati');
+  assert.equal(podesavanja.pratiLekarski('Z'), false);
+  // Bea ima istekao lekarski, Dona nema lekarski
+  const r = p.dodajVise(s.takm, [s.t.Ana, s.t.Bea, s.t.Ceca, s.t.Dona]);
+  assert.equal(r.dodato, 4);
+  assert.deepEqual(r.upozorenja, []);
+  assert.deepEqual(r.preskoceno, []);
+  // posebno za pol: ZSG samo upozorenje, MSG i dalje ne prati
+  podesavanja.postavi('lekarski_sprecava_prijavu_Z', 'ne');
+  assert.equal(podesavanja.pratiLekarski('Z'), true);
+  assert.equal(podesavanja.pratiLekarski('M'), false);
 });

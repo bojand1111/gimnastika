@@ -14,7 +14,7 @@ const IZBORI = [
   ['e_zaokruzivanje', 'Prosek E ocene na tri decimale', [['odseci', 'Odsecanje (8,233)'], ['zaokruzi', 'Zaokruživanje']]],
   ['plasman_isti_rezultat', 'Isti rezultat', [['deli', 'Dele mesto (1, 2, 2, 4)'], ['visa_e_pa_d', 'Viša E, pa viša D']]],
   ['viseboj_nepotpun', 'Ko ne radi sve sprave', [['ulazi', 'Ulazi u višeboj (zbir urađenih)'], ['ne_ulazi', 'Nema plasman u višeboju']]],
-  ['lekarski_sprecava_prijavu', 'Lekarski koji ne važi', [['ne', 'Samo upozorenje'], ['da', 'Sprečava prijavu']]],
+  ['lekarski_sprecava_prijavu', 'Lekarski koji ne važi', [['ne_prati', 'Ne prati se (proverava delegat)'], ['ne', 'Samo upozorenje'], ['da', 'Sprečava prijavu']]],
 ];
 
 const GRBOVI = [['grb_levo', 'Grb levo (ako takmičenje nema svoj)'], ['grb_desno', 'Grb desno (ako takmičenje nema svoj)']];

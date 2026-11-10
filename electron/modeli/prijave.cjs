@@ -136,8 +136,8 @@ function napravi(baza, podesavanja) {
     }
     const prag = podesavanja.dajInt('lekarski_prag_dana', 30);
     const lek = lekarski(t.lekarski_do, prag, String(takm.datum));
-    const neVazi = lek.stanje === 'nema' || lek.stanje === 'istekao';
-    if (neVazi && podesavanja.dajPol('lekarski_sprecava_prijavu', takm.pol, 'ne') === 'da') {
+    const neVazi = podesavanja.pratiLekarski(takm.pol) && (lek.stanje === 'nema' || lek.stanje === 'istekao');
+    if (neVazi && podesavanja.dajPol('lekarski_sprecava_prijavu', takm.pol) === 'da') {
       return { stanje: 'preskoceno', ime, poruka: `${ime} (lekarski ne važi na dan takmičenja)`, lekarski_ne_vazi: true, prijava_id: null };
     }
     const poljaUcesca = polja(ucesce);

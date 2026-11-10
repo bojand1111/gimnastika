@@ -68,7 +68,7 @@ test('takmicenje.podaci bez aktivnog baca poruku, pocetna.podaci radi', () => {
   assert.equal(d.takm, null);
   assert.equal(d.stanje, null);
   assert.deepEqual(d.ostala, []);
-  assert.deepEqual(d.lekarski, []);
+  assert.equal(d.lekarski, null); // podrazumevano se lekarski ne prati: Pocetna nema karticu
   assert.equal(d.poslednjaKopija, null);
   assert.ok(Array.isArray(d.precice));
   structuredClone(d);
@@ -76,6 +76,7 @@ test('takmicenje.podaci bez aktivnog baca poruku, pocetna.podaci radi', () => {
 
 test('pocetna.podaci nad primerom: spremno, lekarski upozorenja, bez ostalih', () => {
   const { moduli, baza } = sPrimerom();
+  baza.izvrsi("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('lekarski_sprecava_prijavu','ne')"); // samo upozorenje
   const d = moduli.pocetna.podaci();
   assert.equal(d.stanje.korak, 'spremno');
   assert.deepEqual(d.ostala, []);
@@ -229,6 +230,7 @@ test('PRECICE: prebacivanje na MSG i ZSG', () => {
 
 test('pocetna.podaci: pol, lekarski i ostala samo za izabrani pol', () => {
   const { moduli, baza } = sPrimerom();
+  baza.izvrsi("INSERT INTO podesavanja (kljuc, vrednost) VALUES ('lekarski_sprecava_prijavu','ne')"); // samo upozorenje
   for (const [naziv, pol] of [['Drugi ZSG kup', 'Z'], ['Drugi MSG kup', 'M']]) {
     baza.ubaci('takmicenja', { naziv, datum: '2025-05-05', mesto: '', broj_e_sudija: 4, pravilo_e: 'odbaci_krajnje',
       ekipno_broji: 1, pol, kreirano: '2026-01-01 00:00:00', izmenjeno: '2026-01-01 00:00:00' });

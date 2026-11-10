@@ -98,12 +98,14 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
   });
 
   // Prijave sa lek_ne_vazi (stanje nema | istekao na dan takmicenja) i tekstovima upozorenja (POPIS 6.3).
+  // Kad se lekarski ne prati, nijedna prijava nema upozorenje.
   function prijaveSaLekarskim(takm) {
     const prag = p.dajInt('lekarski_prag_dana', 30);
+    const prati = p.pratiLekarski(takm.pol);
     const upozorenja = [];
     const prijave = pr.lista(Number(takm.id), takm.pol).map((r) => {
       const lek = lekarski(r.lekarski_do, prag, String(takm.datum));
-      const neVazi = lek.stanje === 'nema' || lek.stanje === 'istekao';
+      const neVazi = prati && (lek.stanje === 'nema' || lek.stanje === 'istekao');
       if (neVazi) {
         upozorenja.push(r.lekarski_do
           ? `${r.prezime} ${r.ime}: lekarski važi do ${datumPrikaz(r.lekarski_do)} i ne važi na dan takmičenja (${datumPrikaz(takm.datum)}).`
