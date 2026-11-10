@@ -179,7 +179,8 @@ export default function Takmicari() {
     { naslov: 'ID', sirina: 70, celija: (r) => <span className="sifra">{r.id_broj}</span> },
     { naslov: 'Prezime i ime', celija: (r) => `${r.prezime} ${r.ime}` },
     { naslov: 'God.', sirina: 66, celija: (r) => <span className="broj">{r.godina_rodjenja}</span> },
-    { naslov: 'Klub', sirina: 62, celija: (r) => <span className="skr">{r.klub_skr ?? ''}</span> },
+    // Pun naziv kluba; skracenica je u opisu pri prelasku misem.
+    { naslov: 'Klub', sirina: prati ? 200 : 300, celija: (r) => <span title={r.klub_skr ?? ''}>{r.klub_ime ?? ''}</span> },
     prati && {
       naslov: 'Lekarski važi do', sirina: 292,
       celija: (r) => {
