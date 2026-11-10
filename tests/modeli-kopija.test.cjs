@@ -50,7 +50,7 @@ test('napravi: sqlite fajl sa kopija_opis (5 kljuceva), lista ga vraca prvim', (
     const o = Object.fromEntries(kljucevi.map((x) => [x.kljuc, x.vrednost]));
     assert.equal(o.aplikacija, 'gimnastika');
     assert.equal(o.verzija, '1.0.0');
-    assert.equal(o.baza_verzija, '006_bonus');
+    assert.equal(o.baza_verzija, '007_lekarski_ne_prati');
     assert.equal(o.vrsta, 'rucna');
     assert.match(o.vreme, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
     const lista = t.k.lista();
@@ -297,7 +297,7 @@ test('vracanje stare kopije bez kolone bonus: bonus je NULL, ocene i konacne ist
     const ocene = t.baza.svi('SELECT id, d, e, bonus, odbitak, konacna FROM ocene ORDER BY id').map((r) => ({ ...r }));
     assert.equal(ocene.length, 3);
     for (const o of ocene) assert.deepEqual(o, { id: o.id, d: 5000, e: 8000, bonus: null, odbitak: null, konacna: 13000 });
-    assert.equal(t.baza.vrednost('SELECT MAX(ime) FROM migracije'), '006_bonus');
+    assert.equal(t.baza.vrednost('SELECT MAX(ime) FROM migracije'), '007_lekarski_ne_prati');
   } finally { t.ukloni(); }
 });
 
