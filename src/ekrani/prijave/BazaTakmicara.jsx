@@ -101,7 +101,7 @@ export default function BazaTakmicara({ d, naDodaj, naNovi, reset }) {
                 aria-label={`${t.prezime} ${t.ime}`} onChange={(ev) => promeniOznaku(t.id, ev.target.checked)} />
               <span style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', lineHeight: '17px' }}>
                 <span className="odseci">{t.prezime} {t.ime}</span>
-                <span className="mali sivo">{t.godina_rodjenja} · {t.klub_skr ?? ''}</span>
+                <span className="mali sivo odseci" title={t.klub_ime ?? ''}>{t.godina_rodjenja} · {t.klub_ime ?? ''}</span>
               </span>
               {vec && <span className="sivo" title="Već prijavljen"><Ikona ime="kvacica" velicina={14} /></span>}
             </label>
