@@ -1,47 +1,93 @@
 // Tumači pročitane tabele kao prijavu kluba. Čiste funkcije, bez baze.
-// Tabelu takmičara nalazi po zaglavlju (PREZIME, IME, KATEGORIJA, DATUM ROĐENJA, FUNKCIJA/EKIPA, KLUB).
+// Tabelu takmičara nalazi po zaglavlju (PREZIME, IME, KATEGORIJA, DATUM ROĐENJA, FUNKCIJA/EKIPA, KLUB),
+// i na engleskom (Surname, Name, Date of Birth, Category, Club); slova drugih jezika i ćirilica se porede bez kvačica.
 // Zaglavlje u posebnoj tabeli bez redova (npr. u okviru za tekst u biltenu) važi za sledeće tabele iste širine.
 
-const ZAMENE = { 'č': 'c', 'ć': 'c', 'š': 's', 'ž': 'z', 'đ': 'dj', 'ñ': 'n', 'ö': 'o', 'ü': 'u', 'é': 'e', 'á': 'a' };
+// Slova koja se ne razlazu na osnovno slovo i znak (NFD): srpsko dj i slova drugih jezika.
+const POSEBNA = { 'đ': 'dj', 'ə': 'e', 'ı': 'i', 'ł': 'l', 'ø': 'o', 'æ': 'ae', 'œ': 'oe', 'ß': 'ss', 'þ': 'th', 'ð': 'd', 'ħ': 'h', 'ŧ': 't' };
+// Cirilica (srpska, ruska, ukrajinska, bugarska) u latinicu, samo za poredjenje.
+const CIRILICA = {
+  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ђ': 'dj', 'е': 'e', 'ж': 'z', 'з': 'z', 'и': 'i', 'ј': 'j', 'к': 'k',
+  'л': 'l', 'љ': 'lj', 'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'ћ': 'c', 'у': 'u',
+  'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'c', 'џ': 'dz', 'ш': 's', 'й': 'j', 'ы': 'y', 'э': 'e', 'ю': 'ju', 'я': 'ja', 'ъ': '',
+  'ь': '', 'щ': 'sc', 'ё': 'e', 'і': 'i', 'ї': 'i', 'є': 'e', 'ґ': 'g', 'ў': 'u',
+};
 
 const mala = (s) => s.toLocaleLowerCase('sr-Latn');
 const velika = (s) => s.toLocaleUpperCase('sr-Latn');
 
-// Mala slova, bez kvačica, navodnika i interpunkcije, jedan razmak.
+// Mala slova bez kvacica i drugih znakova nad slovima (svi jezici), cirilica u latinici,
+// bez navodnika i interpunkcije, jedan razmak. Sluzi samo za poredjenje; imena se cuvaju kako su napisana.
 function normalizuj(s) {
-  // NFC: razlozeni znakovi (C + kvacica) postaju jedno slovo pre poredjenja
   let n = mala(String(s ?? '').normalize('NFC').trim());
-  n = n.replace(/[čćšžđñöüéá]/g, (z) => ZAMENE[z]);
+  n = n.replace(/[đəıłøæœßþðħŧ]/g, (z) => POSEBNA[z]);
+  n = n.replace(/[Ѐ-ӿ]/g, (z) => CIRILICA[z] ?? '');
+  n = n.normalize('NFD').replace(/\p{M}+/gu, '');
   return n.replace(/[^a-z0-9]+/g, ' ').trim();
 }
+
+// Nazivi kolona na srpskom i engleskom (posle normalizuj).
+const PUNO_IME = ['ime i prezime', 'prezime i ime', 'name and surname', 'surname and name', 'name surname', 'surname name',
+  'full name', 'first and last name', 'last and first name'];
+const PREZIME_PRVO = ['prezime i ime', 'surname and name', 'surname name', 'last and first name'];
+const PREZIME = ['surname', 'last name', 'lastname', 'family name'];
+const IME = ['ime', 'first name', 'firstname', 'given name', 'forename'];
+// "Name" sam: celo ime u jednoj celiji (prvo ime pa prezime), ili ime kad postoji kolona prezimena.
+const SAMO_NAME = ['name', 'names', 'name of gymnast', 'gymnast name', 'athlete name', 'gymnast', 'gymnasts', 'athlete'];
+const IMENSKA_POLJA = ['ime_prezime', 'prezime', 'ime', 'name'];
+const pocinje = (n, lista) => lista.some((x) => n === x || n.startsWith(x + ' '));
 
 // Zaglavlje tabele takmičara: indeksi kolona ili null ako red nije zaglavlje.
 function kolone(red) {
   const k = {};
+  let prethodni = null; // normalizovan tekst prethodne celije
+  let poslednje = null; // polje dodeljeno prethodnoj celiji
   red.forEach((celija, i) => {
     const n = normalizuj(celija);
+    // Spojena celija zaglavlja (npr. "Name" preko kolona Rb. i imena): imensko polje je poslednja kolona spoja.
+    if (n !== '' && n === prethodni && IMENSKA_POLJA.includes(poslednje)) {
+      k[poslednje] = i;
+      return;
+    }
+    prethodni = n;
+    poslednje = null;
     if (n === '') return;
-    if (k.ime_prezime === undefined && (n.startsWith('ime i prezime') || n.startsWith('prezime i ime'))) {
+    if (k.ime_prezime === undefined && PUNO_IME.some((x) => n.startsWith(x))) {
       k.ime_prezime = i;
-      k.prezime_prvo = n.startsWith('prezime');
-    } else if (k.prezime === undefined && n.startsWith('prezime')) {
+      k.prezime_prvo = PREZIME_PRVO.some((x) => n.startsWith(x));
+      poslednje = 'ime_prezime';
+    } else if (k.prezime === undefined && (n.startsWith('prezime') || pocinje(n, PREZIME))) {
       k.prezime = i;
-    } else if (k.ime === undefined && (n === 'ime' || n.startsWith('ime '))) {
+      poslednje = 'prezime';
+    } else if (k.ime === undefined && pocinje(n, IME)) {
       k.ime = i;
-    } else if (k.kategorija === undefined && (n.includes('kategorija') || n === 'kat' || n.startsWith('kat '))) {
+      poslednje = 'ime';
+    } else if (k.name === undefined && pocinje(n, SAMO_NAME)) {
+      k.name = i;
+      poslednje = 'name';
+    } else if (k.kategorija === undefined && (n.includes('kategori') || n.includes('categor') || n === 'kat' || n.startsWith('kat '))) {
       k.kategorija = i;
     } else if (k.program === undefined && n.startsWith('program')) {
       k.program = i;
-    } else if (k.datum === undefined && (n.includes('datum') || n.includes('rodj') || n.includes('godi'))) {
+    } else if (k.datum === undefined && (['datum', 'rodj', 'godi', 'birth', 'born'].some((r) => n.includes(r)) || n === 'dob' || pocinje(n, ['year', 'yob']))) {
       k.datum = i;
     } else if (k.ucesce === undefined && ['funkcija', 'ekipa', 'ucesce', 'uloga', 'pojedin'].some((r) => n.includes(r))) {
       k.ucesce = i;
-    } else if (k.pol === undefined && n === 'pol') {
+    } else if (k.pol === undefined && ['pol', 'sex', 'gender', 'm f', 'm z', 'm w'].includes(n)) {
       k.pol = i;
-    } else if (k.klub === undefined && (n === 'klub' || n.startsWith('klub ') || n === 'drustvo' || n === 'naziv kluba')) {
+    } else if (k.klub === undefined && (n === 'klub' || n.startsWith('klub ') || n === 'drustvo' || n === 'naziv kluba' || pocinje(n, ['club']))) {
       k.klub = i;
     }
   });
+  if (k.name !== undefined) {
+    // "Name" uz kolonu prezimena je ime; sam, uz datum rodjenja, je celo ime (tabela trenera i sudija nema datum)
+    if (k.prezime !== undefined && k.ime === undefined) k.ime = k.name;
+    else if (k.ime_prezime === undefined && k.prezime === undefined && k.ime === undefined && k.datum !== undefined) {
+      k.ime_prezime = k.name;
+      k.prezime_prvo = false;
+    }
+    delete k.name;
+  }
   if (k.ime_prezime !== undefined || (k.prezime !== undefined && k.ime !== undefined)) return k;
   return null;
 }
@@ -54,7 +100,7 @@ function lepoIme(s) {
   return s.replace(/\p{L}+/gu, (rec) => {
     const [prvi, ...ostalo] = Array.from(rec);
     return velika(prvi) + mala(ostalo.join(''));
-  });
+  }).replace(/i\u0307/g, 'i'); // tursko İ: malo slovo je i, bez viska tacke (U+0307)
 }
 
 const dvocifreno = (n, duzina) => String(n).padStart(duzina, '0');
@@ -110,8 +156,8 @@ function ucesce(s) {
 
 function polIzTeksta(s) {
   const n = normalizuj(s);
-  if (n === 'm' || n.startsWith('mu')) return 'M';
-  if (n === 'z' || n === 'f' || n.startsWith('ze')) return 'Z';
+  if (n === 'm' || n.startsWith('mu') || n === 'male' || n === 'man' || n === 'men' || n.startsWith('boy')) return 'M';
+  if (n === 'z' || n === 'f' || n === 'w' || n.startsWith('ze') || n.startsWith('fem') || n.startsWith('wom') || n.startsWith('girl')) return 'Z';
   return null;
 }
 
@@ -173,26 +219,42 @@ const RECI_ZAGLAVLJA = new Set(['rb', 'r br', 'redni broj', 'mesto', 'plasman', 
   'klub', 'klub drustvo', 'drustvo', 'kategorija', 'ukupno', 'datum rodjenja', 'godiste', 'drzava']);
 const liciNaZaglavlje = (r) => r.some((celija) => RECI_ZAGLAVLJA.has(normalizuj(celija)));
 
-// Klub iz reda "Klub | ..." u bilo kojoj tabeli ili iz pasusa "Klub: ...".
-function klub(dokument) {
-  const nazivi = ['klub', 'naziv kluba', 'klub drustvo', 'drustvo'];
+const KLUB_NAZIVI = ['klub', 'naziv kluba', 'klub drustvo', 'drustvo', 'club', 'club name', 'name of club', 'name of the club'];
+const DRZAVA_NAZIVI = ['country', 'drzava', 'zemlja', 'nation', 'nationality'];
+const SAVEZ_NAZIVI = ['national federation name', 'national federation', 'federation', 'federation name', 'savez', 'nacionalni savez'];
+
+// Vrednost iz reda "Naziv | vrednost" u bilo kojoj tabeli; vrednost bez slova i cifara ("-----") se preskace.
+// Naziv je u prvoj celiji reda, ili bilo gde u redu ako se zavrsava dvotackom ("Country:").
+function vrednostReda(dokument, nazivi) {
   for (const tabela of dokument.tabele) {
     for (const r of tabela) {
       const celije = r.map((v) => String(v).trim()).filter((v) => v !== '');
-      if (celije.length >= 2 && nazivi.includes(normalizuj(celije[0]))) return celije[1];
+      for (let i = 0; i + 1 < celije.length; i++) {
+        if (i > 0 && !celije[i].endsWith(':')) continue;
+        if (nazivi.includes(normalizuj(celije[i])) && normalizuj(celije[i + 1]) !== '') return celije[i + 1];
+      }
     }
   }
-  const m = /^\s*(?:naziv\s+)?klub[a]?\s*[:\-–]\s*(.+)$/imu.exec(dokument.tekst);
-  return m ? m[1].trim() : '';
+  return '';
 }
 
-// Pol iz naslova dokumenta: ŽSG ili "ženska" => Z, MSG ili "muška" => M, inače null.
+// Klub iz reda "Klub | ..." ili "Club Name | ..." u bilo kojoj tabeli, iz pasusa "Klub: ...",
+// a kad kluba nema (medjunarodna prijava saveza), naziv saveza iz reda "National Federation Name | ...".
+function klub(dokument) {
+  const izTabele = vrednostReda(dokument, KLUB_NAZIVI);
+  if (izTabele !== '') return izTabele;
+  const m = /^\s*(?:naziv\s+)?klub[a]?\s*[:\-–]\s*(.+)$/imu.exec(dokument.tekst);
+  if (m) return m[1].trim();
+  return vrednostReda(dokument, SAVEZ_NAZIVI);
+}
+
+// Pol iz naslova dokumenta: ŽSG, WAG ili "ženska", "women" => Z; MSG, MAG ili "muška", "men" => M; inače null.
 function polDokumenta(dokument) {
   let sve = dokument.tekst;
   for (const tabela of dokument.tabele) for (const r of tabela) sve += ' ' + r.join(' ');
   const n = normalizuj(sve);
-  const z = /\b(zsg|zensk\w*|devojcic\w*)\b/.test(n);
-  const m = /\b(msg|musk\w*|decac\w*)\b/.test(n);
+  const z = /\b(zsg|zensk\w*|devojcic\w*|wag|women\w*|female|girls?)\b/.test(n);
+  const m = /\b(msg|musk\w*|decac\w*|mag|men|mens|male|boys?)\b/.test(n);
   if (z && !m) return 'Z';
   if (m && !z) return 'M';
   return null;
@@ -200,7 +262,7 @@ function polDokumenta(dokument) {
 
 // dokument: {tabele: string[][][], tekst: string}
 function protumaci(dokument) {
-  const izlaz = { klub: klub(dokument), pol: polDokumenta(dokument), redovi: [], greske: [] };
+  const izlaz = { klub: klub(dokument), drzava: vrednostReda(dokument, DRZAVA_NAZIVI), pol: polDokumenta(dokument), redovi: [], greske: [] };
   let nadjeno = false;
   let prenos = null; // {k, sirina}: zaglavlje iz tabele bez redova, za sledeće tabele bez zaglavlja
   for (const tabela of dokument.tabele) {

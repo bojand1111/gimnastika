@@ -24,12 +24,13 @@ export default function FajlKartica({ f, i, izbor, b, d, naPolje, naOznaku, naRe
       </div>
       {f.greske.map((g, k) => <Upozorenje key={k} tekst={g} />)}
       {f.klub_id === null && f.klub_tekst !== '' && (
-        <Upozorenje tekst={`Klub iz fajla „${f.klub_tekst}“ nije pronađen u bazi klubova. Izaberite klub ispod ili ga prvo dodajte na ekranu Klubovi.`} />
+        <Upozorenje tekst={`Klub iz fajla „${f.klub_tekst}“ nije pronađen u bazi klubova. Biće dodat kao novi klub, ili ispod izaberite postojeći klub.`} />
       )}
       <div className="uvoz-podesavanja">
         <label className="polje" style={{ width: 260 }}>
           <span className="oznaka">{saKlubom ? 'Klub za redove bez kluba' : 'Klub'}{f.klub_tekst !== '' ? ` (u fajlu: ${f.klub_tekst})` : ''}</span>
           <select className="unos" aria-label={saKlubom ? 'Klub za redove bez kluba' : 'Klub'} value={izbor.klub_id} onChange={(ev) => naPolje('klub_id', ev.target.value)}>
+            {f.klub_id === null && f.klub_tekst !== '' && <option value="novo">+ novi klub: {f.klub_tekst}</option>}
             <option value="">bez kluba</option>
             {d.klubovi.map((k) => <option key={k.id} value={k.id}>{`${k.skracenica} · ${k.puno_ime}`}</option>)}
           </select>

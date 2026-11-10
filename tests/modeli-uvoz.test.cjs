@@ -561,3 +561,23 @@ test('prijava kluba (bez kolone Klub) i dalje koristi klub fajla', () => {
   assert.equal(broj(baza, 'klubovi'), klubova);
   assert.equal(Number(baza.vrednost('SELECT klub_id FROM takmicari WHERE prezime = ?', ['Aaa'])), s.k2);
 });
+
+test('klub iz zaglavlja kog nema u bazi: izbor novo pravi klub jednom, drzava iz prijave ide u drzavljanstvo', () => {
+  const { baza, s, uvoz } = nova();
+  const fajl = priprema(uvoz, s.takmM, docxRedovi('Testland Gymnastics Federation', [...REDOVI_A, ['Bbb', 'Mika', 'I', '02.03.2012.', 'pojedinac']]));
+  assert.equal(fajl.klub_id, null);
+  assert.equal(fajl.klub_tekst, 'Testland Gymnastics Federation');
+  fajl.drzava = 'Testland'; // kao iz reda "Country: Testland" u medjunarodnoj prijavi
+  const klubova = broj(baza, 'klubovi');
+  const r = uvoz.upisi(s.takmM, [fajl], { 0: { pol: 'M', klub_id: 'novo', redovi: { 0: { uvezi: '1', postupak: 'novi' }, 1: { uvezi: '1', postupak: 'novi' } } } });
+  assert.equal(r.novih, 2);
+  assert.equal(broj(baza, 'klubovi'), klubova + 1);
+  assert.deepEqual(r.noviKlubovi, ['Testland Gymnastics Federation (TGF)']);
+  const t = baza.svi("SELECT t.drzavljanstvo, k.puno_ime FROM takmicari t JOIN klubovi k ON k.id = t.klub_id WHERE t.prezime IN ('Aaa', 'Bbb')");
+  assert.deepEqual(t.map((x) => [x.drzavljanstvo, x.puno_ime]), [['Testland', 'Testland Gymnastics Federation'], ['Testland', 'Testland Gymnastics Federation']]);
+  // bez drzave u prijavi ostaje Srbija
+  const fajl2 = priprema(uvoz, s.takmM, docxRedovi('Klub Jedan', [['Ccc', 'Laza', 'I', '01.02.2012.', 'pojedinac']]));
+  assert.equal(fajl2.drzava, '');
+  uvoz.upisi(s.takmM, [fajl2], IZBOR_NOVI());
+  assert.equal(baza.vrednost("SELECT drzavljanstvo FROM takmicari WHERE prezime = 'Ccc'"), 'Srbija');
+});

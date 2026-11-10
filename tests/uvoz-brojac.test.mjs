@@ -87,3 +87,9 @@ test('pocetniIzbor i zaUpis: klub po klubu iz fajla (predlog iz baze ili novo)',
   // fajl bez kolone Klub
   assert.deepEqual(pocetniIzbor({ klub_id: null, oznake: [], redovi: [] }).klubovi, {});
 });
+
+test('pocetniIzbor: klub iz zaglavlja kog nema u bazi je podrazumevano novi', () => {
+  assert.equal(pocetniIzbor({ klub_id: null, klub_tekst: 'Testland Gymnastics Federation', oznake: [], redovi: [] }).klub_id, 'novo');
+  assert.equal(pocetniIzbor({ klub_id: null, klub_tekst: '', oznake: [], redovi: [] }).klub_id, '');
+  assert.equal(pocetniIzbor({ klub_id: 3, klub_tekst: 'Klub Jedan', oznake: [], redovi: [] }).klub_id, '3');
+});

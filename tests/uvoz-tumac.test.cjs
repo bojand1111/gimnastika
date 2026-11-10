@@ -230,3 +230,74 @@ test('tumac: kolona kluba (Klub, KLUB-DRUŠTVO, Klub/Društvo, Društvo)', () =>
   const bez = tumac.protumaci({ tekst: '', tabele: [[['Prezime', 'Ime'], ['Kovač', 'Ana']]] });
   assert.equal(bez.redovi[0].klub, '');
 });
+
+test('normalizuj: slova drugih jezika i cirilica, srpska latinica kao ranije', () => {
+  const n = tumac.normalizuj;
+  assert.equal(n('Rüstəmzadə'), 'rustemzade');
+  assert.equal(n('Ömer Şahin Ağa'), 'omer sahin aga');
+  assert.equal(n('Søren Ørsted'), 'soren orsted');
+  assert.equal(n('Groß Łukasz'), 'gross lukasz');
+  assert.equal(n('IŞIK İlkay'), 'isik ilkay');
+  assert.equal(n('Петровић Ђорђе'), 'petrovic djordje');
+  assert.equal(n('ЈОВАНОВИЋ Љиљана'), 'jovanovic ljiljana');
+  assert.equal(n('Сергей Щукин'), 'sergej scukin');
+  assert.equal(n('Neorčić Đokić'), 'neorcic djokic');
+  assert.equal(n('KLUB-DRUŠTVO'), 'klub drustvo');
+});
+
+// Medjunarodna prijava (engleski, MAG): savez umesto kluba, "Name" spojen preko kolone Rb., tabela zvanicnika.
+function prijavaSaveza(naslov = 'MAG - Nominative registration') {
+  return {
+    tekst: '17th MEMORIAL\nNovi Sad (SRB)\nForm to be sent to:',
+    tabele: [
+      [[naslov]],
+      [['National Federation Name', 'Testland Gymnastics Federation', 'Country:', 'Testland'],
+        ['Club Name', '-----', 'Contact person:', 'Neko Nekić']],
+      [['GYMNASTS', 'GYMNASTS', 'GYMNASTS', 'GYMNASTS', 'GYMNASTS'],
+        ['Name', 'Name', 'Date of Birth', 'Category', 'Apparatus'],
+        ['1.', 'Aqil Rüstəmzadə', '30.09.2010', 'IV', 'All-around'],
+        ['2.', 'Ilkin Ağayev Oğlu', '31.03.2011', 'IV', 'All-around'],
+        ['3.', '', '', '', '']],
+      [['Function', 'Name', 'M/F'], [naslov.slice(0, 3) + ' Coach 1.', 'Trener Testić', 'M'], [naslov.slice(0, 3) + ' Judge 1.', 'Sudija Testić', 'M']],
+    ],
+  };
+}
+
+test('protumaci: prijava saveza na engleskom (celo ime u koloni Name, klub je savez, MAG je M, bez zvanicnika)', () => {
+  const p = tumac.protumaci(prijavaSaveza());
+  assert.deepEqual(p.greske, []);
+  assert.equal(p.klub, 'Testland Gymnastics Federation');
+  assert.equal(p.drzava, 'Testland'); // "Country:" u trecoj celiji reda
+  assert.equal(p.pol, 'M');
+  assert.deepEqual(p.redovi.map((r) => [r.prezime, r.ime, r.datum, r.kategorija]), [
+    ['Rüstəmzadə', 'Aqil', '2010-09-30', 'IV'],
+    ['Oğlu', 'Ilkin Ağayev', '2011-03-31', 'IV'],
+  ]);
+  assert.equal(tumac.protumaci(prijavaSaveza('WAG - Nominative registration')).pol, 'Z');
+});
+
+test('protumaci: engleske kolone Surname / First name / Club / Sex i cirilicko zaglavlje', () => {
+  const en = tumac.protumaci({ tekst: '', tabele: [[
+    ['No.', 'Surname', 'Name', 'Year of birth', 'Club', 'Sex'],
+    ['1', 'ŞAHİN', 'ÖMER', '2012', 'Gym Club Ankara', 'male'],
+    ['2', 'Lindqvist', 'Åsa', '2013', 'Gym Club Ankara', 'F'],
+  ]] });
+  assert.deepEqual(en.greske, []);
+  assert.deepEqual(en.redovi.map((r) => [r.prezime, r.ime, r.godina, r.klub, r.pol]), [
+    ['Şahin', 'Ömer', 2012, 'Gym Club Ankara', 'M'],
+    ['Lindqvist', 'Åsa', 2013, 'Gym Club Ankara', 'Z'],
+  ]);
+  const cir = tumac.protumaci({ tekst: 'ЖЕНСКА СПОРТСКА ГИМНАСТИКА', tabele: [[
+    ['Р.б.', 'Презиме', 'Име', 'Датум рођења', 'Категорија'],
+    ['1', 'Петровић', 'Ана', '01.02.2012.', 'II'],
+  ]] });
+  assert.deepEqual(cir.greske, []);
+  assert.equal(cir.pol, 'Z');
+  assert.deepEqual(cir.redovi.map((r) => [r.prezime, r.ime, r.godina, r.kategorija]), [['Петровић', 'Ана', 2012, 'II']]);
+});
+
+test('protumaci: kolona Name bez datuma rodjenja i bez prezimena nije tabela takmicara', () => {
+  const p = tumac.protumaci({ tekst: '', tabele: [[['Function', 'Name', 'M/F'], ['Coach', 'Trener Testić', 'M']]] });
+  assert.deepEqual(p.redovi, []);
+  assert.deepEqual(p.greske, ['U fajlu nema tabele sa kolonama PREZIME i IME.']);
+});

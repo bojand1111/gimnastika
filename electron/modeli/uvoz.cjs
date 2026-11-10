@@ -112,6 +112,7 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
       vrsta: dok.vrsta,
       klub_tekst: p.klub,
       klub_id: U.nadjiKlub(p.klub, sviKlubovi),
+      drzava: p.drzava,
       pol,
       oznake,
       redovi,
@@ -208,7 +209,9 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
         if (postupak !== 'postojeci' && postupak !== 'novi') return;
         redovi.push({ ...r, postupak_izabran: postupak });
       });
-      plan.push({ fajl: f, klub_id: klubId || null, klubovi: kluboviIzbor, oznake, redovi });
+      // 'novo': klub iz zaglavlja fajla se pravi pri upisu prvog novog takmicara bez svog kluba
+      const klubNovo = String(iz.klub_id ?? '').trim() === 'novo' && imaKlub(f.klub_tekst) ? String(f.klub_tekst) : null;
+      plan.push({ fajl: f, klub_id: klubId || null, klub_novo: klubNovo, klubovi: kluboviIzbor, oznake, redovi });
     });
     return plan;
   }
@@ -257,7 +260,7 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
                 godina_rodjenja: Number(r.godina),
                 pol,
                 klub_id: p.klub_id,
-                drzavljanstvo: 'Srbija',
+                drzavljanstvo: p.fajl.drzava || 'Srbija', // drzava iz prijave (Country), inace Srbija
                 lekarski_do: null,
               };
               const greske = takmicari.proveri(novi, null);
@@ -265,6 +268,7 @@ function napravi(baza, podesavanja, dnevnik = dnevnikModul) {
                 rez.preskoceno.push(`${ime} (${greske.join(' ')})`);
                 continue;
               }
+              if (p.klub_novo !== null) novi.klub_id = noviKlub(p.klub_novo, klubIds, rez);
               if (imaKlub(r.klub)) novi.klub_id = klubReda(String(r.klub), postojeciKlubovi, klubIds, rez, p.klubovi[normalizuj(r.klub)]);
               tid = takmicari.sacuvaj(novi, null);
               noviUpisani.set(kljuc, tid);
