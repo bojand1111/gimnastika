@@ -1,7 +1,7 @@
 {
   "name": "gimnastika",
   "type": "module",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "main": "electron/main.cjs",
   "scripts": {
     "start": "vite build && electron .",
