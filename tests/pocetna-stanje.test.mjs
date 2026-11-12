@@ -57,3 +57,13 @@ test('lekarskiOznaka: nema, istekao, istice', () => {
 test('hashNastavi: nijedan korak ne nosi pol', () => {
   for (const korak of ['spremno', 'prijave', 'rotacije']) assert.ok(!hashNastavi(st({ korak })).includes('pol'), korak);
 });
+
+test('tekstRotacije i tekstPlocice sa turnusima', () => {
+  const n = { rotacija: 2, ukupno_rotacija: 6, gotovo: false, pol: 'M', turnus: 2, broj_turnusa: 3 };
+  assert.deepEqual(tekstRotacije(n), { broj: '2 / 6', tekst: 'Turnus 2, rotacija u toku (MSG)' });
+  assert.deepEqual(tekstRotacije({ ...n, broj_turnusa: 1 }), { broj: '2 / 6', tekst: 'rotacija u toku (MSG)' });
+  assert.equal(tekstRotacije({ ...n, gotovo: true }).tekst, 'sve rotacije su unete');
+  const nastavi = { sprava: { naziv: 'Parter' }, rotacija: 1, turnus: 2, broj_turnusa: 3, uneto: 0, ukupno: 5 };
+  assert.equal(tekstPlocice(n, nastavi), 'Nastavi: Parter · Turnus 2 · Rotacija 1 · uneto 0 od 5');
+  assert.equal(tekstPlocice(n, { ...nastavi, broj_turnusa: 1 }), 'Nastavi: Parter · Rotacija 1 · uneto 0 od 5');
+});

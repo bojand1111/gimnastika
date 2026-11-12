@@ -32,6 +32,7 @@ export default function Zapisnici() {
             <div className="zp-takm"><b>{d.takm.naziv}</b><span className="broj">{gde} · {deo}</span></div>
             <div className="zp-sprava">{s.list.sprava.naziv}</div>
             <div className="zp-rot">
+              {s.list.turnusa > 1 && <span>Turnus {s.list.turnus}</span>}
               {s.list.rot !== null && <b>Rotacija {s.list.rot}</b>}
               <span>{s.list.grupa}{s.delova > 1 ? ` (${s.deo}/${s.delova})` : ''}</span>
             </div>

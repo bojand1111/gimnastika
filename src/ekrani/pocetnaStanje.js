@@ -19,18 +19,22 @@ export function hashNastavi(stanje) {
 
 // Tekst pod plocicom "Unos ocena" na Pregledu.
 export function tekstPlocice(napredak, nastavi) {
-  if (nastavi) return `Nastavi: ${nastavi.sprava.naziv} · Rotacija ${nastavi.rotacija} · uneto ${nastavi.uneto} od ${nastavi.ukupno}`;
+  if (nastavi) {
+    const turnus = nastavi.broj_turnusa > 1 ? ` · Turnus ${nastavi.turnus}` : '';
+    return `Nastavi: ${nastavi.sprava.naziv}${turnus} · Rotacija ${nastavi.rotacija} · uneto ${nastavi.uneto} od ${nastavi.ukupno}`;
+  }
   return napredak && napredak.gotovo ? 'Sve ocene su unete' : 'Prepisivanje ocena sa sudijskih listića';
 }
 
 const POL = { M: 'MSG', Z: 'ŽSG' };
 
-// Treca plocica Pregleda: broj (rotacija / ukupno) i opis.
+// Treca plocica Pregleda: broj (rotacija / ukupno) i opis; turnus samo kad ih ima vise.
 export function tekstRotacije(napredak) {
   if (!napredak) return { broj: '–', tekst: 'grupe još nisu napravljene' };
+  const turnus = napredak.broj_turnusa > 1 ? `Turnus ${napredak.turnus}, ` : '';
   return {
     broj: `${napredak.rotacija} / ${napredak.ukupno_rotacija}`,
-    tekst: napredak.gotovo ? 'sve rotacije su unete' : `rotacija u toku (${POL[napredak.pol] ?? ''})`,
+    tekst: napredak.gotovo ? 'sve rotacije su unete' : `${turnus}rotacija u toku (${POL[napredak.pol] ?? ''})`,
   };
 }
 

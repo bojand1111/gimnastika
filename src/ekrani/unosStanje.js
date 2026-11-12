@@ -118,16 +118,16 @@ export const tekstOdustalo = (n, pol) => (n > 0 ? ` · ${n} ${pol === 'Z' ? 'odu
 export const procenat = (obradjeno, ukupno) => (ukupno > 0 ? Math.round((obradjeno * 100) / ukupno) : 0);
 
 // Parametri koji nisu zadati (undefined/null) ne ulaze u hash. Pola nema: ekran uvek prikazuje izabrani deo.
-export function hashUnos(spravaId, rot) {
-  const p = { sprava: spravaId, rot };
+export function hashUnos(spravaId, rot, tu) {
+  const p = { sprava: spravaId, rot, tu };
   for (const k of Object.keys(p)) if (p[k] === undefined || p[k] === null) delete p[k];
   return url('unos', p);
 }
 
 // Parametri iz hasha; nezadati ostaju undefined, pa server bira "gde se stalo". Stari pol= se zanemaruje.
 export function parUnos(hash) {
-  const { sprava, rot } = razlozi(hash).parametri;
-  return { sprava: sprava || undefined, rot: rot || undefined };
+  const { sprava, rot, tu } = razlozi(hash).parametri;
+  return { sprava: sprava || undefined, rot: rot || undefined, tu: tu || undefined };
 }
 
 // Novi red iz odgovora IPC-a (prikaz ocene); ciste oznake ispravke i gresaka.

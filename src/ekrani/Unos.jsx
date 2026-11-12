@@ -17,7 +17,7 @@ import DijalogRazlog from './unos/DijalogRazlog.jsx';
 
 // Parametri hasha (POPIS 10.4): nezadati ostaju undefined, pa IPC bira "gde se stalo". Pola nema: dobija se iz izabranog dela.
 const izHasha = () => parUnos(location.hash);
-const istiPar = (a, b) => a.sprava === b.sprava && a.rot === b.rot;
+const istiPar = (a, b) => a.sprava === b.sprava && a.rot === b.rot && a.tu === b.tu;
 
 // Ekran Unos ocena: ucitava jednim pozivom, redovi se drze lokalno (POPIS 10.3).
 export default function Unos() {
@@ -50,9 +50,9 @@ export default function Unos() {
   const ucitaj = useCallback(async (opc = {}) => {
     await akcijeRef.current.isprazniNacrte();
     const moj = ++brojac.current;
-    const { sprava, rot } = parRef.current;
+    const { sprava, rot, tu } = parRef.current;
     try {
-      const podaci = await gim.unos.podaci(sprava, rot);
+      const podaci = await gim.unos.podaci(sprava, rot, tu);
       if (moj !== brojac.current || !ziv.current) return;
       const novi = izPodataka(podaci);
       redoviRef.current = novi;
@@ -60,9 +60,11 @@ export default function Unos() {
       postaviD(podaci);
       postaviGresku(false);
       const ima = Boolean(podaci.sprava);
-      parRef.current = { sprava: ima ? String(podaci.sprava.id) : undefined, rot: String(podaci.rot) };
+      // turnus ide u hash samo kad ih ima vise
+      const izabraniTu = ima && podaci.turnusi.length > 1 ? String(podaci.turnus) : undefined;
+      parRef.current = { sprava: ima ? String(podaci.sprava.id) : undefined, rot: String(podaci.rot), tu: izabraniTu };
       // Izabrane vrednosti u hash bez novog ucitavanja (replaceState ne okida hashchange).
-      const hash = hashUnos(ima ? podaci.sprava.id : undefined, ima ? podaci.rot : undefined);
+      const hash = hashUnos(ima ? podaci.sprava.id : undefined, ima ? podaci.rot : undefined, izabraniTu);
       if (location.hash.startsWith('#/unos') && location.hash !== hash) history.replaceState(null, '', hash);
       const z = opc.drzi ?? pocetni(novi, opc.pamti ?? null, podaci.brojSudija);
       if (z) { postaviTrenutni(z.id); zatrazi(z); }

@@ -18,3 +18,10 @@ test('naslovZapisnika: sprava, rotacija, grupa i deo', () => {
   assert.equal(naslovZapisnika({ list: list('Preskok', 2, 1), deo: 1, delova: 1 }), 'Preskok · Rotacija 2 · A');
   assert.equal(naslovZapisnika({ list: { ...list('Greda', null, 1), grupa: 'Svi prijavljeni' }, deo: 2, delova: 3 }), 'Greda · Svi prijavljeni (2/3)');
 });
+
+test('naslovZapisnika: turnus samo kad ih ima vise', () => {
+  const sa = (turnus, turnusa) => ({ ...list('Parter', 3, 1), turnus, turnusa });
+  assert.equal(naslovZapisnika({ list: sa(2, 2), deo: 1, delova: 1 }), 'Parter · Turnus 2 · Rotacija 3 · A');
+  assert.equal(naslovZapisnika({ list: sa(1, 1), deo: 1, delova: 1 }), 'Parter · Rotacija 3 · A');
+  assert.equal(naslovZapisnika({ list: sa(null, 0), deo: 1, delova: 1 }), 'Parter · Rotacija 3 · A');
+});

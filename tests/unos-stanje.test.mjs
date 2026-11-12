@@ -151,14 +151,14 @@ test('hashUnos: nezadati parametri se izostavljaju', () => {
 });
 
 test('parUnos: sprava i rot iz hasha, nezadati su undefined', () => {
-  assert.deepEqual(parUnos('#/unos?sprava=3&rot=2'), { sprava: '3', rot: '2' });
-  assert.deepEqual(parUnos('#/unos'), { sprava: undefined, rot: undefined });
-  assert.deepEqual(parUnos('#/unos?sprava=&rot='), { sprava: undefined, rot: undefined });
+  assert.deepEqual(parUnos('#/unos?sprava=3&rot=2'), { sprava: '3', rot: '2', tu: undefined });
+  assert.deepEqual(parUnos('#/unos'), { sprava: undefined, rot: undefined, tu: undefined });
+  assert.deepEqual(parUnos('#/unos?sprava=&rot='), { sprava: undefined, rot: undefined, tu: undefined });
 });
 
 test('parUnos: stari pol u hashu se zanemaruje', () => {
-  assert.deepEqual(parUnos('#/unos?pol=Z&sprava=3&rot=2'), { sprava: '3', rot: '2' });
-  assert.deepEqual(parUnos('#/unos?pol=M'), { sprava: undefined, rot: undefined });
+  assert.deepEqual(parUnos('#/unos?pol=Z&sprava=3&rot=2'), { sprava: '3', rot: '2', tu: undefined });
+  assert.deepEqual(parUnos('#/unos?pol=M'), { sprava: undefined, rot: undefined, tu: undefined });
   assert.ok(!('pol' in parUnos('#/unos?pol=Z')));
 });
 
@@ -174,4 +174,12 @@ test('primeniPrikaz: upis vrednosti, status, ciscenje oznaka', () => {
   assert.equal(n.greske.size, 0);
   assert.equal(r.status, 'nacrt');
   assert.equal(primeniPrikaz(r, { d: '', e_sudije: [], odbitak: '', e: '', konacna: '', status: 'nacrt' }).konacna, '–');
+});
+
+test('hashUnos i parUnos sa turnusom', () => {
+  assert.equal(hashUnos(3, 2, 2), '#/unos?sprava=3&rot=2&tu=2');
+  assert.equal(hashUnos(3, 2, null), '#/unos?sprava=3&rot=2');
+  assert.equal(hashUnos(3, 2), '#/unos?sprava=3&rot=2');
+  assert.deepEqual(parUnos('#/unos?sprava=3&rot=2&tu=2'), { sprava: '3', rot: '2', tu: '2' });
+  assert.deepEqual(parUnos('#/unos?sprava=3&tu='), { sprava: '3', rot: undefined, tu: undefined });
 });

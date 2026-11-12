@@ -3,8 +3,11 @@ import { hashUnos, procenat, tekstOdustalo } from '../unosStanje.js';
 
 // Traka iznad kartice (POPIS 5.1): sprava, rotacija i napredak. Pol je samo za tekst (odustao/odustala).
 export default function UnosTraka({ d, napredak }) {
-  const { pol, sprava, sprave, rot, brojSprava } = d;
+  const { pol, sprava, sprave, rot, brojSprava, turnus, turnusi } = d;
   const rotacije = Array.from({ length: brojSprava }, (_, i) => i + 1);
+  // turnus se bira i nosi u linkovima samo kad ih ima vise
+  const vise = turnusi.length > 1;
+  const tu = vise ? turnus : undefined;
   return (
     <div className="kartica unos-traka" id="unos-traka">
       {sprava && (
@@ -12,17 +15,26 @@ export default function UnosTraka({ d, napredak }) {
           <div className="unos-traka-grupa"><span className="oznaka">Sprava</span>
             <div className="izbor" role="group" aria-label="Sprava">
               {sprave.map((s) => (
-                <a key={s.id} href={hashUnos(s.id, rot)} className={Number(s.id) === Number(sprava.id) ? 'izabrano' : ''}>{s.ikona && <Ikona ime={s.ikona} velicina={18} />}{s.naziv}</a>
+                <a key={s.id} href={hashUnos(s.id, rot, tu)} className={Number(s.id) === Number(sprava.id) ? 'izabrano' : ''}>{s.ikona && <Ikona ime={s.ikona} velicina={18} />}{s.naziv}</a>
               ))}
             </div>
           </div>
           <div className="unos-traka-grupa"><span className="oznaka">Rotacija</span>
             <div className="izbor" role="group" aria-label="Rotacija">
               {rotacije.map((r) => (
-                <a key={r} href={hashUnos(sprava.id, r)} className={`broj unos-rot-link${rot === r ? ' izabrano' : ''}`}>{r}</a>
+                <a key={r} href={hashUnos(sprava.id, r, tu)} className={`broj unos-rot-link${rot === r ? ' izabrano' : ''}`}>{r}</a>
               ))}
             </div>
           </div>
+          {vise && (
+            <div className="unos-traka-grupa"><span className="oznaka">Turnus</span>
+              <div className="izbor" role="group" aria-label="Turnus">
+                {turnusi.map((t) => (
+                  <a key={t} href={hashUnos(sprava.id, turnus === t ? rot : undefined, t)}className={`broj unos-rot-link${turnus === t ? ' izabrano' : ''}`}>{t}</a>
+                ))}
+              </div>
+            </div>
+          )}
           <span className="unos-razmak" />
           <div className="napredak" id="napredak">
             <span className="napredak-traka"><span className="napredak-punjenje" style={{ width: `${procenat(napredak.obradjeno, napredak.ukupno)}%` }} /></span>

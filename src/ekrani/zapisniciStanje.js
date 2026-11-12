@@ -17,6 +17,7 @@ export function straneZapisnika(listovi, poStrani = ZAPISNIK_REDOVA) {
 
 export function naslovZapisnika({ list, deo, delova }) {
   const delovi = [list.sprava.naziv];
+  if (list.turnusa > 1 && list.turnus != null) delovi.push(`Turnus ${list.turnus}`);
   if (list.rot !== null) delovi.push(`Rotacija ${list.rot}`);
   delovi.push(list.grupa);
   return delovi.join(' · ') + (delova > 1 ? ` (${deo}/${delova})` : '');
