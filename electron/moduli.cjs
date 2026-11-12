@@ -25,7 +25,13 @@ const { GreskaKorisnika, OPSTA_GRESKA } = require('./greska.cjs');
 const { EKSTENZIJE: EKSTENZIJE_PRIJAVA } = require('./uvoz/citac.cjs');
 const { lekarski } = require('./racun/lekarski.mjs');
 const { datumPrikaz } = require('./racun/datum.mjs');
-const { pozicijaURotaciji, redosledURotaciji, grupaNaSpravi } = require('./racun/grupe.mjs');
+const { pozicijaURotaciji, redosledURotaciji, grupaNaSpravi, turnusiGrupa, grupeTurnusa } = require('./racun/grupe.mjs');
+
+// Turnus iz URL-a ako postoji medju turnusima, inace zamena.
+function izaberiTurnus(tu, turnusi, zamena) {
+  const t = Math.trunc(Number(tu));
+  return turnusi.includes(t) ? t : zamena;
+}
 const { prikaz: prikazBroja, izBaze } = require('./racun/broj.mjs');
 
 const broj = (id) => (id === null || id === undefined || id === '' ? null : Number(id));
@@ -360,20 +366,23 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     rotacije: {
       // Jedan poziv za ceo ekran Rotacije (POPIS 4.2).
       // Pol je uvek pol aktivnog takmicenja izabranog dela; renderer ga ne salje.
-      podaci: (rot) => {
+      podaci: (rot, tu) => {
         const takm = aktivnoRed();
         const polIzbor = takm.pol;
         const sprave = s.sprave(polIzbor);
         const brojSprava = Math.max(1, sprave.length);
         const rotacija = Math.max(1, Math.min(brojSprava, Math.trunc(Number(rot)) || 1));
         const pomeraj = Number(takm.pomeraj_redosled) === 1;
-        const grupe = gr.lista(Number(takm.id), polIzbor).map((g) => {
+        const sveGrupe = gr.lista(Number(takm.id), polIzbor);
+        const turnusi = sveGrupe.length ? turnusiGrupa(sveGrupe) : [1];
+        const turnus = izaberiTurnus(tu, turnusi, turnusi[0]);
+        const grupe = grupeTurnusa(sveGrupe, turnus).map((g) => {
           const poz = pozicijaURotaciji(g.pocetna_pozicija, rotacija, brojSprava);
           const rucniRot = Object.hasOwn(g.rucni, rotacija);
           const sp = sprave[poz - 1] ?? null;
           return {
-            id: g.id, naziv: g.naziv, redosled: g.redosled, pocetna_pozicija: g.pocetna_pozicija,
-            sprava: sp ? { id: sp.id, naziv: sp.naziv } : null,
+            id: g.id, naziv: g.naziv, redosled: g.redosled, pocetna_pozicija: g.pocetna_pozicija, turnus: g.turnus,
+            sprava: sp ? { id: sp.id, naziv: sp.naziv, ikona: sp.ikona ?? '' } : null,
             clanovi: g.clanovi,
             redosled_rot: redosledURotaciji(g.clanovi, rotacija, pomeraj, g.rucni[rotacija] ?? null),
             rucni_rot: rucniRot,
@@ -385,6 +394,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
           takm: { id: takm.id, naziv: takm.naziv, pomeraj_redosled: takm.pomeraj_redosled },
           pol: polIzbor,
           rot: rotacija,
+          turnus,
+          turnusi,
           brojSprava,
           sprave: sprave.map((x) => ({ id: x.id, naziv: x.naziv, skracenica: x.skracenica, redosled: x.redosled })),
           kombinacije,
@@ -394,11 +405,23 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
           stanje: pr.stanjePripreme(Number(takm.id)),
         };
       },
-      dodaj: () => {
+      // tu: turnus nove grupe (podrazumevano 1).
+      dodaj: (tu) => {
         const takm = aktivnoRed();
-        return { grupa: gr.nadji(gr.dodaj(Number(takm.id), takm.pol)) };
+        return { grupa: gr.nadji(gr.dodaj(Number(takm.id), takm.pol, Math.trunc(Number(tu)) || 1)) };
       },
-      izmeni: (id, naziv, pocetnaPozicija) => gr.izmeni(aktivnoId(), broj(id), String(naziv ?? '').trim(), parseInt(pocetnaPozicija, 10) || 0),
+      // turnus izostavljen: ostaje isti.
+      izmeni: (id, naziv, pocetnaPozicija, turnus) => gr.izmeni(aktivnoId(), broj(id), String(naziv ?? '').trim(), parseInt(pocetnaPozicija, 10) || 0,
+        turnus === undefined || turnus === null || turnus === '' ? undefined : Math.trunc(Number(turnus)) || 0),
+      // Automatski raspored izabranog dela.
+      predlog: (parametri) => {
+        const takm = aktivnoRed();
+        return gr.predlogRasporeda(Number(takm.id), takm.pol, parametri ?? {});
+      },
+      rasporedi: (parametri) => {
+        const takm = aktivnoRed();
+        return gr.primeniRaspored(Number(takm.id), takm.pol, parametri ?? {});
+      },
       obrisi: (id) => gr.obrisi(aktivnoId(), broj(id)),
       // grupaId 0/''/null = neraspoređeni; rotacija najmanje 1.
       premesti: (prijavaId, grupaId, pozicija, rotacija) => gr.premesti(
@@ -425,17 +448,21 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     unos: {
       // Jedan poziv za ceo ekran Unos ocena (POPIS 4).
       // Pol je uvek pol aktivnog takmicenja izabranog dela; renderer ga ne salje.
-      podaci: (spravaUlaz, rotUlaz) => {
+      podaci: (spravaUlaz, rotUlaz, tuUlaz) => {
         const takm = aktivnoRed();
         const tid = Number(takm.id);
         const pomeraj = Number(takm.pomeraj_redosled) === 1;
         const pol = takm.pol;
         const sprave = s.sprave(pol);
         const brojSprava = Math.max(1, sprave.length);
-        const grupe = gr.lista(tid, pol);
-        const napredakPola = oc.napredak(tid, pol, grupe, sprave, pomeraj);
+        const sveGrupe = gr.lista(tid, pol);
+        const napredakPola = oc.napredak(tid, pol, sveGrupe, sprave, pomeraj);
+        const turnusi = sveGrupe.length ? turnusiGrupa(sveGrupe) : [1];
+        const turnus = izaberiTurnus(tuUlaz, turnusi, napredakPola.turnus);
+        // dalje se gleda samo izabrani turnus
+        const grupe = grupeTurnusa(sveGrupe, turnus);
         let rot = Math.trunc(Number(rotUlaz));
-        if (!Number.isFinite(rot) || rot < 1 || rot > brojSprava) rot = napredakPola.rotacija;
+        if (!Number.isFinite(rot) || rot < 1 || rot > brojSprava) rot = turnus === napredakPola.turnus ? napredakPola.rotacija : 1;
         const brojSudija = Number(takm.broj_e_sudija);
         const spravaId = broj(spravaUlaz);
         let sprava = sprave.find((x) => Number(x.id) === spravaId) ?? null;
@@ -470,13 +497,13 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
         };
         if (sprava === null) {
           return {
-            ...osnova, sprave: [], sprava: null, rot: 1, brojSprava: 1, grupa: null, redovi: [],
+            ...osnova, sprave: [], sprava: null, rot: 1, turnus: 1, turnusi: [1], brojSprava: 1, grupa: null, redovi: [],
             napredak: { obradjeno: 0, ukupno: 0, odustalo: 0 }, izmene: [], bezGrupa: true,
           };
         }
         const pozicija = sprave.findIndex((x) => Number(x.id) === Number(sprava.id)) + 1;
         let grupa = grupaNaSpravi(grupe, pozicija, rot, brojSprava, pomeraj);
-        const bezGrupa = grupe.length === 0;
+        const bezGrupa = sveGrupe.length === 0;
         if (grupa === null && bezGrupa) {
           grupa = { id: 0, naziv: 'Svi prijavljeni', clanovi: sviNaSpravi(tid, pol, Number(sprava.id)) };
         }
@@ -523,6 +550,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
           ...osnova,
           sprava: { id: sprava.id, naziv: sprava.naziv, ikona: sprava.ikona ?? '' },
           rot,
+          turnus,
+          turnusi,
           brojSprava,
           grupa: grupa === null ? null : { id: grupa.id, naziv: grupa.naziv },
           redovi,
@@ -545,23 +574,31 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
         const pomeraj = Number(takm.pomeraj_redosled) === 1;
         const sprave = s.sprave(pol);
         const brojSprava = Math.max(1, sprave.length);
-        const grupe = gr.lista(tid, pol);
-        const bezGrupa = grupe.length === 0;
+        const sveGrupe = gr.lista(tid, pol);
+        const bezGrupa = sveGrupe.length === 0;
+        const turnusi = bezGrupa ? [null] : turnusiGrupa(sveGrupe);
+        const turnusa = bezGrupa ? 0 : turnusi.length;
         const listovi = [];
-        for (const [i, sp] of sprave.entries()) {
-          const spId = Number(sp.id);
-          const rotacije = bezGrupa ? [null] : Array.from({ length: brojSprava }, (_, k) => k + 1);
-          for (const rot of rotacije) {
-            const g = rot === null
-              ? { naziv: 'Svi prijavljeni', clanovi: sviNaSpravi(tid, pol, spId) }
-              : grupaNaSpravi(grupe, i + 1, rot, brojSprava, pomeraj);
-            if (g === null || g.clanovi.length === 0) continue;
-            listovi.push({
-              sprava: { id: sp.id, naziv: sp.naziv },
-              rot,
-              grupa: g.naziv,
-              redovi: g.clanovi.map((c, j) => ({ ...osnovaReda(c, j), radi: oc.radiSpravu(Number(c.prijava_id), spId) })),
-            });
+        // listovi idu turnus, pa sprava, pa rotacija
+        for (const turnus of turnusi) {
+          const grupe = turnus === null ? [] : grupeTurnusa(sveGrupe, turnus);
+          for (const [i, sp] of sprave.entries()) {
+            const spId = Number(sp.id);
+            const rotacije = bezGrupa ? [null] : Array.from({ length: brojSprava }, (_, k) => k + 1);
+            for (const rot of rotacije) {
+              const g = rot === null
+                ? { naziv: 'Svi prijavljeni', clanovi: sviNaSpravi(tid, pol, spId) }
+                : grupaNaSpravi(grupe, i + 1, rot, brojSprava, pomeraj);
+              if (g === null || g.clanovi.length === 0) continue;
+              listovi.push({
+                sprava: { id: sp.id, naziv: sp.naziv },
+                rot,
+                turnus,
+                turnusa,
+                grupa: g.naziv,
+                redovi: g.clanovi.map((c, j) => ({ ...osnovaReda(c, j), radi: oc.radiSpravu(Number(c.prijava_id), spId) })),
+              });
+            }
           }
         }
         return {

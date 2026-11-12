@@ -1,5 +1,5 @@
 // IPC moduli pocetna i takmicenje (Pregled): jedan poziv po ekranu (POPIS 1.1, 2.1, 6.8).
-const { grupaNaSpravi } = require('./racun/grupe.mjs');
+const { grupaNaSpravi, grupeTurnusa } = require('./racun/grupe.mjs');
 const { datumPrikaz, danUNedelji } = require('./racun/datum.mjs');
 
 // Precice sa Pocetne (POPIS 1.2): [tekst, [tasteri]].
@@ -42,14 +42,16 @@ function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhr
     const sprave = s.sprave(pol);
     const napredak = { ...o.napredak(tid, pol, grupe, sprave, pomeraj), pol };
     let nastavi = null;
+    // nastavak se trazi u turnusu napretka
+    const uTurnusu = grupeTurnusa(grupe, napredak.turnus);
     for (const [i, sp] of sprave.entries()) {
-      const gr = grupaNaSpravi(grupe, i + 1, napredak.rotacija, Math.max(1, sprave.length), pomeraj);
+      const gr = grupaNaSpravi(uTurnusu, i + 1, napredak.rotacija, Math.max(1, sprave.length), pomeraj);
       if (gr === null) continue;
       const ids = gr.clanovi.map((c) => Number(c.prijava_id));
       const oc = o.zaSpravu(Number(sp.id), ids);
       const uneto = ids.filter((pid) => (oc[pid]?.status ?? 'nacrt') !== 'nacrt').length;
       if (uneto < ids.length) {
-        nastavi = { sprava: sp, rotacija: napredak.rotacija, uneto, ukupno: ids.length, pol };
+        nastavi = { sprava: sp, rotacija: napredak.rotacija, turnus: napredak.turnus, broj_turnusa: napredak.broj_turnusa, uneto, ukupno: ids.length, pol };
         break;
       }
     }
@@ -57,8 +59,9 @@ function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhr
   }
 
   // Pol se ne nosi u linku: ekran Unos ocena uzima izabrani deo.
+  // tu samo kad ima vise turnusa
   const urlUnos = (nastavi) => (nastavi
-    ? `#/unos?sprava=${nastavi.sprava.id}&rot=${nastavi.rotacija}`
+    ? `#/unos?sprava=${nastavi.sprava.id}&rot=${nastavi.rotacija}${nastavi.broj_turnusa > 1 ? `&tu=${nastavi.turnus}` : ''}`
     : '#/unos');
 
   return {

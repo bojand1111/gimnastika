@@ -428,6 +428,8 @@ a.korak:hover { border-color: var(--line-2); color: var(--ink); }
 .rot-izmeni, .rot-obrisi { width: 26px; height: 26px; }
 .rot-podred { display: flex; align-items: center; gap: 4px; height: 22px; }
 .rot-vrati { width: 24px; height: 22px; }
+.rot-sprava { display: inline-flex; align-items: center; color: var(--info); }
+.raspored-pregled { margin: 0; padding: 8px 12px 8px 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--sub); font-size: 14px; display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
 .rot-kartica .status-vk { height: 18px; padding: 0 4px; }
 .rot-podnozje { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 .rot-legenda { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 18px; font-size: 13px; flex: 1 1 0; min-width: 0; }

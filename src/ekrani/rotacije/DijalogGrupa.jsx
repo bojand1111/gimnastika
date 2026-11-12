@@ -1,12 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Polje from '../../komponente/Polje.jsx';
 
-// Dijalog "Grupa" (POPIS 10.1) umesto window.prompt. otvori({id, naziv, pocetna_pozicija});
-// naSnimi(id, naziv, pozicija) vraća obećanje, a greška modela ostaje u dijalogu.
+// Dijalog "Grupa" (POPIS 10.1) umesto window.prompt. otvori({id, naziv, pocetna_pozicija, turnus});
+// naSnimi(id, naziv, pozicija, turnus) vraća obećanje, a greška modela ostaje u dijalogu.
 const DijalogGrupa = forwardRef(function DijalogGrupa({ brojSprava, sprave, naSnimi }, ref) {
   const dijalog = useRef(null);
   const nazivRef = useRef(null);
-  const [f, postaviF] = useState({ id: 0, naziv: '', pocetna: '1' });
+  const [f, postaviF] = useState({ id: 0, naziv: '', pocetna: '1', turnus: '1' });
   const [greska, postaviGresku] = useState('');
   const [radi, postaviRadi] = useState(false);
   const [otvorenoBr, postaviOtvoreno] = useState(0);
@@ -19,8 +19,8 @@ const DijalogGrupa = forwardRef(function DijalogGrupa({ brojSprava, sprave, naSn
   useImperativeHandle(ref, () => ({
     otvoren: () => Boolean(dijalog.current && dijalog.current.open),
     zatvori: () => dijalog.current.close(),
-    otvori({ id, naziv, pocetna_pozicija: pocetna }) {
-      postaviF({ id, naziv, pocetna: String(pocetna) });
+    otvori({ id, naziv, pocetna_pozicija: pocetna, turnus }) {
+      postaviF({ id, naziv, pocetna: String(pocetna), turnus: String(turnus ?? 1) });
       postaviGresku('');
       postaviRadi(false);
       dijalog.current.showModal();
@@ -32,7 +32,7 @@ const DijalogGrupa = forwardRef(function DijalogGrupa({ brojSprava, sprave, naSn
     ev.preventDefault();
     postaviRadi(true);
     try {
-      await naSnimi(f.id, f.naziv, Number(f.pocetna));
+      await naSnimi(f.id, f.naziv, Number(f.pocetna), Number(f.turnus));
     } catch (e) {
       postaviGresku(e.message);
       postaviRadi(false);
@@ -52,6 +52,8 @@ const DijalogGrupa = forwardRef(function DijalogGrupa({ brojSprava, sprave, naSn
             {pozicije.map((r) => <option key={r} value={String(r)}>{sprave[r - 1] ? `${r} · ${sprave[r - 1].naziv}` : String(r)}</option>)}
           </select>
         </label>
+        <Polje oznaka="Turnus" name="turnus" type="number" min="1" value={f.turnus}
+          onChange={(ev) => postaviF((x) => ({ ...x, turnus: ev.target.value }))} />
         <div className="forma-akcije">
           <button type="submit" className="dugme dugme-glavno" id="dijalog-sacuvaj" disabled={radi}>
             <span>Sačuvaj</span></button>

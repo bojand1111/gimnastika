@@ -32,7 +32,10 @@ export default function RotKolona({ grupa, lista, filter, izabranId, vuceId, sen
               </span>
             </div>
             <div className="rot-podred">
-              <span className="status status-info">{grupa.sprava ? grupa.sprava.naziv : '–'}</span>
+              {grupa.sprava && grupa.sprava.ikona ? (
+                <span className="rot-sprava" role="img" title={grupa.sprava.naziv} aria-label={grupa.sprava.naziv}>
+                  <Ikona ime={grupa.sprava.ikona} velicina={22} /></span>
+              ) : <span className="status status-info">{grupa.sprava ? grupa.sprava.naziv : '–'}</span>}
               {grupa.rucni_rot && (
                 <button type="button" className="dugme dugme-ikona rot-vrati" aria-label="Preuzmi redosled iz rotacije 1"
                   title="Preuzmi redosled iz rotacije 1" onClick={() => h.vrati(grupa)}><Ikona ime="vracanje" velicina={14} /></button>

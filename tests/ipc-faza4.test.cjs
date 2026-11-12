@@ -40,7 +40,7 @@ function sa4() {
 
 test('guard: rotacije ima handler za svaku radnju', () => {
   const { moduli } = pravi();
-  assert.deepEqual(MODULI.rotacije, ['podaci', 'dodaj', 'izmeni', 'obrisi', 'premesti', 'vrati', 'pomeraj', 'zavrsi']);
+  assert.deepEqual(MODULI.rotacije, ['podaci', 'dodaj', 'izmeni', 'obrisi', 'premesti', 'vrati', 'pomeraj', 'zavrsi', 'predlog', 'rasporedi']);
   const ipc = { kanali: {}, handle(k, fn) { this.kanali[k] = fn; } };
   registruj(ipc, moduli, dn, Object.fromEntries(Object.keys(moduli).map((k) => [k, MODULI[k]])));
   for (const r of MODULI.rotacije) assert.ok(ipc.kanali[`gim:rotacije:${r}`], r);

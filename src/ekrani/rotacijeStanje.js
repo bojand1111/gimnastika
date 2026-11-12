@@ -54,12 +54,31 @@ export function indeksZaAltStrelice(stanje, prijavaId, taster) {
   return null;
 }
 
-// Hash bez pola: ekran uvek prikazuje izabrani deo.
-export const hashRotacija = (rot, filter = '') =>
-  `#/rotacije?rot=${rot}${filter ? `&kp=${filter}` : ''}`;
+// Oblik reči po broju (1 takmičar, 2 takmičara, 5 takmičara).
+function oblik(n, jedan, dva, pet) {
+  const d = n % 10;
+  const s = n % 100;
+  if (d === 1 && s !== 11) return jedan;
+  if (d >= 2 && d <= 4 && (s < 12 || s > 14)) return dva;
+  return pet;
+}
 
-// Parametri iz hasha (rot, kp); rot i kp se dalje normalizuju na serveru i u prikazu. Stari pol= se zanemaruje.
+// Red pregleda automatskog rasporeda za jedan turnus.
+export const tekstTurnusa = (t) =>
+  `Turnus ${t.turnus}: ${t.kategorije.join(', ')} · ${t.broj} ${oblik(t.broj, 'takmičar', 'takmičara', 'takmičara')} · `
+  + `${t.velicine.length === 1 ? 'grupa' : 'grupe'} ${t.velicine.join(', ')}`;
+
+// Poruka posle automatskog rasporeda.
+export const porukaRasporeda = (r) =>
+  `Raspoređeno: ${r.grupa} ${oblik(r.grupa, 'grupa', 'grupe', 'grupa')} u ${r.turnusa} ${oblik(r.turnusa, 'turnusu', 'turnusa', 'turnusa')}.`;
+
+// Hash bez pola: ekran uvek prikazuje izabrani deo. Turnus 1 se ne piše.
+export const hashRotacija = (rot, filter = '', tu = 1) =>
+  `#/rotacije?rot=${rot}${filter ? `&kp=${filter}` : ''}${Number(tu) > 1 ? `&tu=${tu}` : ''}`;
+
+// Parametri iz hasha (rot, kp, tu); normalizuju se dalje na serveru i u prikazu. Stari pol= se zanemaruje.
 export function parRotacije(hash) {
-  const { rot, kp } = razlozi(hash).parametri;
-  return { rot: parseInt(rot, 10) || 1, kp: kp || '' };
+  const { rot, kp, tu } = razlozi(hash).parametri;
+  const t = parseInt(tu, 10);
+  return { rot: parseInt(rot, 10) || 1, kp: kp || '', tu: t >= 1 ? t : 1 };
 }

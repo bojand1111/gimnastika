@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  kp, imeKartice, naslovKartice, premestiLokalno, indeksZaAltStrelice, hashRotacija, parRotacije,
+  kp, imeKartice, naslovKartice, premestiLokalno, indeksZaAltStrelice, hashRotacija, parRotacije, tekstTurnusa, porukaRasporeda,
 } from '../src/ekrani/rotacijeStanje.js';
 
 const c = (id, extra = {}) => ({ prijava_id: id, ime: 'Ana', prezime: 'Pek', kategorija_id: 1, program_id: 2, ...extra });
@@ -96,9 +96,28 @@ test('hashRotacija: bez pola, kp se izostavlja kad je prazan', () => {
 });
 
 test('parRotacije: rot i kp iz hasha, stari pol se zanemaruje', () => {
-  assert.deepEqual(parRotacije('#/rotacije?rot=2&kp=1-2'), { rot: 2, kp: '1-2' });
-  assert.deepEqual(parRotacije('#/rotacije'), { rot: 1, kp: '' });
-  assert.deepEqual(parRotacije('#/rotacije?rot=abc'), { rot: 1, kp: '' });
-  assert.deepEqual(parRotacije('#/rotacije?pol=M&rot=3&kp=0-0'), { rot: 3, kp: '0-0' });
+  assert.deepEqual(parRotacije('#/rotacije?rot=2&kp=1-2'), { rot: 2, kp: '1-2', tu: 1 });
+  assert.deepEqual(parRotacije('#/rotacije'), { rot: 1, kp: '', tu: 1 });
+  assert.deepEqual(parRotacije('#/rotacije?rot=abc'), { rot: 1, kp: '', tu: 1 });
+  assert.deepEqual(parRotacije('#/rotacije?pol=M&rot=3&kp=0-0'), { rot: 3, kp: '0-0', tu: 1 });
   assert.ok(!('pol' in parRotacije('#/rotacije?pol=Z&rot=2')));
+});
+
+test('hashRotacija i parRotacije sa turnusom', () => {
+  assert.equal(hashRotacija(2, '', 1), '#/rotacije?rot=2');
+  assert.equal(hashRotacija(2, '3-0', 2), '#/rotacije?rot=2&kp=3-0&tu=2');
+  assert.deepEqual(parRotacije(hashRotacija(3, '1-2', 2)), { rot: 3, kp: '1-2', tu: 2 });
+  assert.deepEqual(parRotacije('#/rotacije?rot=1'), { rot: 1, kp: '', tu: 1 });
+  assert.equal(parRotacije('#/rotacije?rot=1&tu=0').tu, 1);
+  assert.equal(parRotacije('#/rotacije?rot=1&tu=x').tu, 1);
+});
+
+test('tekstTurnusa i porukaRasporeda', () => {
+  assert.equal(tekstTurnusa({ turnus: 1, broj: 26, kategorije: ['Pioniri', 'Kadeti'], velicine: [5, 5, 4, 4, 4, 4] }),
+    'Turnus 1: Pioniri, Kadeti · 26 takmičara · grupe 5, 5, 4, 4, 4, 4');
+  assert.equal(tekstTurnusa({ turnus: 2, broj: 1, kategorije: ['bez kategorije'], velicine: [1] }),
+    'Turnus 2: bez kategorije · 1 takmičar · grupa 1');
+  assert.equal(porukaRasporeda({ grupa: 12, turnusa: 2 }), 'Raspoređeno: 12 grupa u 2 turnusa.');
+  assert.equal(porukaRasporeda({ grupa: 6, turnusa: 1 }), 'Raspoređeno: 6 grupa u 1 turnusu.');
+  assert.equal(porukaRasporeda({ grupa: 4, turnusa: 5 }), 'Raspoređeno: 4 grupe u 5 turnusa.');
 });

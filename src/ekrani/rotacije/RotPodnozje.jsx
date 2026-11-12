@@ -8,7 +8,7 @@ export default function RotPodnozje({ rot, naZavrsi }) {
         <span className="rot-stavka"><Ikona ime="hvataljka" velicina={16} /><span>Prevucite karticu mišem, ili je izaberite pa:</span></span>
         <span className="rot-stavka"><kbd>Alt</kbd><kbd>↑</kbd><kbd>↓</kbd><span>mesto u redosledu</span></span>
         <span className="rot-stavka"><kbd>Alt</kbd><kbd>←</kbd><kbd>→</kbd><span>druga grupa</span></span>
-        <span>Plava oznaka pokazuje spravu grupe u izabranoj rotaciji.</span>
+        <span>Slika sprave pokazuje gde je grupa u izabranoj rotaciji.</span>
         <span>Promena redosleda ovde važi samo za rotaciju {rot}. Sastav grupe je isti u svim rotacijama.</span>
       </div>
       <button type="button" className="dugme dugme-glavno" id="zavrsi" onClick={naZavrsi}>

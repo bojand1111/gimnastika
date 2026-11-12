@@ -8,7 +8,7 @@ const MODULI = {
   podesavanja: ['sva', 'sacuvajOpsta', 'izaberiGrb', 'aktivno'],
   takmicenja: ['sva', 'nadji', 'prazno', 'sacuvaj', 'izaberiGrb', 'sacuvajGrb', 'ukloniGrb', 'obrisi', 'otvori', 'stanje'],
   prijave: ['lista', 'podaci', 'dodaj', 'izmeni', 'sprava', 'ucesce', 'obrisi', 'potvrda', 'startni', 'noviTakmicar', 'stanje'],
-  rotacije: ['podaci', 'dodaj', 'izmeni', 'obrisi', 'premesti', 'vrati', 'pomeraj', 'zavrsi'],
+  rotacije: ['podaci', 'dodaj', 'izmeni', 'obrisi', 'premesti', 'vrati', 'pomeraj', 'zavrsi', 'predlog', 'rasporedi'],
   unos: ['podaci', 'nacrt', 'potvrdi', 'odustao', 'vrati', 'zapisnici'],
   rang: ['podaci', 'rezultati', 'stampa', 'bilten', 'bilteni'],
   stampa: ['stampaj', 'pdf'],
