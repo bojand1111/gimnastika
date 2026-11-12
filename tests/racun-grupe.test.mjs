@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pozicijaURotaciji, redosledURotaciji, grupaNaSpravi } from '../electron/racun/grupe.mjs';
+import { pozicijaURotaciji, redosledURotaciji, grupaNaSpravi, turnusGrupe, turnusiGrupa, grupeTurnusa } from '../electron/racun/grupe.mjs';
 
 const c = (...ids) => ids.map((id) => ({ prijava_id: id }));
 const ids = (niz) => niz.map((x) => x.prijava_id);
@@ -76,4 +76,19 @@ test('grupaNaSpravi: rucni redosled rotacije ima prednost', () => {
   assert.deepEqual(ids(grupaNaSpravi(grupe, 2, 2, 2, true).clanovi), [3, 1, 2]);
   // rotacija 1 nema rucni redosled
   assert.deepEqual(ids(grupaNaSpravi(grupe, 1, 1, 2, true).clanovi), [1, 2, 3]);
+});
+
+test('grupeTurnusa filtrira, grupe bez turnusa su turnus 1', () => {
+  const grupe = [{ id: 1 }, { id: 2, turnus: 2 }, { id: 3, turnus: 1 }, { id: 4, turnus: '2' }];
+  assert.deepEqual(grupeTurnusa(grupe, 1).map((g) => g.id), [1, 3]);
+  assert.deepEqual(grupeTurnusa(grupe, 2).map((g) => g.id), [2, 4]);
+  assert.deepEqual(grupeTurnusa(grupe, 3), []);
+  assert.notEqual(grupeTurnusa(grupe, 1), grupe);
+  assert.equal(turnusGrupe({}), 1);
+  assert.equal(turnusGrupe({ turnus: 3 }), 3);
+});
+
+test('turnusiGrupa', () => {
+  assert.deepEqual(turnusiGrupa([]), []);
+  assert.deepEqual(turnusiGrupa([{ turnus: 2 }, {}, { turnus: 2 }, { turnus: 1 }]), [1, 2]);
 });

@@ -3,6 +3,7 @@ const { Baza } = require('../baza/baza.cjs');
 const { GreskaKorisnika } = require('../greska.cjs');
 const { KOLATOR } = require('./sortiranje.cjs');
 const { redosledURotaciji } = require('../racun/grupe.mjs');
+const { rasporedi, sazetak } = require('../racun/raspored.mjs');
 
 const POLJA_CLANA = `p.id AS prijava_id, p.startni_broj, p.kategorija_id, p.program_id, p.van_konkurencije,
        t.ime, t.prezime, t.pol, k.skracenica AS klub_skr, kat.naziv AS kategorija, pr.naziv AS program`;
@@ -55,7 +56,7 @@ function napravi(baza) {
   }
 
   function lista(takmicenjeId, pol) {
-    const grupe = baza.svi('SELECT * FROM grupe WHERE takmicenje_id = ? AND pol = ? ORDER BY redosled, id', [takmicenjeId, pol]);
+    const grupe = baza.svi('SELECT * FROM grupe WHERE takmicenje_id = ? AND pol = ? ORDER BY turnus, redosled, id', [takmicenjeId, pol]);
     return grupe.map((g) => ({ ...g, clanovi: clanovi(g.id), rucni: rucniRedosledi(g.id) }));
   }
 
@@ -83,11 +84,31 @@ function napravi(baza) {
       .map(({ kid, kat, pid, prog }) => ({ kid, kat, pid, prog }));
   }
 
-  function dodaj(takmicenjeId, pol) {
+  function proveriPol(takmicenjeId, pol) {
     if (pol !== 'M' && pol !== 'Z') throw new GreskaKorisnika('Nepoznat pol.');
     const polTakm = baza.vrednost('SELECT pol FROM takmicenja WHERE id = ?', [takmicenjeId]);
     if (polTakm === null) throw new GreskaKorisnika('Takmičenje ne postoji.');
     if (polTakm !== pol) throw new GreskaKorisnika('Grupa mora biti istog pola kao takmičenje.');
+  }
+
+  // Turnusi postojecih grupa, rastuce.
+  function turnusi(takmicenjeId, pol) {
+    return baza.svi('SELECT DISTINCT turnus FROM grupe WHERE takmicenje_id = ? AND pol = ? ORDER BY turnus', [takmicenjeId, pol])
+      .map((r) => Number(r.turnus));
+  }
+
+  // Turnus mora biti ceo broj od 1 do (najveci postojeci + 1).
+  function proveriTurnus(takmicenjeId, pol, turnus) {
+    const n = Math.max(0, ...turnusi(takmicenjeId, pol)) + 1;
+    const t = Number(turnus);
+    if (!(Number.isInteger(t) && t >= 1 && t <= n)) throw new GreskaKorisnika(`Turnus mora biti između 1 i ${n}.`);
+    return t;
+  }
+
+  function dodaj(takmicenjeId, pol, turnus = 1) {
+    proveriPol(takmicenjeId, pol);
+    const tu = proveriTurnus(takmicenjeId, pol, turnus);
+    const uTurnusu = Number(baza.vrednost('SELECT COUNT(*) FROM grupe WHERE takmicenje_id = ? AND pol = ? AND turnus = ?', [takmicenjeId, pol, tu]));
     const postojece = baza.svi('SELECT naziv FROM grupe WHERE takmicenje_id = ? AND pol = ? ORDER BY redosled', [takmicenjeId, pol])
       .map((r) => r.naziv);
     const n = postojece.length;
@@ -96,26 +117,43 @@ function napravi(baza) {
     for (let i = 2; postojece.includes(naziv); i++) naziv = 'Grupa ' + slovo + i;
     const sad = Baza.sad();
     return baza.ubaci('grupe', {
-      takmicenje_id: takmicenjeId, pol, naziv, redosled: n + 1,
-      pocetna_pozicija: (n % brojSprava(pol)) + 1, kreirano: sad, izmenjeno: sad,
+      takmicenje_id: takmicenjeId, pol, naziv, redosled: n + 1, turnus: tu,
+      pocetna_pozicija: (uTurnusu % brojSprava(pol)) + 1, kreirano: sad, izmenjeno: sad,
     });
   }
 
-  function izmeni(takmicenjeId, id, naziv, pocetnaPozicija) {
+  function izmeni(takmicenjeId, id, naziv, pocetnaPozicija, turnus) {
     const g = trazi(takmicenjeId, id);
     const ime = String(naziv ?? '').trim();
     if (ime === '') throw new GreskaKorisnika('Naziv grupe je obavezan.');
     const n = brojSprava(g.pol);
     const poz = Number(pocetnaPozicija);
     if (!(Number.isInteger(poz) && poz >= 1 && poz <= n)) throw new GreskaKorisnika(`Početna sprava mora biti između 1 i ${n}.`);
-    baza.izmeni('grupe', { naziv: ime, pocetna_pozicija: poz, izmenjeno: Baza.sad() }, 'id = ?', [id]);
+    const polja = { naziv: ime, pocetna_pozicija: poz, izmenjeno: Baza.sad() };
+    if (turnus !== undefined && turnus !== null) polja.turnus = proveriTurnus(takmicenjeId, g.pol, turnus);
+    baza.transakcija(() => {
+      baza.izmeni('grupe', polja, 'id = ?', [id]);
+      sabijTurnuse(takmicenjeId, g.pol);
+    });
+    // turnus grupe posle sabijanja (ekran ide za grupom)
+    return Number(nadji(id).turnus);
+  }
+
+  // Turnusi bez rupa: 1, 3 postaje 1, 2 (redosled turnusa ostaje).
+  function sabijTurnuse(takmicenjeId, pol) {
+    turnusi(takmicenjeId, pol).forEach((t, i) => {
+      if (t !== i + 1) baza.izvrsi('UPDATE grupe SET turnus = ? WHERE takmicenje_id = ? AND pol = ? AND turnus = ?', [i + 1, takmicenjeId, pol, t]);
+    });
   }
 
   function obrisi(takmicenjeId, id) {
-    trazi(takmicenjeId, id);
+    const g = trazi(takmicenjeId, id);
     const n = Number(baza.vrednost('SELECT COUNT(*) FROM grupa_clanovi WHERE grupa_id = ?', [id]));
     if (n > 0) throw new GreskaKorisnika(`Grupa ima ${n} takmičara. Prvo je ispraznite.`);
-    baza.izvrsi('DELETE FROM grupe WHERE id = ?', [id]);
+    baza.transakcija(() => {
+      baza.izvrsi('DELETE FROM grupe WHERE id = ?', [id]);
+      sabijTurnuse(takmicenjeId, g.pol);
+    });
   }
 
   // Osnovni redosled (rotacija 1): id-jevi prijava.
@@ -205,7 +243,78 @@ function napravi(baza) {
     baza.izvrsi('DELETE FROM grupa_redosled WHERE grupa_id = ? AND rotacija = ?', [grupaId, Number(rotacija)]);
   }
 
-  return { nadji, lista, rucniRedosledi, clanovi, nerasporedjeni, kombinacije, brojSprava, dodaj, izmeni, obrisi, premesti, vratiRedosled };
+  // Sve prijave pola u obliku ulaza za racun rasporeda.
+  function zaRaspored(takmicenjeId, pol) {
+    return baza.svi(
+      `SELECT p.id AS prijava_id, p.kategorija_id, kat.redosled AS kat_redosled, kat.naziv AS kategorija,
+              p.program_id, pr.redosled AS prog_redosled, p.klub_id, k.skracenica AS klub_skr, t.prezime, t.ime
+       FROM prijave p ${SPOJEVI_CLANA}
+       WHERE p.takmicenje_id = ? AND t.pol = ? ORDER BY p.id`, [takmicenjeId, pol]);
+  }
+
+  function opcijeRasporeda(pol, parametri = {}) {
+    const m = Number(parametri.maksimum);
+    if (!(Number.isInteger(m) && m >= 1 && m <= 30)) throw new GreskaKorisnika('Najviše takmičara po grupi mora biti između 1 i 30.');
+    return {
+      brojSprava: brojSprava(pol), maksimum: m,
+      poKategoriji: parametri.poKategoriji !== false, poKlubu: parametri.poKlubu !== false,
+      turnusPoKategoriji: parametri.turnusPoKategoriji === true,
+    };
+  }
+
+  function imaOcena(takmicenjeId, pol) {
+    return Number(baza.vrednost(
+      `SELECT COUNT(*) FROM ocene o JOIN prijave p ON p.id = o.prijava_id JOIN takmicari t ON t.id = p.takmicar_id
+       WHERE p.takmicenje_id = ? AND t.pol = ? AND o.status <> 'nacrt'`, [takmicenjeId, pol])) > 0;
+  }
+
+  // Pregled pre potvrde: ne menja bazu.
+  function predlogRasporeda(takmicenjeId, pol, parametri) {
+    proveriPol(takmicenjeId, pol);
+    const opc = opcijeRasporeda(pol, parametri);
+    const prijave = zaRaspored(takmicenjeId, pol);
+    // upozorava se samo kad postoje grupe sa takmicarima (prazne se brisu bez gubitka)
+    const imaGrupa = Number(baza.vrednost(
+      `SELECT COUNT(*) FROM grupa_clanovi gc JOIN grupe g ON g.id = gc.grupa_id
+       WHERE g.takmicenje_id = ? AND g.pol = ?`, [takmicenjeId, pol])) > 0;
+    return { ...sazetak(rasporedi(prijave, opc), prijave), imaGrupa, imaOcena: imaOcena(takmicenjeId, pol) };
+  }
+
+  // Brise grupe tog dela i pravi nove iz racuna; prijave i ocene se ne diraju.
+  function primeniRaspored(takmicenjeId, pol, parametri) {
+    proveriPol(takmicenjeId, pol);
+    const opc = opcijeRasporeda(pol, parametri);
+    if (imaOcena(takmicenjeId, pol)) {
+      throw new GreskaKorisnika('Ocene su već unete. Automatski raspored nije moguć; grupe menjajte ručno.');
+    }
+    const r = rasporedi(zaRaspored(takmicenjeId, pol), opc);
+    let grupa = 0;
+    baza.transakcija(() => {
+      const stare = 'SELECT id FROM grupe WHERE takmicenje_id = ? AND pol = ?';
+      baza.izvrsi(`DELETE FROM grupa_redosled WHERE grupa_id IN (${stare})`, [takmicenjeId, pol]);
+      baza.izvrsi(`DELETE FROM grupa_clanovi WHERE grupa_id IN (${stare})`, [takmicenjeId, pol]);
+      baza.izvrsi('DELETE FROM grupe WHERE takmicenje_id = ? AND pol = ?', [takmicenjeId, pol]);
+      const sad = Baza.sad();
+      for (const t of r.turnusi) {
+        for (const gr of t.grupe) {
+          // posle Z ide A2, B2... kao kod rucnog dodavanja
+          const naziv = 'Grupa ' + String.fromCharCode(65 + (grupa % 26)) + (grupa >= 26 ? Math.floor(grupa / 26) + 1 : '');
+          grupa++;
+          const id = baza.ubaci('grupe', {
+            takmicenje_id: takmicenjeId, pol, naziv, redosled: grupa, turnus: t.turnus,
+            pocetna_pozicija: gr.pocetna_pozicija, kreirano: sad, izmenjeno: sad,
+          });
+          gr.clanovi.forEach((pid, i) => baza.ubaci('grupa_clanovi', { grupa_id: id, prijava_id: pid, redosled: i + 1 }));
+        }
+      }
+    });
+    return { grupa, turnusa: r.turnusi.length };
+  }
+
+  return {
+    nadji, lista, rucniRedosledi, clanovi, nerasporedjeni, kombinacije, brojSprava, dodaj, izmeni, obrisi, premesti, vratiRedosled,
+    turnusi, zaRaspored, predlogRasporeda, primeniRaspored,
+  };
 }
 
 module.exports = { napravi };

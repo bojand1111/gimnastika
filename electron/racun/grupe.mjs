@@ -39,3 +39,18 @@ export function grupaNaSpravi(grupe, pozicijaSprave, rotacija, brojSprava, pomer
   }
   return null;
 }
+
+// Turnus grupe; grupe bez turnusa (stari podaci) su turnus 1.
+export function turnusGrupe(g) {
+  return Number(g.turnus) || 1;
+}
+
+// Jedinstveni turnusi grupa, rastuce.
+export function turnusiGrupa(grupe) {
+  return [...new Set(grupe.map(turnusGrupe))].sort((a, b) => a - b);
+}
+
+// Grupe jednog turnusa (nov niz).
+export function grupeTurnusa(grupe, turnus) {
+  return grupe.filter((g) => turnusGrupe(g) === Number(turnus));
+}

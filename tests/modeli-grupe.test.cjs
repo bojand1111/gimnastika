@@ -350,3 +350,190 @@ test('kombinacije: redosled kategorije i programa, null par prvi', () => {
     { kid: kAaa, kat: 'Aaa', pid: s.prog, prog: 'C' },
   ]);
 });
+
+// MSG takmicenje sa 6 sprava i 48 prijava u 4 kategorije (12, 14, 10, 12).
+function veliko(baza, s) {
+  const ubaci = (tabela, red) => baza.ubaci(tabela, { ...red, kreirano: S, izmenjeno: S });
+  for (let i = 2; i <= 6; i++) ubaci('sprave', { pol: 'M', naziv: 'Sprava ' + i, skracenica: 'S' + i, redosled: i });
+  const kat = [s.katM];
+  for (let i = 2; i <= 4; i++) kat.push(ubaci('kategorije', { naziv: 'K' + i, redosled: i, pol: 'M' }));
+  const tid = drugoTakmicenje(baza, 'M');
+  let n = 0;
+  [12, 14, 10, 12].forEach((broj, ki) => {
+    for (let i = 0; i < broj; i++) {
+      n++;
+      const klub = i % 6 < 3 ? s.k1 : s.k2;
+      const t = ubaci('takmicari', { id_broj: 'V' + n, ime: 'Ime' + n, prezime: 'Prez' + String(n).padStart(2, '0'), godina_rodjenja: 2012, pol: 'M', klub_id: klub });
+      ubaci('prijave', { takmicenje_id: tid, takmicar_id: t, klub_id: klub, kategorija_id: kat[ki], program_id: s.progM });
+    }
+  });
+  return tid;
+}
+
+const PARAM = { maksimum: 6, poKategoriji: true, poKlubu: true, turnusPoKategoriji: false };
+
+test('primeniRaspored: 48 prijava daje 12 grupa u 2 turnusa, nazivi Grupa A..Grupa L, svaka prijava u tacno jednoj grupi', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  assert.deepEqual(g.primeniRaspored(tid, 'M', PARAM), { grupa: 12, turnusa: 2 });
+  const lista = g.lista(tid, 'M');
+  assert.deepEqual(lista.map((x) => x.naziv), 'ABCDEFGHIJKL'.split('').map((x) => 'Grupa ' + x));
+  assert.deepEqual(lista.map((x) => x.turnus), [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2]);
+  assert.deepEqual(lista.map((x) => x.pocetna_pozicija), [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(lista.map((x) => x.redosled), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  const svi = lista.flatMap((x) => x.clanovi.map((c) => c.prijava_id));
+  assert.equal(svi.length, 48);
+  assert.equal(new Set(svi).size, 48);
+  lista.forEach((x) => assert.deepEqual(x.clanovi.map((c) => c.redosled), x.clanovi.map((_, i) => i + 1)));
+  assert.deepEqual(g.nerasporedjeni(tid, 'M'), []);
+  assert.deepEqual(g.turnusi(tid, 'M'), [1, 2]);
+});
+
+test('primeniRaspored: turnus po kategoriji daje 4 turnusa', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  assert.deepEqual(g.primeniRaspored(tid, 'M', { ...PARAM, turnusPoKategoriji: true }), { grupa: 24, turnusa: 4 });
+});
+
+test('primeniRaspored: zamenjuje postojece grupe i brise rucni redosled', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  const stara = g.dodaj(tid, 'M');
+  const [p1, p2] = baza.svi('SELECT id FROM prijave WHERE takmicenje_id = ? ORDER BY id LIMIT 2', [tid]).map((r) => r.id);
+  g.premesti(tid, p1, stara, 0, 1);
+  g.premesti(tid, p2, stara, 1, 1);
+  g.premesti(tid, p2, stara, 0, 2);
+  assert.ok(Number(baza.vrednost('SELECT COUNT(*) FROM grupa_redosled')) > 0);
+  baza.izvrsi('UPDATE takmicenja SET pomeraj_redosled = 1 WHERE id = ?', [tid]);
+  g.primeniRaspored(tid, 'M', PARAM);
+  const lista = g.lista(tid, 'M');
+  assert.ok(!lista.some((x) => x.id === stara));
+  assert.equal(Number(baza.vrednost('SELECT COUNT(*) FROM grupa_redosled')), 0);
+  assert.equal(Number(baza.vrednost('SELECT pomeraj_redosled FROM takmicenja WHERE id = ?', [tid])), 1);
+});
+
+test('primeniRaspored: odbija kad postoji uneta ocena', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  g.dodaj(tid, 'M');
+  const pid = baza.vrednost('SELECT id FROM prijave WHERE takmicenje_id = ? ORDER BY id LIMIT 1', [tid]);
+  baza.ubaci('ocene', { prijava_id: pid, sprava_id: s.pa, konacna: 12000, status: 'uneto', kreirano: S, izmenjeno: S });
+  assert.equal(poruka(() => g.primeniRaspored(tid, 'M', PARAM)), 'Ocene su već unete. Automatski raspored nije moguć; grupe menjajte ručno.');
+  assert.equal(g.lista(tid, 'M').length, 1);
+  assert.equal(g.predlogRasporeda(tid, 'M', PARAM).imaOcena, true);
+});
+
+test('primeniRaspored: ocena nacrt ne smeta', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  const pid = baza.vrednost('SELECT id FROM prijave WHERE takmicenje_id = ? ORDER BY id LIMIT 1', [tid]);
+  baza.ubaci('ocene', { prijava_id: pid, sprava_id: s.pa, status: 'nacrt', kreirano: S, izmenjeno: S });
+  assert.deepEqual(g.primeniRaspored(tid, 'M', PARAM), { grupa: 12, turnusa: 2 });
+  assert.equal(Number(baza.vrednost('SELECT COUNT(*) FROM ocene WHERE prijava_id = ?', [pid])), 1);
+});
+
+test('primeniRaspored: ne dira drugi pol ni drugo takmicenje', () => {
+  const { baza, s, pid, g } = nova();
+  const tid = veliko(baza, s);
+  const zg = g.dodaj(s.takm, 'Z');
+  g.premesti(s.takm, pid.Ana, zg, 0, 1);
+  const mg = g.dodaj(s.takmM, 'M');
+  g.premesti(s.takmM, pid.Marko, mg, 0, 1);
+  g.primeniRaspored(tid, 'M', PARAM);
+  assert.deepEqual(g.lista(s.takm, 'Z').map((x) => [x.id, ids(x.clanovi)]), [[zg, [pid.Ana]]]);
+  assert.deepEqual(g.lista(s.takmM, 'M').map((x) => [x.id, ids(x.clanovi)]), [[mg, [pid.Marko]]]);
+});
+
+test('primeniRaspored: maksimum 0 i 31 odbijeni', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  for (const m of [0, 31, 2.5, 'x']) {
+    assert.equal(poruka(() => g.primeniRaspored(tid, 'M', { ...PARAM, maksimum: m })), 'Najviše takmičara po grupi mora biti između 1 i 30.');
+  }
+  assert.equal(g.lista(tid, 'M').length, 0);
+});
+
+test('predlogRasporeda: ne menja bazu i javlja imaGrupa/imaOcena', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  const pr = g.predlogRasporeda(tid, 'M', PARAM);
+  assert.equal(pr.ukupno, 48);
+  assert.equal(pr.turnusi.length, 2);
+  assert.equal(pr.imaGrupa, false);
+  assert.equal(pr.imaOcena, false);
+  assert.equal(g.lista(tid, 'M').length, 0);
+  const prazna = g.dodaj(tid, 'M');
+  // prazna grupa nije raspored koji bi se izgubio
+  assert.equal(g.predlogRasporeda(tid, 'M', PARAM).imaGrupa, false);
+  const pid = baza.vrednost('SELECT id FROM prijave WHERE takmicenje_id = ? ORDER BY id LIMIT 1', [tid]);
+  g.premesti(tid, pid, prazna, 0, 1);
+  assert.equal(g.predlogRasporeda(tid, 'M', PARAM).imaGrupa, true);
+  assert.equal(g.lista(tid, 'M').length, 1);
+});
+
+test('dodaj sa turnusom 2: pocetna pozicija racuna se u turnusu', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  g.dodaj(tid, 'M');
+  g.dodaj(tid, 'M');
+  const t2 = g.dodaj(tid, 'M', 2);
+  const gr = g.nadji(t2);
+  assert.equal(gr.turnus, 2);
+  assert.equal(gr.pocetna_pozicija, 1);
+  assert.equal(gr.naziv, 'Grupa C');
+  assert.equal(g.nadji(g.dodaj(tid, 'M', 2)).pocetna_pozicija, 2);
+});
+
+test('izmeni: turnus van opsega odbijen; bez turnusa ostaje isti', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  const a = g.dodaj(tid, 'M');
+  g.dodaj(tid, 'M'); // druga grupa drzi turnus 1
+  g.izmeni(tid, a, 'Prva', 2, 2);
+  assert.equal(g.nadji(a).turnus, 2);
+  g.izmeni(tid, a, 'Prva', 3);
+  assert.equal(g.nadji(a).turnus, 2);
+  assert.equal(g.nadji(a).pocetna_pozicija, 3);
+  assert.equal(poruka(() => g.izmeni(tid, a, 'Prva', 1, 4)), 'Turnus mora biti između 1 i 3.');
+  assert.equal(poruka(() => g.izmeni(tid, a, 'Prva', 1, 0)), 'Turnus mora biti između 1 i 3.');
+});
+
+test('turnusi: [1] za stare grupe, [1,2] posle rasporeda', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  assert.deepEqual(g.turnusi(tid, 'M'), []);
+  g.dodaj(tid, 'M');
+  assert.deepEqual(g.turnusi(tid, 'M'), [1]);
+  g.primeniRaspored(tid, 'M', PARAM);
+  assert.deepEqual(g.turnusi(tid, 'M'), [1, 2]);
+});
+
+test('zaRaspored: sve prijave pola sa kljucevima kategorije i kluba', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  const z = g.zaRaspored(tid, 'M');
+  assert.equal(z.length, 48);
+  for (const k of ['prijava_id', 'kategorija_id', 'kat_redosled', 'kategorija', 'program_id', 'prog_redosled', 'klub_id', 'klub_skr', 'prezime', 'ime']) {
+    assert.ok(k in z[0], k);
+  }
+});
+
+test('turnusi bez rupa posle izmene i brisanja', () => {
+  const { baza, s, g } = nova();
+  const tid = veliko(baza, s);
+  const a = g.dodaj(tid, 'M', 1);
+  const b = g.dodaj(tid, 'M', 2);
+  const c = g.dodaj(tid, 'M', 3);
+  assert.deepEqual(g.turnusi(tid, 'M'), [1, 2, 3]);
+  // turnus 2 ostaje prazan: turnus 3 postaje 2
+  assert.equal(g.izmeni(tid, b, 'Grupa B', 1, 1), 1);
+  assert.deepEqual(g.turnusi(tid, 'M'), [1, 2]);
+  // izmeni vraca turnus posle sabijanja
+  assert.equal(g.izmeni(tid, c, 'Grupa C', 1, 3), 2);
+  assert.equal(g.nadji(c).turnus, 2);
+  // brisanje jedine grupe turnusa 1: turnus 2 postaje 1
+  g.obrisi(tid, a);
+  g.obrisi(tid, b);
+  assert.deepEqual(g.turnusi(tid, 'M'), [1]);
+  assert.equal(g.nadji(c).turnus, 1);
+});

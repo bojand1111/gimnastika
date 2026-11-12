@@ -273,7 +273,7 @@ test('napredak modela nad semenom', () => {
   const lista = grupe.lista(s.takm, 'Z');
   const sprave = [{ id: s.pr }, { id: s.gr }];
   let n = o.napredak(s.takm, 'Z', lista, sprave);
-  assert.deepEqual(n, { rotacija: 1, ukupno_rotacija: 2, obradjeno: 0, ukupno: 6, gotovo: false });
+  assert.deepEqual(n, { rotacija: 1, ukupno_rotacija: 2, obradjeno: 0, ukupno: 6, gotovo: false, turnus: 1, broj_turnusa: 1 });
   // Clan koji ne radi spravu se ne broji.
   prijave.postaviSpravu(s.takm, pid.Ceca, s.pr, false);
   assert.equal(o.napredak(s.takm, 'Z', lista, sprave).ukupno, 5);
@@ -283,11 +283,11 @@ test('napredak modela nad semenom', () => {
   o.odustao(s.takm, pid.Bea, s.pr);
   o.sacuvaj(s.takm, pid.Ceca, s.gr, UNOS, true);
   n = o.napredak(s.takm, 'Z', lista, sprave);
-  assert.deepEqual(n, { rotacija: 2, ukupno_rotacija: 2, obradjeno: 3, ukupno: 6, gotovo: false });
+  assert.deepEqual(n, { rotacija: 2, ukupno_rotacija: 2, obradjeno: 3, ukupno: 6, gotovo: false, turnus: 1, broj_turnusa: 1 });
   // Rotacija 2.
   o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, true);
   o.sacuvaj(s.takm, pid.Bea, s.gr, UNOS, true);
   o.sacuvaj(s.takm, pid.Ceca, s.pr, UNOS, true);
   n = o.napredak(s.takm, 'Z', lista, sprave);
-  assert.deepEqual(n, { rotacija: 2, ukupno_rotacija: 2, obradjeno: 6, ukupno: 6, gotovo: true });
+  assert.deepEqual(n, { rotacija: 2, ukupno_rotacija: 2, obradjeno: 6, ukupno: 6, gotovo: true, turnus: 1, broj_turnusa: 1 });
 });
