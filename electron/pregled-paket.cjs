@@ -31,7 +31,7 @@ function poslednja(lista) {
 
 // p: podesavanja; pr: prijave; tk: takmicenja; g: grupe; o: ocene; s: sifarnici.
 // sinhroStanje: () => stanje klijenta sajta (SPEC8) ili null. aktivnoRed baca GreskaKorisnika bez aktivnog takmicenja; kopijaLista: () => [{ime, vreme, ...}] najnovija prva.
-function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhroStanje = () => null }) {
+function napravi({ baza, p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhroStanje = () => null }) {
   // Napredak i sledeci unos samo za pol takmicenja (POPIS 2.1); bez grupa su oba null.
   function napredakINastavi(takm) {
     const tid = Number(takm.id);
@@ -64,8 +64,19 @@ function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhr
     ? `#/unos?sprava=${nastavi.sprava.id}&rot=${nastavi.rotacija}${nastavi.broj_turnusa > 1 ? `&tu=${nastavi.turnus}` : ''}`
     : '#/unos');
 
+  // Uvezene objave koje korisnik jos nije video: samo aktivni pol ili bez pola (odbijen fajl).
+  function izAzuriranja(pol) {
+    return baza.svi(
+      `SELECT u.takmicenje_id, u.naziv, u.stanje, u.poruka, t.datum
+         FROM uvezene_objave u LEFT JOIN takmicenja t ON t.id = u.takmicenje_id
+        WHERE u.prikazano = 0 AND (u.pol = ? OR u.pol = '') ORDER BY u.vreme, u.uid`, [pol])
+      .map((r) => ({ takmicenje_id: r.takmicenje_id, naziv: r.naziv, datumTekst: datumPrikaz(r.datum), stanje: r.stanje, poruka: r.poruka }));
+  }
+
   return {
     pocetna: {
+      // Kartica uvoza se prikazuje jednom: sve se oznaci kao videno.
+      potvrdiUvoz: () => { baza.izvrsi('UPDATE uvezene_objave SET prikazano = 1 WHERE prikazano = 0'); return { ok: true }; },
       // Radi i bez aktivnog takmicenja (takm i stanje su tada null).
       podaci: () => {
         const pol = p.aktivniPol();
@@ -79,6 +90,7 @@ function napravi({ p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [], sinhr
           // null: lekarski se ne prati, Pocetna ne prikazuje karticu
           lekarski: p.pratiLekarski(pol) ? pr.lekarskiUpozorenja(p.dajInt('lekarski_prag_dana', 30), pol) : null,
           poslednjaKopija: poslednja(kopijaLista()),
+          iz_azuriranja: izAzuriranja(pol),
           precice: PRECICE.map(([tekst, tasteri]) => [tekst, [...tasteri]]),
         };
       },

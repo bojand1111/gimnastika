@@ -53,7 +53,7 @@ function sSemom(saGrupom = true) {
 
 test('guard: pocetna i takmicenje imaju handler', () => {
   const { moduli } = pravi();
-  assert.deepEqual(MODULI.pocetna, ['podaci']);
+  assert.deepEqual(MODULI.pocetna, ['podaci', 'potvrdiUvoz']);
   assert.deepEqual(MODULI.takmicenje, ['podaci']);
   const ipc = { kanali: {}, handle(k, fn) { this.kanali[k] = fn; } };
   registruj(ipc, moduli, dn, Object.fromEntries(Object.keys(moduli).map((k) => [k, MODULI[k]])));

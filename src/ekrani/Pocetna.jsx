@@ -7,6 +7,7 @@ import { najavi, obavesti } from '../okvir/Poruke.jsx';
 import { porukaOtvaranja } from './takmicenjaPoruke.js';
 import { porukaNapravljena } from './kopijaStanje.js';
 import KartaAktivnog from './pocetna/KartaAktivnog.jsx';
+import IzAzuriranja from './pocetna/IzAzuriranja.jsx';
 import Lekarski from './pocetna/Lekarski.jsx';
 import PoslednjaKopija from './pocetna/PoslednjaKopija.jsx';
 
@@ -75,12 +76,23 @@ export default function Pocetna() {
     }
   }, [ucitaj]);
 
+  // Kartica se prikazuje jednom: posle "U redu" nestaje i pri sledecem otvaranju.
+  const potvrdiUvoz = useCallback(async () => {
+    try {
+      await gim.pocetna.potvrdiUvoz();
+      await ucitaj();
+    } catch (e) {
+      obavesti(e.message, 'greska');
+    }
+  }, [ucitaj]);
+
   if (!d) return null;
   const { takm, stanje, ostala } = d;
 
   return (
     <div className="red">
       <div className="kolona raste">
+        {d.iz_azuriranja.length > 0 && <IzAzuriranja redovi={d.iz_azuriranja} naUredu={potvrdiUvoz} />}
         <KartaAktivnog takm={takm} stanje={stanje} imaOstala={ostala.length > 0} fokusRef={fokusRef} />
         {ostala.length > 0 && (
           <section className="kartica" style={{ overflow: 'hidden' }}>

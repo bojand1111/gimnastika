@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import gim from '../gim.js';
 import Ikona from '../komponente/Ikona.jsx';
+import DijalogPotvrda from '../komponente/DijalogPotvrda.jsx';
 import Koraci from '../komponente/Koraci.jsx';
 import StanjeOznake from '../komponente/StanjeOznake.jsx';
 import KluboviStanje from '../komponente/KluboviStanje.jsx';
@@ -8,17 +9,29 @@ import { obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
 import { tekstPlocice, tekstRotacije } from './pocetnaStanje.js';
 import { tekstStanja } from './sinhroStanje.js';
+import { tekstObjave, tekstPotvrdeObjave } from './objavaStanje.js';
 
 // Pregled takmicenja (POPIS 2): jedan IPC poziv daje sve sto pogled treba.
 export default function Takmicenje() {
   const [d, postaviD] = useState(null);
   const fokusRef = useRef(null);
   const fokusirano = useRef(false);
+  const [objava, postaviObjavu] = useState(null);
+  const [saljem, postaviSaljem] = useState(false);
+  const dijalog = useRef(null);
+  const radi = useRef(false); // jedno slanje u toku
+  const ziv = useRef(true);
+  useEffect(() => { ziv.current = true; return () => { ziv.current = false; }; }, []);
 
   useEffect(() => {
     let ziv = true;
     gim.takmicenje.podaci()
-      .then((p) => { if (ziv) postaviD(p); })
+      .then((p) => {
+        if (!ziv) return null;
+        postaviD(p);
+        return gim.objava.stanje(p.takm.id);
+      })
+      .then((o) => { if (ziv && o) postaviObjavu(o); })
       .catch((e) => { if (ziv && !obradiNemaAktivnog(e)) obavesti(e.message, 'greska'); });
     return () => { ziv = false; };
   }, []);
@@ -27,6 +40,26 @@ export default function Takmicenje() {
   useEffect(() => {
     if (d && !fokusirano.current && fokusRef.current) { fokusRef.current.focus(); fokusirano.current = true; }
   }, [d]);
+
+  async function objavi() {
+    if (radi.current) return;
+    const ok = await dijalog.current.potvrdi(tekstPotvrdeObjave(d.takm.zavrseno), { potvrdaTekst: 'Objavi' });
+    if (!ok || radi.current) return;
+    radi.current = true;
+    postaviSaljem(true);
+    try {
+      const s = await gim.objava.objavi(d.takm.id);
+      if (ziv.current) postaviObjavu(s);
+      if (s.stanje === 'poslato') obavesti('Takmičenje je objavljeno.');
+      else obavesti(s.poruka || 'Objava nije poslata.', 'upozorenje');
+    } catch (e) {
+      obavesti(e.message, 'greska');
+      try { const s = await gim.objava.stanje(d.takm.id); if (ziv.current) postaviObjavu(s); } catch { /* stanje ostaje staro */ }
+    } finally {
+      radi.current = false;
+      if (ziv.current) postaviSaljem(false);
+    }
+  }
 
   if (!d) return null;
   const { takm, brojevi, stanje, napredak, nastavi } = d;
@@ -45,6 +78,10 @@ export default function Takmicenje() {
                 {Number(takm.zavrseno) === 1 && <span className="status">Završeno</span>}
               </span>
               <span style={{ display: 'inline-flex', gap: 4 }}>
+                <button type="button" className="dugme dugme-tekst dugme-malo" onClick={objavi}
+                  disabled={saljem || (objava !== null && !objava.moze)} title={objava && !objava.moze ? objava.razlog : undefined}>
+                  Objavi takmičenje
+                </button>
                 <a href={`#/takmicenja/izmeni?id=${takm.id}`} className="dugme dugme-tekst dugme-malo">Izmeni podatke</a>
                 <a href="#/takmicenja" className="dugme dugme-tekst dugme-malo">Sva takmičenja</a>
               </span>
@@ -61,6 +98,7 @@ export default function Takmicenje() {
               {takm.domacin && <span>Domaćin: {takm.domacin}</span>}
             </div>
             <span className="sivo mali">Rezultati uživo: {tekstStanja(d.sinhro)}</span>
+            <span className="sivo mali">Objava: {tekstObjave(objava)}</span>
             <div className="mreza-3">
               <div className="plocica-broj"><span className="broj">{brojevi.prijava}</span><span>prijavljenih takmičara</span></div>
               <div className="plocica-broj"><span className="broj">{brojevi.klubova}</span><span>klubova</span></div>
@@ -94,6 +132,7 @@ export default function Takmicenje() {
           </section>
         </div>
       </div>
+      <DijalogPotvrda ref={dijalog} />
     </>
   );
 }

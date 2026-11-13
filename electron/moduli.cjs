@@ -18,6 +18,9 @@ const napraviPregled = require('./pregled-paket.cjs').napravi;
 const napraviKopijuPaket = require('./kopija-paket.cjs').napravi;
 const kopijaModel = require('./modeli/kopija.cjs');
 const napraviSinhro = require('./sinhro.cjs').napravi;
+const napraviObjavuKlijent = require('./objava.cjs').napravi;
+const objavaModel = require('./modeli/objava.cjs');
+const { OBJAVA_ADRESA } = require('./objava-adresa.cjs');
 const sistem = require('./sistem.cjs');
 const { KOLATOR } = require('./modeli/sortiranje.cjs');
 const dnevnikModul = require('./dnevnik.cjs');
@@ -54,8 +57,9 @@ function napraviKopijuModel(baza, { fasciklaPodataka, dnevnik = dnevnikModul, ve
 }
 
 // Nove opcije su opcione: kopija (gotov model), shell, verzija, obavesti (javlja main-u da je vracanje gotovo), kopijaLista,
-// fetch (klijent sajta; test ga usmerava na lazni server), sinhroOpcije (npr. odlaganjeMs), sinhroSpreman (main dobija klijenta za start).
-function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir(), kopija: kopijaGotova, verzija = sistem.verzija(), obavesti = () => {}, kopijaLista, fetch: fetchFn = globalThis.fetch, sinhroOpcije = {}, sinhroSpreman = () => {} }) {
+// fetch (klijent sajta; test ga usmerava na lazni server), sinhroOpcije (npr. odlaganjeMs), sinhroSpreman (main dobija klijenta za start),
+// objavaOpcije (npr. adresa, istekMs za test), objavaSpremna (main dobija klijenta objave za ponovni pokusaj).
+function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fasciklaPodataka, roditelj = () => null, dnevnik = dnevnikModul, dokumenti = require('node:os').homedir(), kopija: kopijaGotova, verzija = sistem.verzija(), obavesti = () => {}, kopijaLista, fetch: fetchFn = globalThis.fetch, sinhroOpcije = {}, sinhroSpreman = () => {}, objavaOpcije = {}, objavaSpremna = () => {} }) {
   const k = klubovi.napravi(baza);
   const t = takmicari.napravi(baza);
   const s = sifarnici.napravi(baza);
@@ -68,6 +72,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
   const rez = rezultatiModel.napravi(baza, p);
   const sinhro = napraviSinhro({ podesavanja: p, rezultati: rez, sifarnici: s, baza, dnevnik, verzija, fetch: fetchFn, ...sinhroOpcije });
   sinhroSpreman(sinhro);
+  const objava = napraviObjavuKlijent({ baza, model: objavaModel.napravi(baza), adresa: OBJAVA_ADRESA, fasciklaPodataka, dnevnik, verzija, fetch: fetchFn, ...objavaOpcije });
+  objavaSpremna(objava);
   // Posle potvrdjene izmene ocene; slanje nikad ne sme da pokvari rezultat unosa.
   const posleOcene = (rezultat) => {
     try {
@@ -185,7 +191,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     return fs.existsSync(fajl) ? `${pathToFileURL(fajl).href}?v=${Math.round(fs.statSync(fajl).mtimeMs)}` : '';
   }
 
-  const pregled = napraviPregled({ p, pr, tk, g: gr, o: oc, s, aktivnoRed, sinhroStanje: () => sinhro.stanje(), kopijaLista: kopijaLista ?? (() => kopija.lista()) });
+  const pregled = napraviPregled({ baza, p, pr, tk, g: gr, o: oc, s, aktivnoRed, sinhroStanje: () => sinhro.stanje(), kopijaLista: kopijaLista ?? (() => kopija.lista()) });
   const kopijaIpc = napraviKopijuPaket({ kopija, verzija, bazaVerzija, dialog, shell, roditelj, dnevnik, posleVracanja: obavesti });
 
   return {
@@ -614,6 +620,7 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
     stampa: napraviStampu({ prozor: roditelj, dialog, fs, dokumenti }),
     kopija: kopijaIpc,
     sinhro: { stanje: () => sinhro.stanje(), posalji: () => sinhro.posalji(), ping: () => sinhro.ping() },
+    objava: { stanje: (id) => objava.stanje(takmicenjeDela(broj(id)).id), objavi: (id) => objava.objavi(takmicenjeDela(broj(id)).id) },
     pocetna: pregled.pocetna,
     takmicenje: pregled.takmicenje,
     uvoz: {

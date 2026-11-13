@@ -16,6 +16,7 @@ const { uveziIzFascikle } = require('./objave-start.cjs');
 let prozor = null;
 let azuriranje = null;
 let baza = null; // otvorena baza; modeli je dobijaju odavde
+let objavaKlijent = null; // klijent objave: ponovno slanje 10 s posle ucitavanja
 let kopija = null; // model rezervne kopije (pre azuriranja i za IPC)
 
 function log(tekst) {
@@ -64,6 +65,14 @@ function napraviProzor() {
     if (process.env.GIM_DEBUG === '1') ispisiRenderer();
     // Tiha provera 5 s posle ucitavanja, samo u instaliranom programu.
     if (app.isPackaged) setTimeout(() => azuriranje.check().catch((err) => dnevnik.greska('tiha provera', err)), 5000);
+    // Objave koje cekaju internet: pokusaj 10 s posle ucitavanja; greska (i odbijen promise) ide samo u dnevnik.
+    setTimeout(() => {
+      try {
+        if (objavaKlijent) objavaKlijent.posaljiNaCekanju().catch((err) => dnevnik.greska('objava na cekanju', err));
+      } catch (err) {
+        dnevnik.greska('objava na cekanju', err);
+      }
+    }, 10000);
     // Posle toga tiha provera na svakih 30 minuta dok je program otvoren.
     if (app.isPackaged) azuriranje.povremeno((err) => dnevnik.greska('povremena provera', err));
   });
@@ -127,6 +136,7 @@ function pokreni() {
       roditelj: () => BrowserWindow.getFocusedWindow() || prozor,
       dokumenti: app.getPath('documents'),
       sinhroSpreman: (s) => { sinhro = s; },
+      objavaSpremna: (o) => { objavaKlijent = o; },
       // Posle vracanja renderer ponovo ucitava ekran i traku.
       obavesti: (podaci) => { if (prozor && !prozor.isDestroyed()) prozor.webContents.send('gim:kopija:vraceni', podaci); },
     }),
