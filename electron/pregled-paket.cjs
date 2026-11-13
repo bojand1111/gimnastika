@@ -69,14 +69,17 @@ function napravi({ baza, p, pr, tk, g, o, s, aktivnoRed, kopijaLista = () => [],
     return baza.svi(
       `SELECT u.takmicenje_id, u.naziv, u.stanje, u.poruka, t.datum
          FROM uvezene_objave u LEFT JOIN takmicenja t ON t.id = u.takmicenje_id
-        WHERE u.prikazano = 0 AND (u.pol = ? OR u.pol = '') ORDER BY u.vreme, u.uid`, [pol])
+        WHERE u.prikazano = 0 AND u.stanje IN ('uvezeno', 'odbijeno') AND (u.pol = ? OR u.pol = '') ORDER BY u.vreme, u.uid`, [pol])
       .map((r) => ({ takmicenje_id: r.takmicenje_id, naziv: r.naziv, datumTekst: datumPrikaz(r.datum), stanje: r.stanje, poruka: r.poruka }));
   }
 
   return {
     pocetna: {
-      // Kartica uvoza se prikazuje jednom: sve se oznaci kao videno.
-      potvrdiUvoz: () => { baza.izvrsi('UPDATE uvezene_objave SET prikazano = 1 WHERE prikazano = 0'); return { ok: true }; },
+      // Kartica uvoza se prikazuje jednom: oznacavaju se redovi aktivnog dela i redovi bez pola (kao u kartici).
+      potvrdiUvoz: () => {
+        baza.izvrsi("UPDATE uvezene_objave SET prikazano = 1 WHERE prikazano = 0 AND (pol = ? OR pol = '')", [p.aktivniPol()]);
+        return { ok: true };
+      },
       // Radi i bez aktivnog takmicenja (takm i stanje su tada null).
       podaci: () => {
         const pol = p.aktivniPol();

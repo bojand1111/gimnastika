@@ -67,7 +67,17 @@ test('pocetna.podaci vraca iz_azuriranja dok se ne pozove potvrdiUvoz', () => {
   assert.equal(moduli.pocetna.podaci().iz_azuriranja.length, 2);
   moduli.pocetna.potvrdiUvoz();
   assert.deepEqual(moduli.pocetna.podaci().iz_azuriranja, []);
-  // potvrda vazi za sve redove, i za drugi deo
+  // potvrda vazi za aktivni deo i redove bez pola; drugi deo ostaje nepotvrdjen
+  assert.equal(baza.vrednost("SELECT prikazano FROM uvezene_objave WHERE uid = 'u2'"), 1);
+  assert.equal(baza.vrednost("SELECT prikazano FROM uvezene_objave WHERE uid = 'u3'"), 0);
   moduli.pol.postavi('M');
+  assert.deepEqual(moduli.pocetna.podaci().iz_azuriranja.map((r) => r.naziv), ['Uvezeno M']);
+  moduli.pocetna.potvrdiUvoz();
+  assert.deepEqual(moduli.pocetna.podaci().iz_azuriranja, []);
+});
+
+test('pocetna.podaci: red stanja postoji se ne prikazuje u kartici', () => {
+  const { moduli, baza, s } = pravi();
+  uvezena(baza, 'u9', { takmicenje_id: s.takm, stanje: 'postoji', poruka: 'Takmičenje već postoji.', naziv: 'Vec bilo', pol: 'Z' });
   assert.deepEqual(moduli.pocetna.podaci().iz_azuriranja, []);
 });
