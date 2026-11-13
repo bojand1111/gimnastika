@@ -32,7 +32,7 @@ test('guard: MODULI objava i pocetna se poklapaju sa handlerima', () => {
 });
 
 test('objava.stanje i objava.objavi: takmicenje drugog dela i nepostojece bacaju', async () => {
-  const { moduli, s } = pravi();
+  const { moduli, s } = pravi({ objavaOpcije: { adresa: '' } });
   assert.throws(() => moduli.objava.stanje(String(s.takmM)), (e) => e instanceof GreskaKorisnika && e.message === 'Takmičenje ne postoji.');
   assert.throws(() => moduli.objava.stanje('9999'), GreskaKorisnika);
   await assert.rejects(async () => moduli.objava.objavi(String(s.takmM)), GreskaKorisnika);
