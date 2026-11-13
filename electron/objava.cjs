@@ -17,7 +17,8 @@ function napravi({
   sad = () => Baza.sad(), istekMs = ISTEK_MS, setTimeout: postaviTajmer = setTimeout, clearTimeout: ukloniTajmer = clearTimeout,
 }) {
   const osnova = () => String(adresa ?? '').trim().replace(/\/+$/, '');
-  const uToku = new Map(); // tid -> promise slanja koje je u toku
+  const objaveUToku = new Map(); // tid -> promise objave koja je u toku
+  const pokusajiUToku = new Map(); // tid -> promise ponovnog pokusaja koji je u toku
 
   // Jedan POST; vraca { ok: true } ili { poruka } (tekst za korisnika).
   async function zahtev(telo) {
@@ -57,11 +58,11 @@ function napravi({
     return r;
   }
 
-  // Jedno slanje po takmicenju; drugi poziv dobija isti promise.
-  function jednom(tid, rad) {
-    if (uToku.has(tid)) return uToku.get(tid);
-    const p = Promise.resolve().then(rad).finally(() => { if (uToku.get(tid) === p) uToku.delete(tid); });
-    uToku.set(tid, p);
+  // Jedan promise po takmicenju u datoj mapi; drugi poziv dobija isti promise.
+  function jednom(mapa, tid, rad) {
+    if (mapa.has(tid)) return mapa.get(tid);
+    const p = Promise.resolve().then(rad).finally(() => { if (mapa.get(tid) === p) mapa.delete(tid); });
+    mapa.set(tid, p);
     return p;
   }
 
@@ -76,7 +77,9 @@ function napravi({
   }
 
   function objavi(tid) {
-    return jednom(tid, async () => {
+    return jednom(objaveUToku, tid, async () => {
+      // ponovni pokusaj u toku se ceka (ishod se ignorise), pa objava pravi svoj svez izvoz
+      await pokusajiUToku.get(tid)?.catch(() => {});
       const s = stanje(tid);
       if (!s.moze) throw new GreskaKorisnika(s.razlog);
       const vreme = sad();
@@ -103,8 +106,9 @@ function napravi({
     const redovi = baza.svi("SELECT takmicenje_id, fajl FROM objave WHERE stanje = 'ceka' ORDER BY takmicenje_id");
     for (const red of redovi) {
       const tid = red.takmicenje_id;
+      if (objaveUToku.has(tid)) continue; // objava u toku salje svezu verziju
       try {
-        await jednom(tid, async () => {
+        await jednom(pokusajiUToku, tid, async () => {
           if (!stanje(tid).moze) return;
           let telo;
           try {

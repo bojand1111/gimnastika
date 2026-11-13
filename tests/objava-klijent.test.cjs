@@ -203,3 +203,58 @@ test('istek: ceka, signal se prekida', async () => {
   assert.equal(s.stanje, 'ceka');
   assert.equal(s.poruka, 'Biće poslato kad bude interneta.');
 });
+
+test('objavi tokom ponovnog pokusaja: stanje i svez izvoz', async () => {
+  let radi = false;
+  let pusti;
+  const kapija = new Promise((r) => { pusti = r; });
+  let blokiraj = false;
+  const e = okruzenje({
+    fetch: async () => {
+      if (!radi) throw new TypeError('fetch failed');
+      if (blokiraj) { blokiraj = false; await kapija; }
+      return { status: 200, text: async () => '{"ok":true}' };
+    },
+  });
+  const tid = takmicenje(e.baza, 'Staro');
+  await e.k.objavi(tid);
+  assert.equal(e.k.stanje(tid).stanje, 'ceka');
+  radi = true;
+  blokiraj = true;
+  const pre = e.pozivi.length;
+  const retry = e.k.posaljiNaCekanju();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(e.pozivi.length - pre, 1); // ponovni pokusaj je u toku
+  e.baza.izvrsi('UPDATE takmicenja SET naziv = ? WHERE id = ?', ['Novo', tid]);
+  const p = e.k.objavi(tid);
+  pusti();
+  const s = await p;
+  await retry;
+  assert.equal(typeof s, 'object');
+  assert.equal(s.stanje, 'poslato');
+  assert.equal(s.moze, true);
+  assert.equal(e.pozivi.length - pre, 2);
+  assert.equal(JSON.parse(e.pozivi[pre].init.body).takmicenje.naziv, 'Staro');
+  assert.equal(JSON.parse(e.pozivi[pre + 1].init.body).takmicenje.naziv, 'Novo');
+});
+
+test('posaljiNaCekanju ne krece pokusaj dok je objavi u toku', async () => {
+  let pusti;
+  const kapija = new Promise((r) => { pusti = r; });
+  const e = okruzenje({ fetch: async () => { await kapija; return { status: 200, text: async () => '{"ok":true}' }; } });
+  const tid = takmicenje(e.baza);
+  const p = e.k.objavi(tid);
+  await new Promise((r) => setImmediate(r));
+  const retry = e.k.posaljiNaCekanju();
+  pusti();
+  await Promise.all([p, retry]);
+  assert.equal(e.pozivi.length, 1);
+});
+
+test('dva preklapajuca objavi: jedan fetch (posle ponovnog pokusaja)', async () => {
+  const e = okruzenje();
+  const tid = takmicenje(e.baza);
+  const [a, b] = await Promise.all([e.k.objavi(tid), e.k.objavi(tid)]);
+  assert.equal(e.pozivi.length, 1);
+  assert.deepEqual(a, b);
+});
