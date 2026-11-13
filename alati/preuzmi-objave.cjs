@@ -25,7 +25,9 @@ function datumPrikaz(ymd) {
   return m ? `${m[3]}.${m[2]}.${m[1]}.` : '';
 }
 function vremePrikaz(iso) {
-  const d = new Date(iso);
+  // prihvata ISO sa zonom i 'GGGG-MM-DD HH:MM:SS' (UTC bez zone)
+  const tekst = String(iso ?? '').replace(' ', 'T');
+  const d = new Date(/(Z|[+-]\d\d:?\d\d)$/i.test(tekst) ? tekst : tekst + 'Z');
   if (Number.isNaN(d.getTime())) return '';
   return `${dvo(d.getDate())}.${dvo(d.getMonth() + 1)}.${d.getFullYear()}. ${dvo(d.getHours())}:${dvo(d.getMinutes())}`;
 }

@@ -67,6 +67,7 @@ test('uspeh: poslato', async () => {
   assert.equal(e.pozivi[0].init.method, 'POST');
   const telo = JSON.parse(e.pozivi[0].init.body);
   assert.equal(telo.uid, uidOd(e.baza, tid));
+  assert.match(telo.objavljeno, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
   assert.equal(e.pozivi[0].init.headers['Content-Type'], 'application/json; charset=utf-8');
   assert.equal(e.pozivi[0].init.headers['X-Gimnastika-Verzija'], '1.2.9');
   assert.equal(fs.readFileSync(fajl(e.dir, telo.uid), 'utf8'), e.pozivi[0].init.body);

@@ -14,7 +14,7 @@ const PREVELIKO = 'Takmičenje je preveliko za objavu.';
 
 function napravi({
   baza, model, adresa, fasciklaPodataka, dnevnik, verzija, fetch: fetchFn = globalThis.fetch,
-  sad = () => Baza.sad(), istekMs = ISTEK_MS, setTimeout: postaviTajmer = setTimeout, clearTimeout: ukloniTajmer = clearTimeout,
+  sad = () => Baza.sad(), iso = () => new Date().toISOString(), istekMs = ISTEK_MS, setTimeout: postaviTajmer = setTimeout, clearTimeout: ukloniTajmer = clearTimeout,
 }) {
   const osnova = () => String(adresa ?? '').trim().replace(/\/+$/, '');
   const objaveUToku = new Map(); // tid -> promise objave koja je u toku
@@ -82,8 +82,8 @@ function napravi({
       await pokusajiUToku.get(tid)?.catch(() => {});
       const s = stanje(tid);
       if (!s.moze) throw new GreskaKorisnika(s.razlog);
-      const vreme = sad();
-      const objava = model.izvezi(tid, { verzija: String(verzija), sad: vreme });
+      // objavljeno je ISO UTC sa Z (spec 5.1); sad() ostaje za kolone tabele objave
+      const objava = model.izvezi(tid, { verzija: String(verzija), sad: iso() });
       const telo = JSON.stringify(objava);
       if (Buffer.byteLength(telo) > NAJVECA_VELICINA) throw new GreskaKorisnika(PREVELIKO);
       const dir = path.join(fasciklaPodataka(), 'objave');

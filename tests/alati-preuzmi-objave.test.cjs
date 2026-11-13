@@ -13,7 +13,7 @@ const UID2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 function objava(uid, naziv = 'Memorijal', pol = 'M') {
   return { verzija_formata: 1, uid, takmicenje: { naziv, datum: '2026-10-17', pol }, klubovi: [], takmicari: [], kategorije: [], programi: [], sprave: [], prijave: [], grupe: [], ocene: [] };
 }
-const meta = (uid, pol = 'M') => ({ uid, naziv: 'Memorijal', datum: '2026-10-17', pol, objavljeno: '2026-11-13T10:05:00.000Z', verzija: 1 });
+const meta = (uid, pol = 'M') => ({ uid, naziv: 'Memorijal', datum: '2026-10-17', pol, objavljeno: '2026-11-13T10:05:00.000Z', verzija: '1.2.9' });
 
 function okolina(telo = {}) {
   const fascikla = fs.mkdtempSync(path.join(os.tmpdir(), 'gim-objave-'));
@@ -84,4 +84,17 @@ test('--obrisi zove DELETE i ne brise lokalno', async () => {
   assert.equal(e.pozivi[0].metoda, 'DELETE');
   assert.ok(fs.existsSync(path.join(e.fascikla, UID1 + '.json')));
   assert.equal(await main(['--obrisi'], e.deps), 1);
+});
+
+test('ispis vremena objave: ISO sa Z i oblik bez zone daju isto lokalno vreme', async () => {
+  const lokalno = (iso) => {
+    const d = new Date(iso);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}. ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  for (const objavljeno of ['2026-11-13T18:00:00.000Z', '2026-11-13 18:00:00']) {
+    const e = okolina({ ['GET /objave']: spisak({ ...meta(UID1), objavljeno }), ['GET /objave/' + UID1]: objava(UID1) });
+    await main([], e.deps);
+    assert.ok(e.izlaz.join('\n').includes('objavljeno ' + lokalno('2026-11-13T18:00:00.000Z')), objavljeno);
+  }
 });
