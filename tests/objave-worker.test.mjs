@@ -12,7 +12,12 @@ function laznKv() {
   const mapa = new Map();
   return {
     mapa,
-    async put(k, v, opcije = {}) { mapa.set(k, { v, metadata: opcije.metadata }); },
+    async put(k, v, opcije = {}) {
+      if (opcije.metadata && new TextEncoder().encode(JSON.stringify(opcije.metadata)).length > 1024) {
+        throw new Error('metadata prevelik');
+      }
+      mapa.set(k, { v, metadata: opcije.metadata });
+    },
     async get(k) { return mapa.has(k) ? mapa.get(k).v : null; },
     async delete(k) { mapa.delete(k); },
     async list({ prefix = '', cursor } = {}) {
@@ -156,4 +161,55 @@ test('nepoznata putanja je 404, losa metoda 405', async () => {
   assert.equal((await sKljucem('GET', '/', env)).status, 404);
   const put = await worker.fetch(new Request(adr('/objave'), { method: 'PUT', body: '{}' }), env);
   assert.equal(put.status, 405);
+});
+
+test('dugacak naziv: telo ostaje celo, metapodaci ispod granice', async () => {
+  const env = okruzenje();
+  const o = objava(UID, 'N'.repeat(5000));
+  assert.equal((await post(o, env)).status, 200);
+  const citaj = await (await sKljucem('GET', '/objave/' + UID, env)).json();
+  assert.equal(citaj.takmicenje.naziv.length, 5000);
+  const meta = env.OBJAVE.mapa.get('objava:' + UID).metadata;
+  assert.ok(new TextEncoder().encode(JSON.stringify(meta)).length <= 900);
+});
+
+test('pol koji nije tekst je 400', async () => {
+  const env = okruzenje();
+  const o = objava();
+  o.takmicenje.pol = { x: 1 };
+  assert.equal((await post(o, env)).status, 400);
+  assert.equal(env.OBJAVE.mapa.size, 0);
+});
+
+test('telo u delovima preko 2 MB bez Content-Length je 413 i ne upisuje', async () => {
+  const env = okruzenje();
+  const deo = new Uint8Array(1024 * 1024).fill(97);
+  let n = 0;
+  const tok = new ReadableStream({
+    pull(c) { if (n++ < 4) c.enqueue(deo); else c.close(); },
+  });
+  const odg = await worker.fetch(new Request(adr('/objave'), {
+    method: 'POST', body: tok, duplex: 'half',
+  }), env);
+  assert.equal(odg.status, 413);
+  assert.equal(env.OBJAVE.mapa.size, 0);
+});
+
+test('KV put koji baca daje 500 JSON', async () => {
+  const env = okruzenje();
+  env.OBJAVE.put = async () => { throw new Error('kv pao'); };
+  const log = console.error;
+  console.error = () => {};
+  let odg;
+  try { odg = await post(objava(), env); } finally { console.error = log; }
+  assert.equal(odg.status, 500);
+  assert.deepEqual(await odg.json(), { ok: false, greska: 'Greska servera.' });
+});
+
+test('uid velikim slovima POST pa malim GET vraca objavu', async () => {
+  const env = okruzenje();
+  assert.equal((await post(objava(UID.toUpperCase()), env)).status, 200);
+  assert.equal((await sKljucem('GET', '/objave/' + UID, env)).status, 200);
+  assert.equal((await sKljucem('GET', '/objave/' + UID.toUpperCase(), env)).status, 200);
+  assert.equal(env.OBJAVE.mapa.size, 1);
 });

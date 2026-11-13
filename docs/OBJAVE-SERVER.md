@@ -68,4 +68,6 @@ Bez zaglavlja ili sa pogrešnim ključem odgovor je `401`.
 | `DELETE /objave/<uid>` | da | briše objavu |
 
 Odgovori: `401` bez ispravnog ključa, `413` za telo veće od 2 MB, `400` za neispravnu objavu,
-`404` za nepoznatu putanju ili objavu, `405` za nedozvoljenu metodu.
+`404` za nepoznatu putanju ili objavu, `405` za nedozvoljenu metodu, `500` (`Greska servera.`) ako Cloudflare ili KV zakaže.
+
+Napomena: svako ko zna `uid` može POST-om da prepiše tu objavu (ponovna objava je tako zamišljena). Zato pregledaj preuzete fajlove pre nego što ih staviš u izdanje, i posle izdanja ne preuzimaj ponovo sve objave sa `--sve`.
