@@ -1,8 +1,9 @@
 // Objava takmicenja: citanje redova jednog takmicenja za izvoz (format je u racun/objava-format.mjs).
 // Uvoz (spec 5.6) nikad ne menja ni ne brise postojeci red, samo dodaje. Izvoz u fajl dodaje se u ovaj isti objekat.
+const crypto = require('node:crypto');
 const { Baza } = require('../baza/baza.cjs');
 const { GreskaKorisnika } = require('../greska.cjs');
-const { proveriObjavu } = require('../racun/objava-format.mjs');
+const { napraviObjavu, proveriObjavu } = require('../racun/objava-format.mjs');
 const { nadjiKlubDetaljno, kljuc } = require('../uvoz/uparivanje.cjs');
 const { normalizuj } = require('../uvoz/tumac-prijave.cjs');
 
@@ -190,7 +191,19 @@ function napravi(baza) {
     });
   }
 
-  return { redoviTakmicenja, uvezi, proveri, vecObradjen };
+  // Objekat objave za fajl; prvi put dodeljuje takmicenju uid (kasnije ostaje isti).
+  function izvezi(tid, { verzija, sad }) {
+    const redovi = redoviTakmicenja(tid);
+    let uid = redovi.takmicenje.uid;
+    if (!uid) {
+      uid = crypto.randomUUID();
+      baza.izmeni('takmicenja', { uid }, "id = ? AND uid = ''", [tid]);
+      uid = baza.vrednost('SELECT uid FROM takmicenja WHERE id = ?', [tid]);
+    }
+    return napraviObjavu(redovi, { uid, verzija, sad });
+  }
+
+  return { redoviTakmicenja, izvezi, uvezi, proveri, vecObradjen };
 }
 
 module.exports = { napravi };
