@@ -57,6 +57,79 @@ export function napraviObjavu(redovi, { uid, verzija, sad }) {
 }
 
 const tekst = (v) => typeof v === 'string' && v.trim() !== '';
+const cel = (v) => Number.isInteger(v);
+const celiliNull = (v) => v === null || v === undefined || Number.isInteger(v);
+
+// Sve sto bi uvoz odbio zbog NOT NULL kolona, tipova i jedinstvenosti (migracije 001 do 009).
+function stroga(o, greske) {
+  const red = (niz) => niz.filter((r) => r !== null && typeof r === 'object');
+  const trazi = (opis, r, polja, proveri, sta) => {
+    for (const p of polja) if (!proveri(r[p])) greske.push(opis + ': ' + p + ' ' + sta + '.');
+  };
+  const tekstovi = (opis, r, polja) => trazi(opis, r, polja, tekst, 'mora biti tekst');
+  const celi = (opis, r, polja) => trazi(opis, r, polja, cel, 'mora biti ceo broj');
+
+  for (const r of red(o.klubovi)) tekstovi('Klub ' + r.id, r, ['puno_ime', 'skracenica']);
+  for (const r of red(o.takmicari)) {
+    tekstovi('Takmičar ' + r.id, r, ['ime', 'prezime', 'pol']);
+    celi('Takmičar ' + r.id, r, ['godina_rodjenja']);
+  }
+  for (const r of red(o.kategorije)) tekstovi('Kategorija ' + r.id, r, ['naziv']);
+  for (const r of red(o.programi)) tekstovi('Program ' + r.id, r, ['naziv']);
+  for (const r of red(o.sprave)) tekstovi('Sprava ' + r.id, r, ['skracenica']);
+  for (const r of red(o.prijave)) celi('Prijava ' + r.id, r, ['clan_ekipe', 'van_konkurencije']);
+  for (const g of red(o.grupe)) {
+    const oznaka = 'Grupa ' + g.id;
+    tekstovi(oznaka, g, ['naziv']);
+    celi(oznaka, g, ['redosled', 'pocetna_pozicija', 'turnus']);
+    const vidjeno = new Set();
+    for (const c of red(Array.isArray(g.clanovi) ? g.clanovi : [])) celi(oznaka + ', član', c, ['redosled']);
+    for (const r of red(Array.isArray(g.redosled_po_rotaciji) ? g.redosled_po_rotaciji : [])) {
+      celi(oznaka + ', redosled po rotaciji', r, ['redosled', 'rotacija']);
+      const k = r.rotacija + '/' + r.prijava_id;
+      if (vidjeno.has(k)) greske.push(oznaka + ': ponovljen redosled za prijavu ' + r.prijava_id + ' u rotaciji ' + r.rotacija + '.');
+      vidjeno.add(k);
+    }
+  }
+  for (const c of red(o.ocene)) {
+    const oznaka = 'Ocena prijave ' + c.prijava_id + ' na spravi ' + c.sprava_id;
+    trazi(oznaka, c, ['d', 'e', 'bonus', 'odbitak', 'konacna'], celiliNull, 'mora biti ceo broj ili prazno');
+    const sudije = new Set();
+    for (const e of red(Array.isArray(c.e_sudije) ? c.e_sudije : [])) {
+      celi(oznaka + ', E sudija', e, ['sudija']);
+      trazi(oznaka + ', E sudija', e, ['vrednost'], celiliNull, 'mora biti ceo broj ili prazno');
+      if (sudije.has(e.sudija)) greske.push(oznaka + ': ponovljen E sudija ' + e.sudija + '.');
+      sudije.add(e.sudija);
+    }
+  }
+
+  // Jedinstvene oznake u svakom spisku.
+  for (const k of ['klubovi', 'takmicari', 'kategorije', 'programi', 'sprave', 'prijave', 'grupe']) {
+    const vidjeno = new Set();
+    for (const r of red(o[k])) {
+      if (vidjeno.has(r.id)) greske.push('Spisak ' + k + ': ponovljena oznaka ' + r.id + '.');
+      vidjeno.add(r.id);
+    }
+  }
+  const parovi = new Set();
+  for (const c of red(o.ocene)) {
+    const k = c.prijava_id + '/' + c.sprava_id;
+    if (parovi.has(k)) greske.push('Ocena prijave ' + c.prijava_id + ' na spravi ' + c.sprava_id + ' je ponovljena.');
+    parovi.add(k);
+  }
+  const uGrupi = new Set();
+  for (const g of red(o.grupe)) {
+    for (const c of red(Array.isArray(g.clanovi) ? g.clanovi : [])) {
+      if (uGrupi.has(c.prijava_id)) greske.push('Prijava ' + c.prijava_id + ' je u više od jedne grupe.');
+      uGrupi.add(c.prijava_id);
+    }
+  }
+  const takmicariPrijava = new Set();
+  for (const p of red(o.prijave)) {
+    if (takmicariPrijava.has(p.takmicar_id)) greske.push('Takmičar ' + p.takmicar_id + ' ima više od jedne prijave.');
+    takmicariPrijava.add(p.takmicar_id);
+  }
+}
 
 // Vraca listu poruka; prazna lista znaci da je objava ispravna.
 export function proveriObjavu(o) {
@@ -77,6 +150,8 @@ export function proveriObjavu(o) {
   const nedostaje = NIZOVI.filter((k) => !Array.isArray(o[k]));
   for (const k of nedostaje) greske.push('Nedostaje spisak: ' + k + '.');
   if (nedostaje.length) return greske;
+
+  stroga(o, greske);
 
   const ids = (niz) => new Set(niz.map((r) => r?.id));
   const klubovi = ids(o.klubovi);

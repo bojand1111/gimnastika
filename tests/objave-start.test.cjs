@@ -135,3 +135,28 @@ test('fajl koji ne prolazi proveru dobija uid zapis, sam ne pravi kopiju', () =>
   assert.equal(r.odbijena[0].uid, UID1);
   assert.equal(baza.vrednost('SELECT stanje FROM uvezene_objave WHERE uid = ?', [UID1]), 'odbijeno');
 });
+
+test('uvezi baca za jedan fajl: ostali se uvoze, taj ide u odbijena, start se nastavlja', () => {
+  const baza = prazna();
+  const pravi = napravi(baza);
+  const model = { ...pravi, uvezi(o, opcije) { if (o.uid === UID2) throw new Error('puklo usred uvoza'); return pravi.uvezi(o, opcije); } };
+  const f = fascikla({ 'a.json': objava(UID1, '2026-10-17'), 'b.json': objava(UID2, '2026-10-18'), 'c.json': objava('a1b2c3d4-0000-4000-8000-000000000003', '2026-10-19') });
+  const l = lazno();
+  const r = uveziIzFascikle({ baza, fascikla: f, kopija: l.kopija, dnevnik: l.dnevnik, verzija: '1.2.9', sad: '2026-11-13 10:00:00', model });
+  assert.equal(r.uvezena.length, 2);
+  assert.deepEqual(r.odbijena, [{ uid: UID2, poruka: 'puklo usred uvoza' }]);
+  assert.equal(brojTakmicenja(baza), 2);
+  assert.equal(l.greske.length, 1);
+});
+
+test('takmicar bez godine rodjenja: odbijeno bez kopije i bez izuzetka u uvozu', () => {
+  const baza = prazna();
+  const lose = objava(UID1, '2026-10-17');
+  lose.takmicari.push({ id: 1, ime: 'Ana', prezime: 'Anic', godina_rodjenja: null, pol: 'Z', klub_id: null, drzavljanstvo: 'Srbija' });
+  const l = lazno();
+  const r = poziv(baza, fascikla({ 'a.json': lose }), l);
+  assert.deepEqual(l.pozivi, []);
+  assert.equal(r.uvezena.length, 0);
+  assert.equal(baza.vrednost('SELECT stanje FROM uvezene_objave WHERE uid = ?', [UID1]), 'odbijeno');
+  assert.deepEqual(l.greske, []);
+});

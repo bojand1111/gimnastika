@@ -143,3 +143,72 @@ test('proveriObjavu: nije objekat', () => {
   assert.equal(proveriObjavu(null).length, 1);
   assert.equal(proveriObjavu([]).length, 1);
 });
+
+test('proveriObjavu: obavezni tekstovi (NOT NULL kolone)', () => {
+  jedna((o) => { o.takmicari[0].ime = ''; });
+  jedna((o) => { o.takmicari[0].prezime = null; });
+  jedna((o) => { o.takmicari[0].pol = ' '; });
+  jedna((o) => { o.klubovi[0].puno_ime = ''; });
+  jedna((o) => { o.klubovi[0].skracenica = null; });
+  jedna((o) => { o.kategorije[0].naziv = ''; });
+  jedna((o) => { o.programi[0].naziv = ''; });
+  jedna((o) => { o.sprave[0].skracenica = ''; });
+  jedna((o) => { o.grupe[0].naziv = ''; });
+});
+
+test('proveriObjavu: celi brojevi gde je kolona INTEGER NOT NULL', () => {
+  jedna((o) => { o.takmicari[0].godina_rodjenja = null; });
+  jedna((o) => { o.takmicari[0].godina_rodjenja = '2012'; });
+  jedna((o) => { o.grupe[0].redosled = null; });
+  jedna((o) => { o.grupe[0].pocetna_pozicija = 1.5; });
+  jedna((o) => { o.grupe[0].turnus = null; });
+  jedna((o) => { o.grupe[0].clanovi[0].redosled = null; });
+  jedna((o) => { o.grupe[0].redosled_po_rotaciji[0].redosled = null; });
+  jedna((o) => { o.grupe[0].redosled_po_rotaciji[0].rotacija = 'a'; });
+  jedna((o) => { o.ocene[0].e_sudije[0].sudija = null; });
+  jedna((o) => { o.prijave[0].clan_ekipe = null; });
+  jedna((o) => { o.prijave[0].van_konkurencije = 'da'; });
+});
+
+test('proveriObjavu: ocene su celi brojevi ili prazno', () => {
+  for (const k of ['d', 'e', 'bonus', 'odbitak', 'konacna']) {
+    jedna((o) => { o.ocene[0][k] = 8.5; });
+    jedna((o) => { o.ocene[0][k] = '8500'; });
+  }
+  jedna((o) => { o.ocene[0].e_sudije[1].vrednost = 8.5; });
+  const o = napravi();
+  for (const k of ['d', 'e', 'bonus', 'odbitak', 'konacna']) o.ocene[0][k] = 8500;
+  assert.deepEqual(proveriObjavu(o), []);
+});
+
+test('proveriObjavu: ponovljena oznaka u spisku', () => {
+  jedna((o) => { o.klubovi.push({ ...o.klubovi[0] }); });
+  jedna((o) => { o.takmicari.push({ ...o.takmicari[0] }); });
+  jedna((o) => { o.kategorije.push({ ...o.kategorije[0] }); });
+  jedna((o) => { o.programi.push({ ...o.programi[0] }); });
+  jedna((o) => { o.sprave.push({ ...o.sprave[0] }); });
+  jedna((o) => { o.grupe.push({ ...o.grupe[0], clanovi: [], redosled_po_rotaciji: [] }); });
+  // prijava sa istom oznakom i drugim takmicarom: jedna greska za oznaku
+  jedna((o) => {
+    o.takmicari.push({ ...o.takmicari[0], id: 8 });
+    o.prijave.push({ ...o.prijave[0], takmicar_id: 8 });
+  });
+});
+
+test('proveriObjavu: ponovljena ocena za prijavu i spravu', () => {
+  jedna((o) => { o.ocene.push({ ...o.ocene[0] }); });
+});
+
+test('proveriObjavu: prijava u vise grupa', () => {
+  jedna((o) => { o.grupe.push({ ...o.grupe[0], id: 21, redosled_po_rotaciji: [] }); });
+  jedna((o) => { o.grupe[0].clanovi.push({ prijava_id: 10, redosled: 2 }); });
+});
+
+test('proveriObjavu: takmicar sa dve prijave', () => {
+  jedna((o) => { o.prijave.push({ ...o.prijave[0], id: 11, sprave: [] }); });
+});
+
+test('proveriObjavu: ponovljen kljuc u redosledu rotacije i E sudiji', () => {
+  jedna((o) => { o.grupe[0].redosled_po_rotaciji.push({ ...o.grupe[0].redosled_po_rotaciji[0] }); });
+  jedna((o) => { o.ocene[0].e_sudije.push({ sudija: 1, vrednost: null }); });
+});

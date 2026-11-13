@@ -11,13 +11,14 @@ function kljucDatuma(d) {
   return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : s;
 }
 
-function uveziIzFascikle({ baza, fascikla, kopija, dnevnik, verzija, sad }) {
+// model: za testove (zamena objave); inace pravi model nad bazom.
+function uveziIzFascikle({ baza, fascikla, kopija, dnevnik, verzija, sad, model }) {
   const rezultat = { uvezena: [], odbijena: [] };
   if (!fs.existsSync(fascikla)) return rezultat;
   const imena = fs.readdirSync(fascikla).filter((i) => i.toLowerCase().endsWith('.json'));
   if (imena.length === 0) return rezultat;
 
-  const objava = napraviObjavu(baza);
+  const objava = model ?? napraviObjavu(baza);
   const fajlovi = [];
   for (const ime of imena) {
     try {
