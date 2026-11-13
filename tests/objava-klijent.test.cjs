@@ -259,3 +259,16 @@ test('dva preklapajuca objavi: jedan fetch (posle ponovnog pokusaja)', async () 
   assert.equal(e.pozivi.length, 1);
   assert.deepEqual(a, b);
 });
+
+test('posaljiNaCekanju: nema fajla objave, poruka u redu a stanje ostaje ceka', async () => {
+  const e = okruzenje({ fetch: async () => { throw new TypeError('fetch failed'); } });
+  const tid = takmicenje(e.baza);
+  await e.k.objavi(tid);
+  fs.unlinkSync(fajl(e.dir, uidOd(e.baza, tid)));
+  const pre = e.pozivi.length;
+  await e.k.posaljiNaCekanju();
+  assert.equal(e.pozivi.length, pre);
+  const s = e.k.stanje(tid);
+  assert.equal(s.stanje, 'ceka');
+  assert.equal(s.poruka, 'Fajl objave nije pronađen. Objavite takmičenje ponovo.');
+});

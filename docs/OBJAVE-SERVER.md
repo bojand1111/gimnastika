@@ -71,3 +71,5 @@ Odgovori: `401` bez ispravnog ključa, `413` za telo veće od 2 MB, `400` za nei
 `404` za nepoznatu putanju ili objavu, `405` za nedozvoljenu metodu, `500` (`Greska servera.`) ako Cloudflare ili KV zakaže.
 
 Napomena: svako ko zna `uid` može POST-om da prepiše tu objavu (ponovna objava je tako zamišljena). Zato pregledaj preuzete fajlove pre nego što ih staviš u izdanje, i posle izdanja ne preuzimaj ponovo sve objave sa `--sve`.
+
+Napomena: ako se vrati starija kopija baze i takmičenje ponovo objavi, ono dobija novi `uid`, pa server može da čuva dve kopije istog takmičenja; ostale instalacije drugu preskaču kao već postojeće.

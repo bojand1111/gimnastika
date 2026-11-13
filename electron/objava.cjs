@@ -10,6 +10,7 @@ const ISTEK_MS = 15000;
 const BEZ_ADRESE = 'Adresa za objavu nije podešena.';
 const UVEZENO = 'Takmičenje je dodato iz ažuriranja i ne objavljuje se ponovo.';
 const CEKA_PORUKA = 'Biće poslato kad bude interneta.';
+const FAJL_NEDOSTAJE = 'Fajl objave nije pronađen. Objavite takmičenje ponovo.';
 const PREVELIKO = 'Takmičenje je preveliko za objavu.';
 
 function napravi({
@@ -115,6 +116,7 @@ function napravi({
             telo = fs.readFileSync(red.fajl, 'utf8');
           } catch (err) {
             dnevnik.greska(`Objava: fajl za takmicenje ${tid} nije dostupan`, err);
+            baza.izmeni('objave', { poruka: FAJL_NEDOSTAJE }, 'takmicenje_id = ?', [tid]);
             return;
           }
           await posalji(tid, telo);
