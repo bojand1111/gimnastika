@@ -17,6 +17,7 @@ const VRSTE = {
   pre_vracanja: 'Pre vraćanja',
   pre_azuriranja: 'Pre ažuriranja',
   pre_migracije: 'Pre migracije',
+  pre_uvoza: 'Pre uvoza takmičenja',
   uvoz: 'Uvezena',
 };
 // Najnovija PHP verzija iz koje se kopija uvozi (POPIS 4).

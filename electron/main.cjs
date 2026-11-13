@@ -11,6 +11,7 @@ const { podeliPolove } = require('./baza/podela-polova.cjs');
 const dnevnik = require('./dnevnik.cjs');
 const { registruj } = require('./ipc.cjs');
 const { createUpdater } = require('./updater.cjs');
+const { uveziIzFascikle } = require('./objave-start.cjs');
 
 let prozor = null;
 let azuriranje = null;
@@ -92,6 +93,14 @@ function pokreni() {
     dialog.showErrorBox('Gimnastika', `Baza se ne može otvoriti: ${err.message}`);
     app.exit(1);
     return;
+  }
+  // Uvoz objavljenih takmicenja iz takmicenja/; greska nikad ne zaustavlja otvaranje prozora.
+  try {
+    const fascikla = app.isPackaged ? path.join(process.resourcesPath, 'takmicenja') : path.join(__dirname, '..', 'takmicenja');
+    const uvoz = uveziIzFascikle({ baza, fascikla, kopija, dnevnik, verzija: verzija() });
+    if (uvoz.uvezena.length || uvoz.odbijena.length) log(`uvoz objava: uvezeno ${uvoz.uvezena.length}, odbijeno ${uvoz.odbijena.length}`);
+  } catch (err) {
+    dnevnik.greska('uvoz objava', err);
   }
   azuriranje = createUpdater({
     app,

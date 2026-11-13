@@ -15,6 +15,12 @@ files:
   - "!node_modules/pdfjs-dist/**/*.{map,d.mts}"
   - "!node_modules/pdfjs-dist/legacy/build/{pdf.min.mjs,pdf.worker.min.mjs,pdf.sandbox.mjs,pdf.sandbox.min.mjs}"
   - "!node_modules/@napi-rs/**"
+# Objavljena takmicenja (takmicenja/*.json) idu pored aplikacije; uvoze se pri startu (electron/objave-start.cjs)
+extraResources:
+  - from: takmicenja
+    to: takmicenja
+    filter:
+      - "*.json"
 # pdfjs se ucitava kao ES modul (import), pa je raspakovan pored app.asar (vidi electron/uvoz/pdf.cjs)
 asarUnpack:
   - node_modules/pdfjs-dist/**
