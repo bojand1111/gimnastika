@@ -15,6 +15,9 @@ export function tekstPotvrdeObjave(zavrseno) {
   return Number(zavrseno) === 1 ? osnova : `${osnova} Takmičenje još nije označeno kao završeno.`;
 }
 
+// Stanje kad objava.stanje nije uspelo da se ucita: blokirano, sa vidljivim razlogom.
+export const NEUCITANO = { moze: false, razlog: 'Stanje objave nije učitano. Otvorite ekran ponovo.', stanje: 'nije', poslato: null, poruka: '' };
+
 // Dugme je onemoguceno dok stanje ne stigne, dok traje slanje i kad objava nije moguca.
 export function objavaOnemogucena(s, saljem) {
   return Boolean(saljem) || s === null || s === undefined || !s.moze;

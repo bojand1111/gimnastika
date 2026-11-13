@@ -9,7 +9,7 @@ import { obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
 import { tekstPlocice, tekstRotacije } from './pocetnaStanje.js';
 import { tekstStanja } from './sinhroStanje.js';
-import { objavaOnemogucena, razlogObjave, tekstObjave, tekstPotvrdeObjave } from './objavaStanje.js';
+import { NEUCITANO, objavaOnemogucena, razlogObjave, tekstObjave, tekstPotvrdeObjave } from './objavaStanje.js';
 
 // Pregled takmicenja (POPIS 2): jedan IPC poziv daje sve sto pogled treba.
 export default function Takmicenje() {
@@ -29,7 +29,11 @@ export default function Takmicenje() {
       .then((p) => {
         if (!ziv) return null;
         postaviD(p);
-        return gim.objava.stanje(p.takm.id);
+        // Neuspelo stanje objave: dugme ostaje blokirano, ali sa vidljivim razlogom.
+        return gim.objava.stanje(p.takm.id).catch((e) => {
+          if (ziv) obavesti(e.message, 'greska');
+          return NEUCITANO;
+        });
       })
       .then((o) => { if (ziv && o) postaviObjavu(o); })
       .catch((e) => { if (ziv && !obradiNemaAktivnog(e)) obavesti(e.message, 'greska'); });

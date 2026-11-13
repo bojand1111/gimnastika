@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { objavaOnemogucena, razlogObjave, tekstObjave } from '../src/ekrani/objavaStanje.js';
+import { NEUCITANO, objavaOnemogucena, razlogObjave, tekstObjave } from '../src/ekrani/objavaStanje.js';
 
 test('dugme je onemoguceno dok stanje ne stigne, pri slanju i bez moze', () => {
   assert.equal(objavaOnemogucena(null, false), true);
@@ -19,4 +19,10 @@ test('tekstObjave: stanja', () => {
   assert.equal(tekstObjave(null), '');
   assert.equal(tekstObjave({ stanje: 'ceka' }), 'Čeka internet');
   assert.equal(tekstObjave({ stanje: 'nije' }), 'Nije objavljeno');
+});
+
+test('neucitano stanje: blokirano sa vidljivim razlogom', () => {
+  assert.equal(objavaOnemogucena(NEUCITANO, false), true);
+  assert.equal(razlogObjave(NEUCITANO), 'Stanje objave nije učitano. Otvorite ekran ponovo.');
+  assert.equal(tekstObjave(NEUCITANO), 'Nije objavljeno');
 });
