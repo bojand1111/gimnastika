@@ -92,6 +92,9 @@ export function proveriObjavu(o) {
     if (!skup.has(v)) greske.push(opis);
   };
 
+  for (const t of o.takmicari) {
+    veza(klubovi, t?.klub_id, 'Takmičar ' + t?.id + ': klub ne postoji u fajlu.', true);
+  }
   for (const p of o.prijave) {
     const oznaka = 'Prijava ' + p?.id;
     veza(takmicari, p?.takmicar_id, oznaka + ': takmičar ne postoji u fajlu.', false);

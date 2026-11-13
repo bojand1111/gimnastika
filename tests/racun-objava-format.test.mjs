@@ -131,6 +131,14 @@ test('proveriObjavu: null klub, kategorija i program su dozvoljeni', () => {
   assert.deepEqual(proveriObjavu(o), []);
 });
 
+test('proveriObjavu: klub takmicara', () => {
+  jedna((o) => { o.takmicari[0].klub_id = 999; });
+  jedna((o) => { delete o.takmicari[0].klub_id; });
+  const o = napravi();
+  o.takmicari[0].klub_id = null;
+  assert.deepEqual(proveriObjavu(o), []);
+});
+
 test('proveriObjavu: nije objekat', () => {
   assert.equal(proveriObjavu(null).length, 1);
   assert.equal(proveriObjavu([]).length, 1);
