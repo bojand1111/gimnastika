@@ -14,3 +14,13 @@ export function tekstPotvrdeObjave(zavrseno) {
   const osnova = 'Šalje se: rezultati, imena, klubovi i godine rođenja. Ne šalje se: kontakt roditelja, lekarski, broj licence, trener.';
   return Number(zavrseno) === 1 ? osnova : `${osnova} Takmičenje još nije označeno kao završeno.`;
 }
+
+// Dugme je onemoguceno dok stanje ne stigne, dok traje slanje i kad objava nije moguca.
+export function objavaOnemogucena(s, saljem) {
+  return Boolean(saljem) || s === null || s === undefined || !s.moze;
+}
+
+// Razlog se prikazuje kao tekst (dostupan i bez misa).
+export function razlogObjave(s) {
+  return s && !s.moze ? String(s.razlog ?? '') : '';
+}

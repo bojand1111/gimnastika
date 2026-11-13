@@ -9,7 +9,7 @@ import { obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
 import { tekstPlocice, tekstRotacije } from './pocetnaStanje.js';
 import { tekstStanja } from './sinhroStanje.js';
-import { tekstObjave, tekstPotvrdeObjave } from './objavaStanje.js';
+import { objavaOnemogucena, razlogObjave, tekstObjave, tekstPotvrdeObjave } from './objavaStanje.js';
 
 // Pregled takmicenja (POPIS 2): jedan IPC poziv daje sve sto pogled treba.
 export default function Takmicenje() {
@@ -79,7 +79,7 @@ export default function Takmicenje() {
               </span>
               <span style={{ display: 'inline-flex', gap: 4 }}>
                 <button type="button" className="dugme dugme-tekst dugme-malo" onClick={objavi}
-                  disabled={saljem || (objava !== null && !objava.moze)} title={objava && !objava.moze ? objava.razlog : undefined}>
+                  disabled={objavaOnemogucena(objava, saljem)} title={razlogObjave(objava) || undefined}>
                   Objavi takmičenje
                 </button>
                 <a href={`#/takmicenja/izmeni?id=${takm.id}`} className="dugme dugme-tekst dugme-malo">Izmeni podatke</a>
@@ -98,7 +98,7 @@ export default function Takmicenje() {
               {takm.domacin && <span>Domaćin: {takm.domacin}</span>}
             </div>
             <span className="sivo mali">Rezultati uživo: {tekstStanja(d.sinhro)}</span>
-            <span className="sivo mali">Objava: {tekstObjave(objava)}</span>
+            <span className="sivo mali">Objava: {tekstObjave(objava)}{razlogObjave(objava) !== '' && <span> · {razlogObjave(objava)}</span>}</span>
             <div className="mreza-3">
               <div className="plocica-broj"><span className="broj">{brojevi.prijava}</span><span>prijavljenih takmičara</span></div>
               <div className="plocica-broj"><span className="broj">{brojevi.klubova}</span><span>klubova</span></div>
