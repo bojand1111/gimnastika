@@ -84,6 +84,13 @@ function napravi(baza, fasciklaPodataka) {
       }
     }
     if (!Object.prototype.hasOwnProperty.call(PRAVILA, o.pravilo_e)) g.push('Nepoznato pravilo za E ocenu.');
+    else if (id !== null && id !== undefined) {
+      // Unete ocene se ne preracunavaju, pa bi lista mesala dva pravila.
+      const staro = nadji(id);
+      if (staro && staro.pravilo_e !== o.pravilo_e && imaOcena(id)) {
+        g.push('Obračun E ocene se ne može menjati kad takmičenje već ima unete ocene.');
+      }
+    }
     if (o.ekipno_broji < 1 || o.ekipno_broji > 10) g.push('Broj ocena koje se broje za ekipu mora biti između 1 i 10.');
     return g;
   }

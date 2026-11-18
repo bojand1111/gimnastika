@@ -198,14 +198,17 @@ function Forma({ id }) {
                 <legend className="oznaka">Pravila</legend>
                 <span className="pravila-naslov">Obračun E ocene</span>
                 <label className="radio-red">
-                  <input type="radio" name="pravilo_e" value="odbaci_krajnje" checked={forma.pravilo_e === 'odbaci_krajnje'} onChange={promeni('pravilo_e')} />
+                  <input type="radio" name="pravilo_e" value="odbaci_krajnje" checked={forma.pravilo_e === 'odbaci_krajnje'} onChange={promeni('pravilo_e')}
+                    disabled={imaOcena && forma.pravilo_e !== 'odbaci_krajnje'} />
                   <span><span>Odbacuju se najviša i najniža</span>
                     <span className="sivo mali">Konačna E ocena je prosek preostalih (sa dve sudije prosek obe, sa jednom njena ocena)</span></span>
                 </label>
                 <label className="radio-red">
-                  <input type="radio" name="pravilo_e" value="prosek_svih" checked={forma.pravilo_e === 'prosek_svih'} onChange={promeni('pravilo_e')} />
+                  <input type="radio" name="pravilo_e" value="prosek_svih" checked={forma.pravilo_e === 'prosek_svih'} onChange={promeni('pravilo_e')}
+                    disabled={imaOcena && forma.pravilo_e !== 'prosek_svih'} />
                   <span>Prosek svih E ocena</span>
                 </label>
+                {imaOcena && <span className="sivo mali">Obračun E ocene se ne može menjati: takmičenje već ima unete ocene.</span>}
                 <div className="ekipno-red">
                   <span className="pravila-naslov">Ekipno:</span><span>broje se</span>
                   <input type="text" className="unos broj ekipno" name="ekipno_broji" value={forma.ekipno_broji}

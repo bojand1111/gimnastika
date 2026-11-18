@@ -94,6 +94,21 @@ test('broj E sudija: blokira uneto, ne blokira nacrt, ne blokira istu vrednost',
   assert.deepEqual(t.proveri({ ...OK, broj_e_sudija: '5' }, null), []);
 });
 
+test('obracun E ocene: blokira uneto, ne blokira nacrt, ne blokira istu vrednost', () => {
+  const { baza, t } = nova();
+  const id = t.sacuvaj(OK, null, 'Z');
+  prijava(baza, id, 'nacrt');
+  assert.deepEqual(t.proveri({ ...OK, pravilo_e: 'prosek_svih' }, id), []);
+  prijava(baza, id, 'uneto');
+  assert.deepEqual(t.proveri({ ...OK, pravilo_e: 'prosek_svih' }, id),
+    ['Obračun E ocene se ne može menjati kad takmičenje već ima unete ocene.']);
+  assert.deepEqual(t.proveri({ ...OK, pravilo_e: 'odbaci_krajnje' }, id), []);
+  assert.deepEqual(t.proveri({ ...OK, pravilo_e: 'prosek_svih' }, null), []);
+  assert.throws(() => t.sacuvaj({ ...OK, pravilo_e: 'prosek_svih' }, id, 'Z'),
+    (e) => e instanceof GreskaKorisnika && e.message === 'Obračun E ocene se ne može menjati kad takmičenje već ima unete ocene.');
+  assert.equal(t.nadji(id).pravilo_e, 'odbaci_krajnje');
+});
+
 test('postaviGrb: nepoznato polje baca, prazno uklanja', () => {
   const { t } = nova();
   const id = t.sacuvaj(OK, null, 'Z');
