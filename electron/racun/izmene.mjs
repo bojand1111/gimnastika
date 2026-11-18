@@ -24,6 +24,10 @@ const bezBonusa = (v) => v === null || v === undefined || v === 0;
 // "E2 8,100 → 7,900 · konačna 13,050 → 12,950"; prazna vrednost je '' (razmak posle strelice ostaje).
 // Odbitak se prikazuje kao "penalizacija" (kljuc u JSON-u ostaje odbitak).
 export function opisIzmene(staro, novo) {
+  // Brisanje unete ocene: red se vraca na nacrt bez brojeva, pa je razlika po poljima samo sum.
+  if ((novo.status ?? '') === 'nacrt' && ['uneto', 'ispravljeno'].includes(staro.status ?? '')) {
+    return `obrisana ocena ${pr(staro.konacna)}`;
+  }
   const delovi = [];
   for (const [k, oz] of [['d', 'D'], ['bonus', 'bonus'], ['odbitak', 'penalizacija']]) {
     if (k === 'bonus' && bezBonusa(staro[k]) && bezBonusa(novo[k])) continue;

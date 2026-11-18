@@ -25,6 +25,9 @@ function Status({ red, trenutni, h }) {
       </span>
     );
   }
+  if (red.greskaPotvrde && !(trenutni && otvoren(red))) {
+    return <span className="unos-status"><span className="status status-bad">Nije potvrđeno</span></span>;
+  }
   if (trenutni && otvoren(red)) {
     return (
       <span className="unos-status">
@@ -32,10 +35,18 @@ function Status({ red, trenutni, h }) {
           onClick={() => h.potvrdi(id)}>
           Potvrdi
         </button>
-        <button type="button" className="dugme dugme-malo dugme-opasno odustao-dugme" tabIndex={-1} title={`${odustaoRec(red.pol)} (F8)`}
-          onClick={() => h.odustao(id)}>
-          {odustaoRec(red.pol)}
-        </button>
+        {/* U ispravci unete ocene drugo dugme brise ocenu; odustajanje ostaje na F8. */}
+        {red.ispravlja ? (
+          <button type="button" className="dugme dugme-malo dugme-opasno odustao-dugme obrisi-dugme" tabIndex={-1} title="Obriši ocenu (Shift+F8)"
+            onClick={() => h.obrisi(id)}>
+            Obriši
+          </button>
+        ) : (
+          <button type="button" className="dugme dugme-malo dugme-opasno odustao-dugme" tabIndex={-1} title={`${odustaoRec(red.pol)} (F8)`}
+            onClick={() => h.odustao(id)}>
+            {odustaoRec(red.pol)}
+          </button>
+        )}
       </span>
     );
   }
@@ -60,7 +71,7 @@ function UnosRed({ red, brojSudija, trenutni, kolone, h }) {
   const id = red.prijava_id;
   const zakljucan = !otvoren(red);
   const klase = ['unos-red', red.status === 'nacrt' ? 'ceka' : '', trenutni ? 'trenutni' : '', red.ispravlja ? 'ispravlja' : '',
-    red.greskaCuvanja ? 'greska-cuvanja' : ''].filter(Boolean).join(' ');
+    red.greskaCuvanja || red.greskaPotvrde ? 'greska-cuvanja' : ''].filter(Boolean).join(' ');
   const polje = (ime) => (
     <input key={ime} type="text" data-polje={ime} aria-label={naziv(ime)} inputMode="decimal" autoComplete="off"
       className={`ocena${zakljucan ? ' zakljucano' : ''}${red.greske.has(ime) ? ' greska' : ''}`}

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   ePolja, polja, proveriPolje, preracunaj, podaciReda, sledeciOtvoren, sledecePolje, sledeciRedSaPoljem,
   prvoPraznoPolje, pocetniFokus, napredakIzRedova, tekstOdustalo, procenat, hashUnos, parUnos, odustaoRec, primeniPrikaz,
+  pitanjeOdustao, ispravkaIzmenjena, porukaIspravka,
 } from '../src/ekrani/unosStanje.js';
 
 const red = (status, extra = {}) => ({ prijava_id: 1, status, ispravlja: false, vrednosti: {}, ...extra });
@@ -182,4 +183,31 @@ test('hashUnos i parUnos sa turnusom', () => {
   assert.equal(hashUnos(3, 2), '#/unos?sprava=3&rot=2');
   assert.deepEqual(parUnos('#/unos?sprava=3&rot=2&tu=2'), { sprava: '3', rot: '2', tu: '2' });
   assert.deepEqual(parUnos('#/unos?sprava=3&tu='), { sprava: '3', rot: undefined, tu: undefined });
+});
+
+test('pitanjeOdustao: nad unetom ocenom upozorava da se ocena brise', () => {
+  assert.equal(pitanjeOdustao(red('nacrt', { ime: 'Test Ana', pol: 'Z' })), 'Test Ana je odustala na ovoj spravi?');
+  assert.equal(pitanjeOdustao(red('nacrt', { ime: 'Test Marko', pol: 'M' })), 'Test Marko je odustao na ovoj spravi?');
+  for (const status of ['uneto', 'ispravljeno']) {
+    assert.equal(pitanjeOdustao(red(status, { ime: 'Test Ana', pol: 'Z' })),
+      'Test Ana već ima unetu ocenu na ovoj spravi. Ako označite da je odustala, ta ocena se briše. Nastaviti?');
+  }
+});
+
+test('ispravkaIzmenjena: samo red u ispravci sa promenjenim poljem', () => {
+  const v = unos('4,800', ['8,300', '8,100', '8,400', '8,200'], '0,000', '0,000');
+  assert.equal(ispravkaIzmenjena(red('uneto', { vrednosti: v, izvorno: v }), 4), false); // nije u ispravci
+  assert.equal(ispravkaIzmenjena(red('uneto', { ispravlja: true, vrednosti: { ...v }, izvorno: v }), 4), false);
+  assert.equal(ispravkaIzmenjena(red('uneto', { ispravlja: true, vrednosti: { ...v, e2: '7,900' }, izvorno: v }), 4), true);
+  assert.equal(ispravkaIzmenjena(red('uneto', { ispravlja: true, vrednosti: { ...v, d: ' 4,800 ' }, izvorno: v }), 4), false);
+  assert.equal(ispravkaIzmenjena(red('uneto', { ispravlja: true, vrednosti: { ...v, odbitak: '' }, izvorno: v }), 4), true);
+  // polje sudije koje se ne koristi (1 sudija) se ne poredi
+  assert.equal(ispravkaIzmenjena(red('uneto', { ispravlja: true, vrednosti: { ...v, e4: '1,000' }, izvorno: v }), 1), false);
+  assert.equal(ispravkaIzmenjena(null, 4), false);
+});
+
+test('porukaIspravka i primeniPrikaz cisti oznaku neuspele potvrde', () => {
+  assert.equal(porukaIspravka('Test Ana'), 'Ispravka za Test Ana nije potvrđena. Potvrdite je (Enter na penalizaciji) ili otkažite (Esc).');
+  const n = primeniPrikaz(red('nacrt', { greskaPotvrde: true }), { d: '4,800', e_sudije: [], e: '', konacna: '', status: 'uneto' });
+  assert.equal(n.greskaPotvrde, false);
 });

@@ -47,7 +47,7 @@ function sa4(saGrupom = true) {
 
 test('guard: unos ima handler za svaku radnju', () => {
   const { moduli } = pravi();
-  assert.deepEqual(MODULI.unos, ['podaci', 'nacrt', 'potvrdi', 'odustao', 'vrati', 'zapisnici']);
+  assert.deepEqual(MODULI.unos, ['podaci', 'nacrt', 'potvrdi', 'odustao', 'vrati', 'obrisi', 'zapisnici']);
   const ipc = { kanali: {}, handle(k, fn) { this.kanali[k] = fn; } };
   registruj(ipc, moduli, dn, Object.fromEntries(Object.keys(moduli).map((k) => [k, MODULI[k]])));
   for (const r of MODULI.unos) assert.ok(ipc.kanali[`gim:unos:${r}`], r);
@@ -57,7 +57,7 @@ test('bez aktivnog takmicenja svaka radnja baca poruku', () => {
   const { moduli } = pravi();
   const u = moduli.unos;
   const pozivi = [() => u.podaci(1, 1), () => u.nacrt(1, 1, ULAZ), () => u.potvrdi(1, 1, ULAZ, ''),
-    () => u.odustao(1, 1), () => u.vrati(1, 1), () => u.zapisnici()];
+    () => u.odustao(1, 1), () => u.vrati(1, 1), () => u.obrisi(1, 1, 'razlog'), () => u.zapisnici()];
   for (const f of pozivi) assert.throws(f, (e) => e instanceof GreskaKorisnika && e.message === NEMA_AKTIVNOG);
 });
 
@@ -348,6 +348,7 @@ test('unos.nacrt, potvrdi, odustao i vrati odbijaju prijavu drugog dela, ocena s
     assert.throws(() => u.potvrdi(prijava, sprava, { d: '4,8', e: ['7', '7', '7', '7'], odbitak: '' }, 'ispravka'), odbijeno);
     assert.throws(() => u.odustao(prijava, sprava), odbijeno);
     assert.throws(() => u.vrati(prijava, sprava), odbijeno);
+    assert.throws(() => u.obrisi(prijava, sprava, 'razlog'), odbijeno);
     assert.equal(stanje(prijava, sprava), pre, 'ocena je ista');
   };
   proveri(pid.Marko, s.pa); // izabran ZSG, prijava iz MSG

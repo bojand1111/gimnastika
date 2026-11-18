@@ -7,6 +7,7 @@ const DijalogRazlog = forwardRef(function DijalogRazlog(_, ref) {
   const polje = useRef(null);
   const odgovor = useRef(null); // resolve funkcija obecanja koje je u toku
   const sesija = useRef(0); // brojac pitaj() poziva; kasni "close" iz stare sesije se ignorise
+  const [naslov, postaviNaslov] = useState('Razlog ispravke');
   const [tekst, postaviTekst] = useState('');
   const [greska, postaviGresku] = useState('');
   const [otvorenoBr, postaviOtvoreno] = useState(0);
@@ -17,10 +18,11 @@ const DijalogRazlog = forwardRef(function DijalogRazlog(_, ref) {
 
   useImperativeHandle(ref, () => ({
     otvoren: () => Boolean(dijalog.current && dijalog.current.open),
-    pitaj() {
+    pitaj(zaSta = 'Razlog ispravke') {
       return new Promise((resolve) => {
         sesija.current += 1;
         odgovor.current = resolve;
+        postaviNaslov(zaSta);
         postaviTekst('');
         postaviGresku('');
         dijalog.current.showModal();
@@ -51,8 +53,8 @@ const DijalogRazlog = forwardRef(function DijalogRazlog(_, ref) {
       onCancel={(ev) => { ev.preventDefault(); zavrsi(null); }}
       onClose={() => { if (!dijalog.current.open) zavrsi(null); }}>
       <form className="forma" onSubmit={posalji}>
-        <h2 className="kartica-naslov" id="dijalog-razlog-naslov">Razlog ispravke (obavezno):</h2>
-        <input ref={polje} type="text" className="unos" name="razlog" aria-label="Razlog ispravke" autoComplete="off"
+        <h2 className="kartica-naslov" id="dijalog-razlog-naslov">{`${naslov} (obavezno):`}</h2>
+        <input ref={polje} type="text" className="unos" name="razlog" aria-label={naslov} autoComplete="off"
           value={tekst} onChange={(ev) => { postaviTekst(ev.target.value); postaviGresku(''); }} />
         {greska && <div className="poruka poruka-greska unos-razlog-greska" role="alert">{greska}</div>}
         <div className="forma-akcije">

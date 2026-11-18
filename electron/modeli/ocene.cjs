@@ -202,12 +202,38 @@ function napravi(baza, podesavanja) {
     return odgovor(nadji(prijavaId, spravaId), takm);
   }
 
+  // Brise unetu ocenu (upisana pogresnom takmicaru): red ponovo ceka unos, prazan. Razlog je obavezan i ostaje zapis izmene.
+  function obrisi(takmicenjeId, prijavaId, spravaId, razlog) {
+    const takm = takmicenje(takmicenjeId);
+    proveriPar(takmicenjeId, prijavaId, spravaId);
+    const postojeca = nadji(prijavaId, spravaId);
+    if (!postojeca || !UNETE.includes(postojeca.status)) throw new GreskaKorisnika('Nema unete ocene za brisanje.');
+    const r = String(razlog ?? '').trim();
+    if (r === '') throw new GreskaKorisnika('Za brisanje unete ocene obavezan je razlog.');
+    const sad = Baza.sad();
+    baza.transakcija((b) => {
+      const red = { d: null, e: null, bonus: null, odbitak: null, konacna: null, status: 'nacrt', uneto_u: null, izmenjeno: sad,
+        broj_ispravki: Number(postojeca.broj_ispravki) + 1 };
+      b.ubaci('izmene_ocena', {
+        ocena_id: Number(postojeca.id),
+        vreme: sad,
+        razlog: r,
+        staro: JSON.stringify(snimak(postojeca)),
+        novo: JSON.stringify(snimak(red)),
+      });
+      b.izmeni('ocene', red, 'id = ?', [Number(postojeca.id)]);
+      b.izvrsi('DELETE FROM ocene_e WHERE ocena_id = ?', [Number(postojeca.id)]);
+    });
+    return odgovor(nadji(prijavaId, spravaId), takm);
+  }
+
   // Ponistava odustajanje: red ponovo ceka unos.
   function vrati(takmicenjeId, prijavaId, spravaId) {
     const takm = takmicenje(takmicenjeId);
     proveriPar(takmicenjeId, prijavaId, spravaId);
     const o = nadji(prijavaId, spravaId);
-    if (!o) throw new GreskaKorisnika('Nema šta da se vrati.');
+    // Samo odustajanje se vraca: uneta ocena bi inace nestala iz plasmana bez razloga i zapisa izmene.
+    if (!o || o.status !== 'odustao') throw new GreskaKorisnika('Nema šta da se vrati.');
     baza.izmeni('ocene', { status: 'nacrt', uneto_u: null, izmenjeno: Baza.sad() }, 'id = ?', [Number(o.id)]);
     return odgovor(nadji(prijavaId, spravaId), takm);
   }
@@ -231,7 +257,7 @@ function napravi(baza, podesavanja) {
     return Napredak.napredak(zaTakmicenje(takmicenjeId), grupe, sprave, radiSpravu);
   }
 
-  return { nadji, zaSpravu, zaTakmicenje, izmeneNaSpravi, napredak, sacuvaj, odustao, vrati, radiSpravu };
+  return { nadji, zaSpravu, zaTakmicenje, izmeneNaSpravi, napredak, sacuvaj, odustao, obrisi, vrati, radiSpravu };
 }
 
 module.exports = { napravi };

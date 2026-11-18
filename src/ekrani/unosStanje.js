@@ -1,6 +1,7 @@
 // Cista logika ekrana Unos ocena (POPIS 6, 10.3, 10.4, 10.6, 10.11): bez React-a, bez IPC-a, bez DOM-a.
 // Red u stanju: { prijava_id, status ('nacrt'|'uneto'|'ispravljeno'|'odustao'|'ne_radi'), ispravlja: boolean,
-//   greskaCuvanja: boolean, vrednosti: { d, e1..eN, bonus, odbitak } (tekst), greske: Set imena polja,
+//   greskaCuvanja: boolean, greskaPotvrde: boolean (potvrda nije uspela), izvorno: vrednosti pre ispravke,
+//   vrednosti: { d, e1..eN, bonus, odbitak } (tekst), greske: Set imena polja,
 //   e: string, konacna: string, rb, startni_broj, ime, pol, opis, vk, radi }.
 // Red je otvoren za unos kad je status 'nacrt' ili kad se ispravlja; inace su mu polja zakljucana.
 import { izUnosa, prikaz } from '../../electron/racun/broj.mjs';
@@ -113,6 +114,25 @@ export function napredakIzRedova(redovi) {
 
 export const odustaoRec = (pol) => (pol === 'Z' ? 'Odustala' : 'Odustao');
 
+// Pitanje pre odustajanja (F8). Nad unetom ocenom kaze da se ocena brise.
+export function pitanjeOdustao(red) {
+  const rec = odustaoRec(red.pol).toLowerCase();
+  if (red.status === 'uneto' || red.status === 'ispravljeno') {
+    return `${red.ime} već ima unetu ocenu na ovoj spravi. Ako označite da je ${rec}, ta ocena se briše. Nastaviti?`;
+  }
+  return `${red.ime} je ${rec} na ovoj spravi?`;
+}
+
+// Red je u ispravci i neko polje se razlikuje od vrednosti pre ispravke (red.izvorno).
+export function ispravkaIzmenjena(red, brojSudija) {
+  if (!red || !red.ispravlja) return false;
+  const pre = red.izvorno ?? {};
+  const v = red.vrednosti ?? {};
+  return polja(brojSudija).some((ime) => String(v[ime] ?? '').trim() !== String(pre[ime] ?? '').trim());
+}
+
+export const porukaIspravka = (ime) => `Ispravka za ${ime} nije potvrđena. Potvrdite je (Enter na penalizaciji) ili otkažite (Esc).`;
+
 export const tekstOdustalo = (n, pol) => (n > 0 ? ` · ${n} ${pol === 'Z' ? 'odustala' : 'odustao'}` : '');
 
 export const procenat = (obradjeno, ukupno) => (ukupno > 0 ? Math.round((obradjeno * 100) / ukupno) : 0);
@@ -142,6 +162,7 @@ export function primeniPrikaz(red, p) {
     status: p.status,
     ispravlja: false,
     greskaCuvanja: false,
+    greskaPotvrde: false,
     greske: new Set(),
   };
 }

@@ -209,6 +209,55 @@ test('vrati bez ocene baca', () => {
   assert.equal(poruka(() => o.vrati(s.takm, pid.Ana, s.gr)), 'Nema šta da se vrati.');
 });
 
+test('obrisi: uneta ocena se brise uz razlog i zapis izmene, red ponovo ceka unos', () => {
+  const { baza, s, pid, o } = nova();
+  o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, true);
+  assert.equal(poruka(() => o.obrisi(s.takm, pid.Ana, s.gr, '  ')), 'Za brisanje unete ocene obavezan je razlog.');
+  assert.equal(o.nadji(pid.Ana, s.gr).status, 'uneto');
+  const r = o.obrisi(s.takm, pid.Ana, s.gr, ' upisano pogrešnoj takmičarki ');
+  assert.equal(r.prikaz.status, 'nacrt');
+  assert.equal(r.prikaz.d, '');
+  assert.equal(r.prikaz.konacna, '');
+  assert.deepEqual(r.prikaz.e_sudije, ['', '', '', '']);
+  assert.equal(r.prikaz.broj_ispravki, 1);
+  const posle = o.nadji(pid.Ana, s.gr);
+  assert.equal(posle.konacna, null);
+  assert.equal(posle.uneto_u, null);
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM ocene_e WHERE ocena_id = ?', [posle.id]), 0);
+  const izm = o.izmeneNaSpravi(s.takm, s.gr);
+  assert.equal(izm.length, 1);
+  assert.equal(izm[0].razlog, 'upisano pogrešnoj takmičarki');
+  assert.equal(izm[0].opis, 'obrisana ocena 13,050');
+  assert.equal(izm[0].staro.konacna, 13050);
+  assert.equal(izm[0].novo.status, 'nacrt');
+  // posle brisanja red se unosi iznova bez razloga
+  assert.equal(o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, true).prikaz.status, 'uneto');
+});
+
+test('obrisi: bez ocene, nad nacrtom i nad odustajanjem baca, nista se ne menja', () => {
+  const { baza, s, pid, o } = nova();
+  assert.equal(poruka(() => o.obrisi(s.takm, pid.Ana, s.gr, 'razlog')), 'Nema unete ocene za brisanje.');
+  o.sacuvaj(s.takm, pid.Bea, s.gr, UNOS, false);
+  assert.equal(poruka(() => o.obrisi(s.takm, pid.Bea, s.gr, 'razlog')), 'Nema unete ocene za brisanje.');
+  assert.equal(o.nadji(pid.Bea, s.gr).d, 4800);
+  o.odustao(s.takm, pid.Ceca, s.gr);
+  assert.equal(poruka(() => o.obrisi(s.takm, pid.Ceca, s.gr, 'razlog')), 'Nema unete ocene za brisanje.');
+  assert.equal(o.nadji(pid.Ceca, s.gr).status, 'odustao');
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM izmene_ocena'), 0);
+});
+
+test('vrati nad unetom ocenom i nad nacrtom baca, ocena ostaje', () => {
+  const { baza, s, pid, o } = nova();
+  o.sacuvaj(s.takm, pid.Ana, s.gr, UNOS, true);
+  assert.equal(poruka(() => o.vrati(s.takm, pid.Ana, s.gr)), 'Nema šta da se vrati.');
+  const posle = o.nadji(pid.Ana, s.gr);
+  assert.equal(posle.status, 'uneto');
+  assert.notEqual(posle.konacna, null);
+  assert.equal(baza.vrednost('SELECT COUNT(*) FROM izmene_ocena'), 0);
+  o.sacuvaj(s.takm, pid.Bea, s.gr, UNOS, false);
+  assert.equal(poruka(() => o.vrati(s.takm, pid.Bea, s.gr)), 'Nema šta da se vrati.');
+});
+
 test('nadji i zaSpravu', () => {
   const { s, pid, o } = nova();
   assert.equal(o.nadji(pid.Ana, s.gr), null);

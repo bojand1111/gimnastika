@@ -35,6 +35,12 @@ test('obrisana vrednost ostavlja razmak posle strelice', () => {
   assert.equal(opisIzmene(red(), novo), 'E1 8,300 → ');
 });
 
+test('brisanje unete ocene: kratak opis sa starom konacnom', () => {
+  const novo = { d: null, e: null, bonus: null, odbitak: null, konacna: null, status: 'nacrt', e_sudije: {} };
+  assert.equal(opisIzmene(red(), novo), 'obrisana ocena 13,050');
+  assert.equal(opisIzmene(red({ status: 'ispravljeno' }), novo), 'obrisana ocena 13,050');
+});
+
 test('odustajanje nad unetom ocenom (doslovni razmaci)', () => {
   const novo = { d: null, e: null, odbitak: null, konacna: null, status: 'odustao', e_sudije: {} };
   assert.equal(

@@ -571,6 +571,8 @@ function napraviModule(baza, { dialog, shell = { showItemInFolder() {} }, fascik
         oc.sacuvaj(aktivnoId(), broj(prijavaId), broj(spravaId), ulazOcene(ulaz), true, typeof razlog === 'string' ? razlog : '')),
       odustao: (prijavaId, spravaId) => posleOcene(oc.odustao(aktivnoId(), broj(prijavaId), broj(spravaId))),
       vrati: (prijavaId, spravaId) => posleOcene(oc.vrati(aktivnoId(), broj(prijavaId), broj(spravaId))),
+      obrisi: (prijavaId, spravaId, razlog) => posleOcene(
+        oc.obrisi(aktivnoId(), broj(prijavaId), broj(spravaId), typeof razlog === 'string' ? razlog : '')),
       // Prazni zapisnici za stampu: list za svaku spravu i rotaciju, clanovi istim redom kao na Unosu, bez ocena.
       // Bez grupa: jedan list po spravi sa svim prijavljenima (rot null).
       zapisnici: () => {

@@ -4,7 +4,7 @@
 import gim from '../../gim.js';
 import { obavesti } from '../../okvir/Poruke.jsx';
 import {
-  odustaoRec, otvoren, podaciReda, polja, preracunaj, primeniPrikaz, proveriPolje, sledeciOtvoren,
+  ispravkaIzmenjena, otvoren, pitanjeOdustao, podaciReda, polja, porukaIspravka, preracunaj, primeniPrikaz, proveriPolje, sledeciOtvoren,
 } from '../unosStanje.js';
 import { fokusiraj } from './fokus.js';
 import { obradiTaster } from './tasteri.js';
@@ -34,6 +34,21 @@ export function napraviAkcije(ctx) {
   const oznaciGresku = (id, ime) => postaviRed(id, (r) => ({ ...r, greske: new Set(r.greske).add(ime) }));
 
   function brisiNacrt(id) { clearTimeout(tajmeri.get(id)); tajmeri.delete(id); }
+
+  // Red sa izmenjenom a nepotvrdjenom ispravkom (osim reda osim), ili null. Ispravka zivi samo na ekranu:
+  // svako ponovno ucitavanje bi je tiho odbacilo.
+  function nesacuvanaIspravka(osim = null) {
+    return ctx.redovi().find((r) => r.prijava_id !== osim && ispravkaIzmenjena(r, brojSudija())) ?? null;
+  }
+
+  // true (uz poruku i fokus na taj red) kad radnja mora da saceka ispravku drugog reda.
+  function cekaIspravku(osim = null) {
+    const red = nesacuvanaIspravka(osim);
+    if (!red) return false;
+    obavesti(porukaIspravka(red.ime), 'greska');
+    fokusiraj(red.prijava_id, 'd');
+    return true;
+  }
 
   // Nacrt samo za red u statusu nacrt i bez neispravnih polja (server bi odbio ceo red).
   async function posaljiNacrt(id) {
@@ -79,6 +94,8 @@ export function napraviAkcije(ctx) {
       if (pf.ok) vrednosti[ime] = pf.prikaz; else greske.add(ime);
     }
     postaviRed(id, (r) => { const n = { ...r, vrednosti, greske }; return { ...n, ...racun(n) }; });
+    // Potvrda ispravke ucitava ekran iznova: ispravka drugog reda bi se izgubila.
+    if (red0.ispravlja && cekaIspravku(id)) return;
     if (greske.size > 0) {
       obavesti('Ispravite crveno označena polja.', 'greska');
       fokusiraj(id, [...greske][0]);
@@ -103,6 +120,8 @@ export function napraviAkcije(ctx) {
       if (j !== null) ctx.zatrazi({ id: redovi[j].prijava_id, polje: 'd' });
       else obavesti('Svi redovi u ovoj grupi su obrađeni.', 'ok');
     } catch (e) {
+      // Red ostaje oznacen dok potvrda ne uspe: poruka nestane, a ocena nije upisana.
+      if (ctx.ziv()) postaviRed(id, (x) => ({ ...x, greskaPotvrde: true }));
       obavesti(e.message, 'greska');
       fokusiraj(id, 'd');
     } finally {
@@ -113,7 +132,7 @@ export function napraviAkcije(ctx) {
   function ispravi(id) {
     const red = nadji(id);
     if (!red || red.ispravlja || (red.status !== 'uneto' && red.status !== 'ispravljeno')) return;
-    postaviRed(id, (r) => ({ ...r, ispravlja: true }));
+    postaviRed(id, (r) => ({ ...r, ispravlja: true, izvorno: { ...r.vrednosti } }));
     ctx.postaviTrenutni(id);
     ctx.zatrazi({ id, polje: 'd' });
   }
@@ -123,7 +142,8 @@ export function napraviAkcije(ctx) {
     const i = redovi.findIndex((r) => r.prijava_id === id);
     const red = redovi[i];
     if (!red || red.status === 'odustao' || red.status === 'ne_radi') return;
-    if (!window.confirm(`${red.ime} je ${odustaoRec(red.pol).toLowerCase()} na ovoj spravi?`)) return;
+    if (cekaIspravku(id)) return;
+    if (!window.confirm(pitanjeOdustao(red))) return;
     brisiNacrt(id);
     const j = sledeciOtvoren(redovi, i);
     try {
@@ -132,7 +152,26 @@ export function napraviAkcije(ctx) {
     if (ctx.ziv()) await ctx.ucitaj({ pamti: j === null ? null : redovi[j].prijava_id });
   }
 
+  // Brisanje unete ocene (upisana pogresnom takmicaru): pita razlog, red se vraca na "Ceka" bez brojeva.
+  async function obrisi(id) {
+    const red = nadji(id);
+    if (!red || uToku.has(id) || (red.status !== 'uneto' && red.status !== 'ispravljeno')) return;
+    if (cekaIspravku(id)) return;
+    uToku.add(id);
+    try {
+      const razlog = await ctx.dijalog().pitaj(`Razlog brisanja ocene: ${red.ime}`);
+      if (razlog === null) { fokusiraj(id, 'd'); return; }
+      await gim.unos.obrisi(id, spravaId(), razlog);
+      if (ctx.ziv()) await ctx.ucitaj({ drzi: { id, polje: 'd' } });
+    } catch (e) {
+      obavesti(e.message, 'greska');
+    } finally {
+      uToku.delete(id);
+    }
+  }
+
   async function vrati(id) {
+    if (cekaIspravku(id)) return;
     try {
       await gim.unos.vrati(id, spravaId());
     } catch (e) { obavesti(e.message, 'greska'); return; }
@@ -149,14 +188,16 @@ export function napraviAkcije(ctx) {
 
   const tasterCtx = { redovi: ctx.redovi, brojSudija, oznaciGresku, normalizuj: (id, ime, tekst) => postaviVrednost(id, ime, tekst, bezGreske(nadji(id), ime)), potvrdi };
 
-  // F8, F9 i Escape (ispravka) nad poslednjim fokusiranim redom, kao PHP (POPIS 10.12).
+  // F8, Shift+F8, F9 i Escape (ispravka) nad poslednjim fokusiranim redom, kao PHP (POPIS 10.12).
   function globalniTaster(ev) {
     if (document.querySelector('dialog[open]')) return;
     const id = ctx.trenutni();
     if (ev.key === 'F8' || ev.key === 'F9') {
       ev.preventDefault();
       if (id == null || ev.repeat) return;
-      if (ev.key === 'F8') odustao(id); else ispravi(id);
+      if (ev.key === 'F9') ispravi(id);
+      else if (ev.shiftKey) obrisi(id); // Shift+F8: brisanje unete ocene
+      else odustao(id);
     } else if (ev.key === 'Escape' && id != null && nadji(id)?.ispravlja) {
       ctx.ucitaj({ drzi: { id, polje: 'd' } });
     }
@@ -171,6 +212,7 @@ export function napraviAkcije(ctx) {
       ispravi,
       potvrdi,
       odustao,
+      obrisi,
       vrati,
       ponovo: (id) => {
         const r = nadji(id);
@@ -181,5 +223,6 @@ export function napraviAkcije(ctx) {
     globalniTaster,
     isprazniNacrte,
     izlazAktivnog,
+    nesacuvanaIspravka,
   };
 }

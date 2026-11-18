@@ -12,6 +12,7 @@ export default function UnosIzmene({ izmene }) {
           <span className="unos-precica"><kbd>↑</kbd><kbd>↓</kbd><span>drugi takmičar</span></span>
           <span className="unos-precica"><kbd>F8</kbd><span>odustao/la</span></span>
           <span className="unos-precica"><kbd>F9</kbd><span>ispravi unetu ocenu</span></span>
+          <span className="unos-precica"><kbd>Shift</kbd><kbd>F8</kbd><span>obriši unetu ocenu</span></span>
         </div>
       </section>
       <section className="kartica unos-izmene" id="izmene">

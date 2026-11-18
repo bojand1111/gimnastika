@@ -5,7 +5,7 @@ import Ikona from '../komponente/Ikona.jsx';
 import { obavesti } from '../okvir/Poruke.jsx';
 import { obradiNemaAktivnog } from './aktivno.js';
 import {
-  ePolja, hashUnos, napredakIzRedova, parUnos, pocetniFokus, polja, prvoPraznoPolje,
+  ePolja, hashUnos, napredakIzRedova, parUnos, pocetniFokus, polja, porukaIspravka, prvoPraznoPolje,
 } from './unosStanje.js';
 import { izPodataka, kolone } from './unos/redovi.js';
 import { napraviAkcije } from './unos/akcije.js';
@@ -98,9 +98,22 @@ export default function Unos() {
     ucitaj();
     const naHash = () => {
       akcije.izlazAktivnog(); // kucani unos se snima pre odlaska ili ponovnog ucitavanja
-      if (!location.hash.startsWith('#/unos')) return;
+      const ispravka = akcije.nesacuvanaIspravka();
+      if (!location.hash.startsWith('#/unos')) {
+        // Odlazak sa ekrana se ovde ne moze zaustaviti; bar se kaze da ispravka nije upisana.
+        if (ispravka) obavesti(`Ispravka za ${ispravka.ime} nije potvrđena: ocena je ostala kakva je bila.`, 'greska');
+        return;
+      }
       const n = izHasha();
       if (istiPar(n, parRef.current)) return;
+      if (ispravka) {
+        // Druga sprava, rotacija ili turnus bi ucitali ekran iznova i odbacili ispravku: ostaje se na istom mestu.
+        const { sprava, rot, tu } = parRef.current;
+        history.replaceState(null, '', hashUnos(sprava, rot, tu));
+        obavesti(porukaIspravka(ispravka.ime), 'greska');
+        fokusiraj(ispravka.prijava_id, 'd');
+        return;
+      }
       parRef.current = n;
       postaviTrenutni(null);
       ucitaj();
@@ -108,7 +121,13 @@ export default function Unos() {
     window.addEventListener('hashchange', naHash);
     document.addEventListener('keydown', akcije.globalniTaster);
     // Pre promene dela (MSG/ZSG) nacrti se salju dok je jos staro takmicenje aktivno.
-    const prePol = (ev) => { akcije.izlazAktivnog(); ev.detail.cekaj.push(akcije.isprazniNacrte()); };
+    // Nepotvrdjena ispravka zaustavlja promenu dela (odbijeno obecanje: deo ostaje stari, poruka ide korisniku).
+    const prePol = (ev) => {
+      akcije.izlazAktivnog();
+      ev.detail.cekaj.push(akcije.isprazniNacrte());
+      const ispravka = akcije.nesacuvanaIspravka();
+      if (ispravka) ev.detail.cekaj.push(Promise.reject(new Error(porukaIspravka(ispravka.ime))));
+    };
     document.addEventListener('app:pre-pol', prePol);
     return () => {
       document.removeEventListener('app:pre-pol', prePol);
